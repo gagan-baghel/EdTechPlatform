@@ -28,7 +28,7 @@ exports.resetPasswordToken = async (req,res)=>{
 
         console.log(updatedDetails)
         
-        const url = "https://edtechplatform-3.onrender.com"+`/update-password/${token}`
+        const url = "https://edtechplatform-3.onrender.com/api/v1"+`/update-password/${token}`
 
         console.log("initiating mail")
         
