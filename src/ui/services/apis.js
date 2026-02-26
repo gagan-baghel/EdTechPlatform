@@ -1,9 +1,7 @@
-const rawBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.VITE_REACT_APP_BASE_URL ||
-  "/api/v1"
-
-const BASE_URL = rawBaseUrl.replace(/\/+$/, "")
+const BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1").replace(
+  /\/+$/,
+  ""
+)
 
 // AUTH ENDPOINTS
 export const endpoints = {
