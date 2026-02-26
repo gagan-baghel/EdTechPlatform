@@ -4,14 +4,42 @@ import { useCallback, useEffect } from "react"
 import NextLink from "next/link"
 import { usePathname, useRouter, useParams as useNextParams } from "next/navigation"
 
+function normalizeSearch(value) {
+  if (!value) return ""
+  if (typeof value === "string") {
+    if (!value) return ""
+    return value.startsWith("?") ? value : `?${value}`
+  }
+  if (typeof value === "object") {
+    const params = new URLSearchParams()
+    Object.entries(value).forEach(([key, val]) => {
+      if (val === undefined || val === null) return
+      if (Array.isArray(val)) {
+        val.forEach((entry) => params.append(key, String(entry)))
+        return
+      }
+      params.append(key, String(val))
+    })
+    const serialized = params.toString()
+    return serialized ? `?${serialized}` : ""
+  }
+  return ""
+}
+
+function normalizeHash(value) {
+  if (!value) return ""
+  if (typeof value !== "string") return ""
+  return value.startsWith("#") ? value : `#${value}`
+}
+
 function normalizeTo(to) {
   if (typeof to === "string") return to
+  if (to instanceof URL) return to.pathname + to.search + to.hash
   if (to && typeof to === "object") {
-    if (typeof to.pathname === "string") {
-      const search = to.search || ""
-      const hash = to.hash || ""
-      return `${to.pathname}${search}${hash}`
-    }
+    const pathname = typeof to.pathname === "string" ? to.pathname : "/"
+    const search = normalizeSearch(to.search || to.query)
+    const hash = normalizeHash(to.hash)
+    return `${pathname}${search}${hash}`
   }
   return "/"
 }
