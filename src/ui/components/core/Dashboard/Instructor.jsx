@@ -49,7 +49,7 @@ export default function Instructor() {
           Hi {user?.firstName} 👋
         </h1>
         <p className="font-medium text-richblack-200">
-          Let's start something new
+          Let&apos;s start something new
         </p>
       </div>
       {loading ? (

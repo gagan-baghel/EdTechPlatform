@@ -32,19 +32,22 @@ const TimelineSection = () => {
     <div>
       <div className='flex flex-row gap-15 items-center'>
 
-        <div className='w-[45%] flex flex-col gap-5'>
+        <div className='flex w-[45%] flex-col gap-5 text-richblack-100'>
             {
                 timeline.map( (element, index) => {
                     return (
                         <div className='flex flex-row gap-6' key={index}>
 
                             <div className='w-[50px] h-[50px] bg-white flex items-center'>
-                                <img src={element.Logo?.src || element.Logo} />
+                                <img
+                                  src={element.Logo?.src || element.Logo}
+                                  alt={element.heading}
+                                />
                             </div>
 
                             <div>
-                                <h2 className='font-semibold text-[18px]'>{element.heading}</h2>
-                                <p className='text-base'>{element.Description}</p>
+                                <h2 className='text-[18px] font-semibold text-richblack-5'>{element.heading}</h2>
+                                <p className='text-base text-richblack-300'>{element.Description}</p>
                             </div>
 
                         </div>

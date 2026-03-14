@@ -9,14 +9,16 @@ exports.contactUsController = async (req, res) => {
       message: "email, firstname, and message are required",
     })
   }
-  console.log(req.body)
   try {
     const emailRes = await mailSender(
       email,
       "Your Data send successfully",
       contactUsEmail(email, firstname, lastname, message, phoneNo, countrycode)
     )
-    console.log("Email Res ", emailRes)
+    console.log("Contact form confirmation email sent", {
+      accepted: emailRes?.accepted?.length || 0,
+      rejected: emailRes?.rejected?.length || 0,
+    })
 
     // send the mail to suport service 
     

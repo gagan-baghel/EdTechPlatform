@@ -20,7 +20,7 @@ const mailSender = async (email, title, body) => {
       from: MAIL_USER,
       to: email,
       subject: title,
-      html: `<h1>${body}</h1>`,
+      html: body,
     })
     return info
   } catch (error) {

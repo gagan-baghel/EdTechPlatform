@@ -3,6 +3,17 @@ const mailSender = require('../utils/mailSender')
 const bcrypt = require('bcrypt')
 const crypto = require('crypto')
 
+function getRequestBaseUrl(req) {
+    const forwardedProto = req.headers["x-forwarded-proto"]
+    const protocol = forwardedProto || req.protocol || "http"
+    const host = req.headers["x-forwarded-host"] || req.headers.host
+
+    if (host) {
+        return `${protocol}://${host}`
+    }
+
+    return "http://localhost:3000"
+}
 
 
 exports.resetPasswordToken = async (req,res)=>{
@@ -28,8 +39,7 @@ exports.resetPasswordToken = async (req,res)=>{
 
         console.log(updatedDetails)
         
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000"
-        const url = `${frontendUrl}/update-password/${token}`
+        const url = `${getRequestBaseUrl(req)}/update-password/${token}`
 
         console.log("initiating mail")
         

@@ -1,7 +1,4 @@
-const BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1").replace(
-  /\/+$/,
-  ""
-)
+const BASE_URL = "/api/v1"
 
 // AUTH ENDPOINTS
 export const endpoints = {
