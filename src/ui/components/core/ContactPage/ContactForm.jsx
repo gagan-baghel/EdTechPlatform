@@ -1,21 +1,25 @@
-import React from "react";
-import ContactUsForm from "./ContactUsForm";
+import React from "react"
+
+import ContactUsForm from "./ContactUsForm"
 
 const ContactForm = () => {
   return (
-    <div className="border border-richblack-600 text-richblack-300 rounded-xl p-7 lg:p-14 flex gap-3 flex-col">
-      <h1 className="text-4xl leading-10 font-semibold text-richblack-5">
-        Got a Idea? We&apos;ve got the skills. Let&apos;s team up
+    <div className="flex flex-col gap-3 rounded-[32px] border border-white/10 bg-richblack-800/70 p-7 text-richblack-300 shadow-[0_20px_60px_rgba(0,0,0,0.22)] backdrop-blur-xl lg:p-10">
+      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-300">
+        Send a message
+      </p>
+      <h1 className="text-4xl font-bold leading-tight tracking-tight text-richblack-5">
+        Tell us what you need.
       </h1>
-      <p className="">
-        Tell us more about yourself and what you&apos;re got in mind.
+      <p className="max-w-xl text-sm leading-7 text-richblack-200">
+        Keep it brief. We&apos;ll take it from there.
       </p>
 
-      <div className="mt-7">
+      <div className="mt-4">
         <ContactUsForm />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ContactForm;
+export default ContactForm

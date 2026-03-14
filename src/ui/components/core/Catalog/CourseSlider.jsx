@@ -1,39 +1,42 @@
-import React from 'react'
+import React from "react"
 
-import {Swiper, SwiperSlide} from "swiper/react"
+import { Swiper, SwiperSlide } from "swiper/react"
 import "swiper/css"
 import "swiper/css/free-mode"
 import "swiper/css/pagination"
-import { FreeMode, Pagination }  from 'swiper'
+import { FreeMode, Pagination } from "swiper"
 
-import Course_Card from './Course_Card'
+import Course_Card from "./Course_Card"
 
-const CourseSlider = ({Courses}) => {
+const CourseSlider = ({ Courses }) => {
   return (
-    <>
+    <div>
       {Courses?.length ? (
         <Swiper
-          slidesPerView={1}
-          spaceBetween={25}
-          loop={true}
+          slidesPerView={1.08}
+          spaceBetween={20}
+          loop={Courses.length > 3}
           modules={[FreeMode, Pagination]}
           breakpoints={{
+            768: {
+              slidesPerView: 2,
+            },
             1024: {
               slidesPerView: 3,
             },
           }}
-          className="max-h-[30rem]"
+          className="!pb-12"
         >
           {Courses?.map((course, i) => (
-            <SwiperSlide key={i}>
+            <SwiperSlide key={i} className="h-auto">
               <Course_Card course={course} Height={"h-[250px]"} />
             </SwiperSlide>
           ))}
         </Swiper>
       ) : (
-        <p className="text-xl text-richblack-5">No Course Found</p>
+        <p className="text-lg text-richblack-300">No courses found.</p>
       )}
-    </>
+    </div>
   )
 }
 

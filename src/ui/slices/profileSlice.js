@@ -1,10 +1,11 @@
 import {createSlice} from "@reduxjs/toolkit"
+import { normalizeUserAvatar } from "../utils/avatar"
 
 const getStoredUser = () => {
     if (typeof window === "undefined") return null
 
     const user = localStorage.getItem("user")
-    return user ? JSON.parse(user) : null
+    return user ? normalizeUserAvatar(JSON.parse(user)) : null
 }
 
 const initialState = {

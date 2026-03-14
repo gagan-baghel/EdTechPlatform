@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
+import Image from "next/image"
+import { useCallback, useEffect, useState } from "react"
 import { useSelector } from "react-redux"
 import { Link } from "@/ui/lib/router"
 
@@ -18,19 +19,29 @@ export default function Instructor() {
   const [instructorData, setInstructorData] = useState(null)
   const [courses, setCourses] = useState([])
 
-  useEffect(() => {
-    ;(async () => {
+  const loadDashboard = useCallback(async () => {
+    if (!token) {
+      setInstructorData(null)
+      setCourses([])
+      return
+    }
+
+    try {
       setLoading(true)
-      const instructorApiData = await getInstructorData(token)
-      const result = await fetchInstructorCourses(token)
-      console.log(instructorApiData)
-      if (instructorApiData.length) setInstructorData(instructorApiData)
-      if (result) {
-        setCourses(result)
-      }
+      const [instructorApiData, result] = await Promise.all([
+        getInstructorData(token),
+        fetchInstructorCourses(token),
+      ])
+      setInstructorData(Array.isArray(instructorApiData) ? instructorApiData : null)
+      setCourses(Array.isArray(result) ? result : [])
+    } finally {
       setLoading(false)
-    })()
-  }, [])
+    }
+  }, [token])
+
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard])
 
   const totalAmount = instructorData?.reduce(
     (acc, curr) => acc + curr.totalAmountGenerated,
@@ -104,10 +115,13 @@ export default function Instructor() {
             <div className="my-4 flex items-start space-x-6">
               {courses.slice(0, 3).map((course) => (
                 <div key={course._id} className="w-1/3">
-                  <img
+                  <Image
                     src={course.thumbnail}
                     alt={course.courseName}
+                    width={720}
+                    height={402}
                     className="h-[201px] w-full rounded-md object-cover"
+                    sizes="(max-width: 1024px) 100vw, 33vw"
                   />
                   <div className="mt-3 w-full">
                     <p className="text-sm font-medium text-richblack-50">

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react"
+import Image from "next/image"
 import { AiOutlineCaretDown } from "react-icons/ai"
 import { VscDashboard, VscSignOut } from "react-icons/vsc"
 import { useDispatch, useSelector } from "react-redux"
@@ -6,6 +7,7 @@ import { Link, useNavigate } from "@/ui/lib/router"
 
 import useOnClickOutside from "../../../hooks/useOnClickOutside"
 import { logout } from "../../../services/operations/authAPI"
+import { normalizeAvatarUrl } from "../../../utils/avatar"
 
 export default function ProfileDropdown() {
   const { user } = useSelector((state) => state.profile)
@@ -18,13 +20,23 @@ export default function ProfileDropdown() {
 
   if (!user) return null
 
+  const profileImage = normalizeAvatarUrl(
+    user?.userImage || user?.image,
+    user?.firstName,
+    user?.lastName
+  )
+
   return (
     <button className="relative" onClick={() => setOpen(true)}>
       <div className="flex items-center gap-x-1">
-        <img
-          src={user?.userImage}
+        <Image
+          src={profileImage}
           alt={`profile-${user?.firstName}`}
+          width={30}
+          height={30}
           className="aspect-square w-[30px] rounded-full object-cover"
+          sizes="30px"
+          unoptimized={profileImage.includes("api.dicebear.com")}
         />
         <AiOutlineCaretDown className="text-sm text-richblack-100" />
       </div>

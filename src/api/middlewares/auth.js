@@ -34,7 +34,6 @@ exports.auth = async (req,res,next) => {
         
     } catch (error) {
 
-        console.log(error,"  error while doing auth middleware (COOKIE NOT VALID )")
 
         return res.status(401).json({
             success:false,

@@ -24,7 +24,6 @@ const mailSender = async (email, title, body) => {
     })
     return info
   } catch (error) {
-    console.log("nodemail config error from mailsender", error)
     throw error
   }
 }

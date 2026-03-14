@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react"
+import Image from "next/image"
 import { AiOutlineMenu, AiOutlineShoppingCart } from "react-icons/ai"
 import { BsChevronDown } from "react-icons/bs"
 import { useSelector } from "react-redux"
 import { Link, matchPath, useLocation } from "@/ui/lib/router"
 
 import { NavbarLinks } from "../../data/navbar-links"
-import { apiConnector } from "../../services/apiconnector"
-import { categories } from "../../services/apis"
+import { fetchCategoriesCached } from "../../services/sharedData"
 import { ACCOUNT_TYPE } from "../../utils/constants"
 import ProfileDropdown from "../core/Auth/ProfileDropDown"
 
@@ -20,19 +20,23 @@ function Navbar() {
   const [subLinks, setSubLinks] = useState([])
   const [loading, setLoading] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [catalogTouched, setCatalogTouched] = useState(false)
 
   useEffect(() => {
+    if (!catalogTouched || subLinks.length) return
+
     ;(async () => {
       setLoading(true)
       try {
-        const res = await apiConnector("GET", categories.CATEGORIES_API)
-        setSubLinks(res.data.data)
-      } catch (error) {
-        console.log("Could not fetch Categories.", error)
+        const data = await fetchCategoriesCached()
+        setSubLinks(data)
+      } catch (_error) {
+        setSubLinks([])
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     })()
-  }, [])
+  }, [catalogTouched, subLinks.length])
 
   useEffect(() => {
     if (!isHomePage) {
@@ -55,16 +59,22 @@ function Navbar() {
     return matchPath({ path: route }, location.pathname)
   }
 
+  const primeCatalogMenu = () => {
+    if (!catalogTouched) {
+      setCatalogTouched(true)
+    }
+  }
+
   return (
     <div
       className={`z-40 flex items-center justify-center transition-all duration-300 ${
         isHomePage
           ? `fixed left-0 right-0 top-0 border-b ${
               scrolled
-                ? "border-richblack-700/80 bg-richblack-900/88 py-4 shadow-[0_16px_50px_rgba(0,8,20,0.45)] backdrop-blur-2xl"
-                : "border-transparent bg-transparent py-6"
+                ? "border-richblack-700/80 bg-richblack-900/88 py-[1.1rem] shadow-[0_16px_50px_rgba(0,8,20,0.45)] backdrop-blur-2xl"
+                : "border-transparent bg-transparent py-[1.65rem]"
             }`
-          : "h-14 border-b-[1px] border-b-richblack-700 bg-richblack-800"
+          : "h-[3.85rem] border-b-[1px] border-b-richblack-700 bg-richblack-800"
       }`}
     >
       <div
@@ -74,14 +84,15 @@ function Navbar() {
       >
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3">
-          <div className="rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
-            <img
+          <div className="rounded-full bg-white/5 p-2 ring-1 ring-white/10">
+            <Image
               src="/logo.png"
               alt="IntelleCraft logo"
               width={40}
               height={40}
-              loading="lazy"
               className="h-10 w-10 object-contain invert"
+              priority={isHomePage}
+              sizes="40px"
             />
           </div>
           <div className="flex flex-col">
@@ -107,6 +118,8 @@ function Navbar() {
                 {link.title === "Catalog" ? (
                   <>
                     <div
+                      onMouseEnter={primeCatalogMenu}
+                      onFocus={primeCatalogMenu}
                       className={`group relative flex cursor-pointer items-center gap-1 ${
                         matchRoute("/catalog/:catalogName")
                           ? "text-yellow-25"

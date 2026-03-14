@@ -16,7 +16,6 @@ exports.createCategory = async (req, res) => {
 			name: name,
 			description: description,
 		});
-		console.log(CategorysDetails);
 		return res.status(200).json({
 			success: true,
 			message: "Categorys Created Successfully",
@@ -56,7 +55,6 @@ exports.categoryPageDetails = async (req, res) => {
           message: "categoryId is required",
         })
       }
-      console.log("PRINTING CATEGORY ID: ", categoryId);
       // Get courses for the specified category
       const selectedCategory = await Category.findById(categoryId)
         .populate({
@@ -69,7 +67,6 @@ exports.categoryPageDetails = async (req, res) => {
       //console.log("SELECTED COURSE", selectedCategory)
       // Handle the case when the category is not found
       if (!selectedCategory) {
-        console.log("Category not found.")
         return res
           .status(404)
           .json({ success: false, message: "Category not found" })

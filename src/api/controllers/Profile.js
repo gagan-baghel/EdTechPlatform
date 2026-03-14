@@ -44,7 +44,6 @@ exports.updateProfile = async (req, res) => {
 			updatedUserDetails,
 		});
 	} catch (error) {
-		console.log(error);
 		return res.status(500).json({
 			success: false,
 			error: error.message,
@@ -59,7 +58,6 @@ exports.deleteAccount = async (req, res) => {
 		// 	console.log("The answer to life, the universe, and everything!");
 		// });
 		// console.log(job);
-		console.log("Printing ID: ", req.user.id);
 		const id = req.user.id;
 		
 		const user = await User.findById({ _id: id });
@@ -87,7 +85,6 @@ exports.deleteAccount = async (req, res) => {
 			message: "User deleted successfully",
 		});
 	} catch (error) {
-		console.log(error);
 		res
 			.status(500)
 			.json({ success: false, message: "User Cannot be deleted successfully" });
@@ -100,7 +97,6 @@ exports.getAllUserDetails = async (req, res) => {
 		const userDetails = await User.findById(id)
 			.populate("additionalDetails")
 			.exec();
-		console.log(userDetails);
 		res.status(200).json({
 			success: true,
 			message: "User Data fetched successfully",
@@ -130,7 +126,6 @@ exports.updateDisplayPicture = async (req, res) => {
         1000,
         1000
       )
-      console.log(image)
       const updatedProfile = await User.findByIdAndUpdate(
         { _id: userId },
         { userImage: image.secure_url },
@@ -240,7 +235,6 @@ exports.instructorDashboard = async(req, res) => {
 
 	}
 	catch(error) {
-		console.error(error);
 		res.status(500).json({message:"Internal Server Error"});
 	}
 }

@@ -16,16 +16,9 @@ exports.connectDB = async () => {
         useNewUrlParser: true,
         useUnifiedTopology: true,
       })
-      .then((conn) => {
-        console.log("Mongodb Connected SuccessFully")
-        return conn
-      })
+      .then((conn) => conn)
       .catch((error) => {
         connectionPromise = null
-        console.error(
-          "something bad happened while connecting with mongodb /config",
-          error
-        )
         throw error
       })
   }

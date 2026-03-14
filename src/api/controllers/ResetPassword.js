@@ -37,11 +37,9 @@ exports.resetPasswordToken = async (req,res)=>{
             resetPasswordExpires:Date.now()+5*60*1000
         },{new:true})
 
-        console.log(updatedDetails)
         
         const url = `${getRequestBaseUrl(req)}/update-password/${token}`
 
-        console.log("initiating mail")
         
         await mailSender(email,"Reset Password Link for StudyNotion", `your password reset link is --->  ${url}`)
         
@@ -52,7 +50,6 @@ exports.resetPasswordToken = async (req,res)=>{
         
     } catch (error) {
 
-        console.log(error,"error in reset password token genration")
 
         return res.status(500).json({
             success:false,
@@ -111,7 +108,6 @@ exports.resetPassword  = async (req,res) =>{
 
         
     } catch (error) {
-        console.log(error,"error in reset password ")
 
         return res.status(500).json({
             success:false,

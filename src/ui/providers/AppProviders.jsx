@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { Provider, useDispatch } from "react-redux"
+import { Provider, useDispatch, useSelector } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
 import { Toaster } from "react-hot-toast"
 
@@ -18,19 +18,35 @@ function makeStore() {
 function AuthBootstrap() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const token = useSelector((state) => state.auth.token)
+  const user = useSelector((state) => state.profile.user)
+  const fetchedTokenRef = useRef(null)
 
   useEffect(() => {
-    const tokenRaw = localStorage.getItem("token")
-    if (!tokenRaw) return
+    if (!token || fetchedTokenRef.current === token) return
 
-    try {
-      const token = JSON.parse(tokenRaw)
+    const loadUser = () => {
+      fetchedTokenRef.current = token
       dispatch(getUserDetails(token, navigate))
-    } catch (_error) {
-      localStorage.removeItem("token")
-      localStorage.removeItem("user")
     }
-  }, [dispatch, navigate])
+
+    if (user) {
+      const idleCallback =
+        typeof window !== "undefined" && "requestIdleCallback" in window
+          ? window.requestIdleCallback(() => loadUser(), { timeout: 1500 })
+          : window.setTimeout(loadUser, 1200)
+
+      return () => {
+        if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
+          window.cancelIdleCallback(idleCallback)
+        } else {
+          window.clearTimeout(idleCallback)
+        }
+      }
+    }
+
+    loadUser()
+  }, [dispatch, navigate, token, user])
 
   return null
 }

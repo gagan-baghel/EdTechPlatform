@@ -12,6 +12,8 @@ import Tab from "../../common/Tab"
 function SignupForm() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const inputClass =
+    "w-full rounded-2xl border border-white/10 bg-richblack-900/80 px-4 py-4 text-base text-richblack-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition-all placeholder:text-richblack-400 focus:border-[#c3ebfa]/60 focus:ring-4 focus:ring-[#c3ebfa]/10"
 
   // student or instructor
   const [accountType, setAccountType] = useState(ACCOUNT_TYPE.STUDENT)
@@ -83,13 +85,11 @@ function SignupForm() {
 
   return (
     <div>
-      {/* Tab */}
       <Tab tabData={tabData} field={accountType} setField={setAccountType} />
-      {/* Form */}
-      <form onSubmit={handleOnSubmit} className="flex w-full flex-col gap-y-4">
-        <div className="flex gap-x-4">
+      <form onSubmit={handleOnSubmit} className="flex w-full flex-col gap-y-5">
+        <div className="grid gap-5 sm:grid-cols-2">
           <label>
-            <p className="mb-1 text-[0.875rem] leading-[1.375rem] text-richblack-5">
+            <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-richblack-300">
               First Name <sup className="text-pink-200">*</sup>
             </p>
             <input
@@ -98,15 +98,13 @@ function SignupForm() {
               name="firstName"
               value={firstName}
               onChange={handleOnChange}
-              placeholder="Enter first name"
-              style={{
-                boxShadow: "inset 0px -1px 0px rgba(255, 255, 255, 0.18)",
-              }}
-              className="w-full rounded-[0.5rem] bg-richblack-800 p-[12px] text-richblack-5"
+              placeholder="First name"
+              autoComplete="given-name"
+              className={inputClass}
             />
           </label>
           <label>
-            <p className="mb-1 text-[0.875rem] leading-[1.375rem] text-richblack-5">
+            <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-richblack-300">
               Last Name <sup className="text-pink-200">*</sup>
             </p>
             <input
@@ -115,34 +113,31 @@ function SignupForm() {
               name="lastName"
               value={lastName}
               onChange={handleOnChange}
-              placeholder="Enter last name"
-              style={{
-                boxShadow: "inset 0px -1px 0px rgba(255, 255, 255, 0.18)",
-              }}
-              className="w-full rounded-[0.5rem] bg-richblack-800 p-[12px] text-richblack-5"
+              placeholder="Last name"
+              autoComplete="family-name"
+              className={inputClass}
             />
           </label>
         </div>
         <label className="w-full">
-          <p className="mb-1 text-[0.875rem] leading-[1.375rem] text-richblack-5">
+          <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-richblack-300">
             Email Address <sup className="text-pink-200">*</sup>
           </p>
           <input
             required
-            type="text"
+            type="email"
             name="email"
             value={email}
             onChange={handleOnChange}
-            placeholder="Enter email address"
-            style={{
-              boxShadow: "inset 0px -1px 0px rgba(255, 255, 255, 0.18)",
-            }}
-            className="w-full rounded-[0.5rem] bg-richblack-800 p-[12px] text-richblack-5"
+            placeholder="you@institution.edu"
+            autoComplete="email"
+            spellCheck={false}
+            className={inputClass}
           />
         </label>
-        <div className="flex gap-x-4">
+        <div className="grid gap-5 sm:grid-cols-2">
           <label className="relative">
-            <p className="mb-1 text-[0.875rem] leading-[1.375rem] text-richblack-5">
+            <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-richblack-300">
               Create Password <sup className="text-pink-200">*</sup>
             </p>
             <input
@@ -151,25 +146,25 @@ function SignupForm() {
               name="password"
               value={password}
               onChange={handleOnChange}
-              placeholder="Enter Password"
-              style={{
-                boxShadow: "inset 0px -1px 0px rgba(255, 255, 255, 0.18)",
-              }}
-              className="w-full rounded-[0.5rem] bg-richblack-800 p-[12px] pr-10 text-richblack-5"
+              placeholder="Create a password"
+              autoComplete="new-password"
+              className={`${inputClass} pr-12`}
             />
-            <span
+            <button
+              type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-3 top-[38px] z-[10] cursor-pointer"
+              className="absolute right-4 top-[45px] z-[10] cursor-pointer text-richblack-300 transition hover:text-richblack-5"
+              aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
-                <AiOutlineEyeInvisible fontSize={24} fill="#AFB2BF" />
+                <AiOutlineEyeInvisible className="h-6 w-6" />
               ) : (
-                <AiOutlineEye fontSize={24} fill="#AFB2BF" />
+                <AiOutlineEye className="h-6 w-6" />
               )}
-            </span>
+            </button>
           </label>
           <label className="relative">
-            <p className="mb-1 text-[0.875rem] leading-[1.375rem] text-richblack-5">
+            <p className="mb-2 text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-richblack-300">
               Confirm Password <sup className="text-pink-200">*</sup>
             </p>
             <input
@@ -178,27 +173,27 @@ function SignupForm() {
               name="confirmPassword"
               value={confirmPassword}
               onChange={handleOnChange}
-              placeholder="Confirm Password"
-              style={{
-                boxShadow: "inset 0px -1px 0px rgba(255, 255, 255, 0.18)",
-              }}
-              className="w-full rounded-[0.5rem] bg-richblack-800 p-[12px] pr-10 text-richblack-5"
+              placeholder="Confirm your password"
+              autoComplete="new-password"
+              className={`${inputClass} pr-12`}
             />
-            <span
+            <button
+              type="button"
               onClick={() => setShowConfirmPassword((prev) => !prev)}
-              className="absolute right-3 top-[38px] z-[10] cursor-pointer"
+              className="absolute right-4 top-[45px] z-[10] cursor-pointer text-richblack-300 transition hover:text-richblack-5"
+              aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}
             >
               {showConfirmPassword ? (
-                <AiOutlineEyeInvisible fontSize={24} fill="#AFB2BF" />
+                <AiOutlineEyeInvisible className="h-6 w-6" />
               ) : (
-                <AiOutlineEye fontSize={24} fill="#AFB2BF" />
+                <AiOutlineEye className="h-6 w-6" />
               )}
-            </span>
+            </button>
           </label>
         </div>
         <button
           type="submit"
-          className="mt-6 rounded-[8px] bg-yellow-50 py-[8px] px-[12px] font-medium text-richblack-900"
+          className="mt-2 rounded-full bg-white px-6 py-4 text-base font-bold text-richblack-900 shadow-[0_18px_45px_rgba(255,255,255,0.14)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_22px_55px_rgba(255,255,255,0.2)] active:scale-[0.99]"
         >
           Create Account
         </button>

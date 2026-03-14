@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Image from "next/image"
 import {
   AiOutlineArrowRight,
   AiOutlineBook,
@@ -146,9 +147,12 @@ function Home() {
     <div className="min-h-screen bg-richblack-900 selection:bg-[#c3ebfa] selection:text-richblack-900">
       <section className="relative flex min-h-[800px] h-screen items-center justify-center overflow-hidden bg-richblack-900">
         <div className="absolute inset-0 h-[120%] w-full">
-          <img
+          <Image
             src="/hero/dark-mode-monitor.jpg"
             alt="Dark workstation setup"
+            fill
+            priority
+            sizes="100vw"
             className="h-full w-full scale-[1.03] object-cover object-center opacity-80"
           />
           <div
@@ -239,9 +243,11 @@ function Home() {
 
           <div className="grid auto-rows-[400px] grid-cols-1 gap-6 md:grid-cols-3 md:grid-rows-2">
             <div className="group relative isolate overflow-hidden rounded-[40px] bg-gray-900 md:col-span-2 md:row-span-2">
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
                 alt="Dashboard Design"
+                fill
+                sizes="(max-width: 768px) 100vw, 66vw"
                 className="absolute inset-0 h-full w-full object-cover opacity-30 transition-all duration-700 ease-out group-hover:scale-105 group-hover:opacity-40"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/88 to-[#020617]/25" />
@@ -272,10 +278,13 @@ function Home() {
             </div>
 
             <div className="group relative flex flex-col justify-between overflow-hidden rounded-[40px] border border-yellow-50/20 bg-richblack-800 p-10">
-              <img
+              <Image
                 src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=2622&auto=format&fit=crop"
                 alt="Students"
+                width={160}
+                height={160}
                 className="absolute bottom-0 right-0 h-40 w-40 rounded-tl-[40px] object-cover transition-all duration-500 group-hover:-translate-x-2 group-hover:-translate-y-2 group-hover:scale-110"
+                sizes="160px"
               />
               <AiOutlineUsergroupAdd className="mb-4 h-14 w-14 text-yellow-50" />
               <div className="relative z-10">
@@ -352,10 +361,13 @@ function Home() {
             </div>
             <div className="w-full lg:w-7/12">
               <div className="relative overflow-hidden rounded-[40px] border border-richblack-700 bg-richblack-800 shadow-2xl shadow-black/30">
-                <img
+                <Image
                   src="https://images.unsplash.com/photo-1611348586804-61bf6c080437?q=80&w=2674&auto=format&fit=crop"
                   alt="Calendar UI Representation"
+                  width={1200}
+                  height={900}
                   className="aspect-[4/3] h-auto w-full object-cover"
+                  sizes="(max-width: 1024px) 100vw, 58vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
                 <div className="absolute bottom-8 left-8 right-8 rounded-3xl border border-richblack-600 bg-richblack-800/95 p-8 shadow-xl shadow-black/40 backdrop-blur-2xl">
@@ -408,24 +420,30 @@ function Home() {
             </div>
             <div className="w-full lg:w-7/12">
               <div className="relative overflow-hidden rounded-[40px] border border-richblack-700 bg-richblack-800 shadow-2xl shadow-black/30">
-                <img
+                <Image
                   src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=2940&auto=format&fit=crop"
                   alt="Student Grading Representation"
+                  width={1200}
+                  height={900}
                   className="aspect-[4/3] h-auto w-full object-cover"
+                  sizes="(max-width: 1024px) 100vw, 58vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
                 <div className="absolute bottom-8 left-8 right-8 rounded-3xl border border-richblack-600 bg-richblack-800/95 p-8 shadow-xl shadow-black/40 backdrop-blur-2xl">
                   <div className="mb-6 flex items-center gap-6">
-                    <img
+                    <Image
                       src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=200&h=200&auto=format&fit=crop"
-                      className="h-16 w-16 rounded-full object-cover shadow-md"
                       alt="Student"
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 rounded-full object-cover shadow-md"
+                      sizes="64px"
                     />
                     <div>
                       <div className="text-2xl font-bold text-richblack-5">Sarah Jenkins</div>
                       <div className="font-medium text-richblack-300">Student ID: #98421 • Grade 10</div>
                     </div>
-                    <div className="ml-auto text-4xl font-black text-green-500">A+</div>
+                    <div className="ml-auto text-4xl font-black text-caribbeangreen-100">A+</div>
                   </div>
                   <CountUpBar />
                 </div>
@@ -515,10 +533,13 @@ function Home() {
                   &ldquo;{t.text}&rdquo;
                 </p>
                 <div className="flex items-center gap-5">
-                  <img
+                  <Image
                     src={t.image}
                     alt={t.author}
+                    width={64}
+                    height={64}
                     className="h-16 w-16 rounded-full object-cover shadow-md"
+                    sizes="64px"
                   />
                   <div>
                     <h4 className="text-lg font-bold text-richblack-5">{t.author}</h4>
