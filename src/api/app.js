@@ -1,6 +1,5 @@
 const express = require("express")
 const fileUpload = require("express-fileupload")
-const cors = require("cors")
 const cookieParser = require("cookie-parser")
 
 const userRoutes = require("./routes/userRoutes")
@@ -13,15 +12,25 @@ const { connectDB } = require("./config/connectDB")
 const { cloudinaryConnect } = require("./config/cloudinary")
 
 let infraInitialized = false
+let infraInitializationPromise = null
 
-function initializeInfra() {
+async function initializeInfra() {
   if (infraInitialized) {
     return
   }
 
-  connectDB()
-  cloudinaryConnect()
-  infraInitialized = true
+  if (!infraInitializationPromise) {
+    infraInitializationPromise = (async () => {
+      await connectDB()
+      cloudinaryConnect()
+      infraInitialized = true
+    })().catch((error) => {
+      infraInitializationPromise = null
+      throw error
+    })
+  }
+
+  await infraInitializationPromise
 }
 
 function createApiApp() {
@@ -29,33 +38,27 @@ function createApiApp() {
 
   app.use(cookieParser())
   app.use(express.json())
+  app.use(express.urlencoded({ extended: true }))
   app.use(
     fileUpload({
       useTempFiles: true,
       tempFileDir: "/tmp",
+      createParentPath: true,
     })
   )
 
-  const allowedOrigins = [
-    process.env.CLIENT_URL,
-    process.env.FRONTEND_URL,
-    "http://localhost:3000",
-    "http://localhost:5173",
-  ].filter(Boolean)
-
-  app.use(
-    cors({
-      origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-          return callback(null, true)
-        }
-        return callback(new Error("Not allowed by CORS"))
-      },
-      credentials: true,
-    })
-  )
-
-  initializeInfra()
+  app.use(async (req, res, next) => {
+    try {
+      await initializeInfra()
+      next()
+    } catch (error) {
+      console.error("API infrastructure initialization failed", error)
+      res.status(500).json({
+        success: false,
+        message: "API infrastructure initialization failed",
+      })
+    }
+  })
 
   app.use("/v1/auth", userRoutes)
   app.use("/v1/profile", profileRoutes)
@@ -64,6 +67,10 @@ function createApiApp() {
   app.use("/v1/reach", contactUsRoute)
 
   app.get("/health", (_req, res) => {
+    res.status(200).json({ success: true })
+  })
+
+  app.get("/v1/health", (_req, res) => {
     res.status(200).json({ success: true })
   })
 

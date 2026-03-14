@@ -4,7 +4,6 @@ import { BsChevronDown } from "react-icons/bs"
 import { useSelector } from "react-redux"
 import { Link, matchPath, useLocation } from "@/ui/lib/router"
 
-import logo from "../../assets/Logo/Logo-Full-Light.png"
 import { NavbarLinks } from "../../data/navbar-links"
 import { apiConnector } from "../../services/apiconnector"
 import { categories } from "../../services/apis"
@@ -16,9 +15,11 @@ function Navbar() {
   const { user } = useSelector((state) => state.profile)
   const { totalItems } = useSelector((state) => state.cart)
   const location = useLocation()
+  const isHomePage = location.pathname === "/"
 
   const [subLinks, setSubLinks] = useState([])
   const [loading, setLoading] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -33,6 +34,22 @@ function Navbar() {
     })()
   }, [])
 
+  useEffect(() => {
+    if (!isHomePage) {
+      setScrolled(false)
+      return
+    }
+
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 24)
+    }
+
+    handleScroll()
+    window.addEventListener("scroll", handleScroll)
+
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [isHomePage])
+
 
   const matchRoute = (route) => {
     return matchPath({ path: route }, location.pathname)
@@ -40,24 +57,51 @@ function Navbar() {
 
   return (
     <div
-      className={`flex h-14 items-center justify-center border-b-[1px] border-b-richblack-700 ${
-        location.pathname !== "/" ? "bg-richblack-800" : ""
-      } transition-all duration-200`}
+      className={`z-40 flex items-center justify-center transition-all duration-300 ${
+        isHomePage
+          ? `fixed left-0 right-0 top-0 border-b ${
+              scrolled
+                ? "border-richblack-700/80 bg-richblack-900/88 py-4 shadow-[0_16px_50px_rgba(0,8,20,0.45)] backdrop-blur-2xl"
+                : "border-transparent bg-transparent py-6"
+            }`
+          : "h-14 border-b-[1px] border-b-richblack-700 bg-richblack-800"
+      }`}
     >
-      <div className="flex w-11/12 max-w-maxContent items-center justify-between">
+      <div
+        className={`flex items-center justify-between ${
+          isHomePage ? "w-11/12 max-w-[1280px]" : "w-11/12 max-w-maxContent"
+        }`}
+      >
         {/* Logo */}
-        <Link to="/">
-          <img
-            src={logo?.src || logo}
-            alt="Logo"
-            width={160}
-            height={32}
-            loading="lazy"
-          />
+        <Link to="/" className="flex items-center gap-3">
+          <div className="rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
+            <img
+              src="/logo.png"
+              alt="IntelleCraft logo"
+              width={40}
+              height={40}
+              loading="lazy"
+              className="h-10 w-10 object-contain invert"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-xl font-semibold tracking-tight text-white">IntelleCraft</span>
+            <span className="hidden text-xs uppercase tracking-[0.24em] text-white/55 lg:block">
+              Education OS
+            </span>
+          </div>
         </Link>
         {/* Navigation links */}
         <nav className="hidden md:block">
-          <ul className="flex gap-x-6 text-richblack-25">
+          <ul
+            className={`flex gap-x-6 ${
+              isHomePage
+                ? scrolled
+                  ? "text-richblack-100"
+                  : "text-richblack-25"
+                : "text-richblack-25"
+            }`}
+          >
             {NavbarLinks.map((link, index) => (
               <li key={index}>
                 {link.title === "Catalog" ? (
@@ -66,7 +110,11 @@ function Navbar() {
                       className={`group relative flex cursor-pointer items-center gap-1 ${
                         matchRoute("/catalog/:catalogName")
                           ? "text-yellow-25"
-                          : "text-richblack-25"
+                          : isHomePage
+                            ? scrolled
+                              ? "text-richblack-25"
+                              : "text-richblack-25"
+                            : "text-richblack-25"
                       }`}
                     >
                       <p>{link.title}</p>
@@ -106,7 +154,11 @@ function Navbar() {
                       className={`${
                         matchRoute(link?.path)
                           ? "text-yellow-25"
-                          : "text-richblack-25"
+                          : isHomePage
+                            ? scrolled
+                              ? "text-richblack-25"
+                              : "text-richblack-25"
+                            : "text-richblack-25"
                       }`}
                     >
                       {link.title}
@@ -121,7 +173,15 @@ function Navbar() {
         <div className="hidden items-center gap-x-4 md:flex">
           {user && user?.accountType !== ACCOUNT_TYPE.INSTRUCTOR && (
             <Link to="/dashboard/cart" className="relative">
-              <AiOutlineShoppingCart className="text-2xl text-richblack-100" />
+              <AiOutlineShoppingCart
+                className={`text-2xl ${
+                  isHomePage
+                    ? scrolled
+                      ? "text-richblack-25"
+                      : "text-white"
+                    : "text-richblack-100"
+                }`}
+              />
               {totalItems > 0 && (
                 <span className="absolute -bottom-2 -right-2 grid h-5 w-5 place-items-center overflow-hidden rounded-full bg-richblack-600 text-center text-xs font-bold text-yellow-100">
                   {totalItems}
@@ -131,14 +191,30 @@ function Navbar() {
           )}
           {token === null && (
             <Link to="/login">
-              <button className="rounded-[8px] border border-richblack-700 bg-richblack-800 px-[12px] py-[8px] text-richblack-100">
+              <button
+                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${
+                  isHomePage
+                    ? scrolled
+                      ? "border border-richblack-600 bg-richblack-800 text-richblack-5 hover:bg-richblack-700"
+                      : "border border-white/15 bg-richblack-800/70 text-white hover:bg-richblack-700/80"
+                    : "rounded-[8px] border border-richblack-700 bg-richblack-800 px-[12px] py-[8px] text-richblack-100"
+                }`}
+              >
                 Log in
               </button>
             </Link>
           )}
           {token === null && (
             <Link to="/signup">
-              <button className="rounded-[8px] border border-richblack-700 bg-richblack-800 px-[12px] py-[8px] text-richblack-100">
+              <button
+                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${
+                  isHomePage
+                    ? scrolled
+                      ? "bg-yellow-50 text-richblack-900 hover:bg-yellow-25"
+                      : "bg-yellow-50 text-richblack-900 hover:bg-yellow-25"
+                    : "rounded-[8px] border border-richblack-700 bg-richblack-800 px-[12px] py-[8px] text-richblack-100"
+                }`}
+              >
                 Sign up
               </button>
             </Link>
@@ -147,7 +223,16 @@ function Navbar() {
 
         </div>
         <button className="mr-4 md:hidden">
-          <AiOutlineMenu fontSize={24} fill="#AFB2BF" />
+          <AiOutlineMenu
+            fontSize={24}
+            fill={
+              isHomePage
+                ? scrolled
+                  ? "#F1F2FF"
+                  : "#FFFFFF"
+                : "#AFB2BF"
+            }
+          />
         </button>
       </div>
     </div>

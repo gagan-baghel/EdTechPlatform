@@ -1,180 +1,96 @@
 import { FooterLink2 } from "../../data/footer-links";
-import { Link } from "@/ui/lib/router";
-
-// Images
-import Logo from "../../assets/Logo/Logo-Full-Light.png";
-
-// Icons
+import { Link, useLocation } from "@/ui/lib/router";
 import { FaFacebook, FaGoogle, FaTwitter, FaYoutube } from "react-icons/fa";
 
-const BottomFooter = ["Privacy Policy", "Cookie Policy", "Terms"];
-const Resources = [
-  "Articles",
-  "Blog",
-  "Chart Sheet",
-  "Code challenges",
-  "Docs",
-  "Projects",
-  "Videos",
-  "Workspaces",
-];
-const Plans = ["Paid memberships", "For students", "Business solutions"];
-const Community = ["Forums", "Chapters", "Events"];
+const socialIcons = [FaFacebook, FaGoogle, FaTwitter, FaYoutube];
 
 const Footer = () => {
+  const location = useLocation();
+  const isHomePage = location.pathname === "/";
+  const sectionBorderClass = isHomePage ? "border-white/10" : "border-richblack-700";
+  const footerLinkClass = isHomePage
+    ? "!text-richblack-100 transition-colors duration-200 hover:!text-white"
+    : "text-richblack-400 transition-colors duration-200 hover:text-richblack-5";
+  const eyebrowTextClass = isHomePage ? "!text-richblack-300" : "text-richblack-400";
+  const bodyTextClass = isHomePage ? "!text-richblack-100" : "text-richblack-300";
+  const mutedTextClass = isHomePage ? "!text-richblack-300" : "text-richblack-400";
+  const socialIconClass = isHomePage
+    ? "border-white/10 bg-white/5 !text-richblack-25"
+    : "border-richblack-700 bg-richblack-700 text-richblack-100";
+
   return (
-    <div className="bg-richblack-800">
-      <div className="flex lg:flex-row gap-8 items-center justify-between w-11/12 max-w-maxContent text-richblack-400 leading-6 mx-auto relative py-14">
-        <div className="border-b w-[100%] flex flex-col lg:flex-row pb-5 border-richblack-700">
-          {/* Section 1 */}
-          <div className="lg:w-[50%] flex flex-wrap flex-row justify-between lg:border-r lg:border-richblack-700 pl-3 lg:pr-5 gap-3">
-            <div className="w-[30%] flex flex-col gap-3 lg:w-[30%] mb-7 lg:pl-0">
-              <img src={Logo?.src || Logo} alt="" className="object-contain" />
-              <h1 className="text-richblack-50 font-semibold text-[16px]">
-                Company
-              </h1>
-              <div className="flex flex-col gap-2">
-                {["About", "Careers", "Affiliates"].map((ele, i) => {
-                  return (
-                    <div
-                      key={i}
-                      className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                    >
-                      <Link to={ele.toLowerCase()}>{ele}</Link>
-                    </div>
-                  );
-                })}
+    <footer className={isHomePage ? "bg-[#08111f] text-richblack-100" : "bg-richblack-800 text-richblack-300"}>
+      <div
+        className={`mx-auto ${
+          isHomePage ? "w-11/12 max-w-[1280px] py-16" : "w-11/12 max-w-maxContent py-14"
+        }`}
+      >
+        <div
+          className={`grid gap-12 border-y ${sectionBorderClass} py-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.9fr)]`}
+        >
+          <div className="max-w-md space-y-6">
+            <Link to="/" className="inline-flex items-center gap-4">
+              <div className="rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
+                <img
+                  src="/logo.png"
+                  alt="IntelleCraft logo"
+                  width={44}
+                  height={44}
+                  className="h-11 w-11 object-contain invert"
+                />
               </div>
-              <div className="flex gap-3 text-lg">
-                <FaFacebook />
-                <FaGoogle />
-                <FaTwitter />
-                <FaYoutube />
+              <div>
+                <span className="block text-2xl font-semibold tracking-tight text-white">
+                  IntelleCraft
+                </span>
+                <span className={`text-sm ${eyebrowTextClass}`}>
+                  Connected tools for modern education teams
+                </span>
               </div>
-              <div></div>
-            </div>
+            </Link>
 
-            <div className="w-[48%] lg:w-[30%] mb-7 lg:pl-0">
-              <h1 className="text-richblack-50 font-semibold text-[16px]">
-                Resources
-              </h1>
+            <p className={`text-base leading-7 ${bodyTextClass}`}>
+              Bring admissions, scheduling, parent communication, and student performance into one clean platform built for day-to-day school operations.
+            </p>
 
-              <div className="flex flex-col gap-2 mt-2">
-                {Resources.map((ele, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                    >
-                      <Link to={ele.split(" ").join("-").toLowerCase()}>
-                        {ele}
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <h1 className="text-richblack-50 font-semibold text-[16px] mt-7">
-                Support
-              </h1>
-              <div className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200 mt-2">
-                <Link to={"/help-center"}>Help Center</Link>
-              </div>
-            </div>
-
-            <div className="w-[48%] lg:w-[30%] mb-7 lg:pl-0">
-              <h1 className="text-richblack-50 font-semibold text-[16px]">
-                Plans
-              </h1>
-
-              <div className="flex flex-col gap-2 mt-2">
-                {Plans.map((ele, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                    >
-                      <Link to={ele.split(" ").join("-").toLowerCase()}>
-                        {ele}
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-              <h1 className="text-richblack-50 font-semibold text-[16px] mt-7">
-                Community
-              </h1>
-
-              <div className="flex flex-col gap-2 mt-2">
-                {Community.map((ele, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                    >
-                      <Link to={ele.split(" ").join("-").toLowerCase()}>
-                        {ele}
-                      </Link>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2 */}
-          <div className="lg:w-[50%] flex flex-wrap flex-row justify-between pl-3 lg:pl-5 gap-3">
-            {FooterLink2.map((ele, i) => {
-              return (
-                <div key={i} className="w-[48%] lg:w-[30%] mb-7 lg:pl-0">
-                  <h1 className="text-richblack-50 font-semibold text-[16px]">
-                    {ele.title}
-                  </h1>
-                  <div className="flex flex-col gap-2 mt-2">
-                    {ele.links.map((link, index) => {
-                      return (
-                        <div
-                          key={index}
-                          className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                        >
-                          <Link to={link.link}>{link.title}</Link>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-row items-center justify-between w-11/12 max-w-maxContent text-richblack-400 mx-auto  pb-14 text-sm">
-        {/* Section 1 */}
-        <div className="flex justify-between lg:items-start items-center flex-col lg:flex-row gap-3 w-full">
-          <div className="flex flex-row">
-            {BottomFooter.map((ele, i) => {
-              return (
-                <div
-                  key={i}
-                  className={` ${
-                    BottomFooter.length - 1 === i
-                      ? ""
-                      : "border-r border-richblack-700 cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                  } px-3 `}
+            <div className="flex items-center gap-3">
+              {socialIcons.map((Icon, index) => (
+                <span
+                  key={index}
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border ${socialIconClass}`}
                 >
-                  <Link to={ele.split(" ").join("-").toLocaleLowerCase()}>
-                    {ele}
-                  </Link>
-                </div>
-              );
-            })}
+                  <Icon className="text-lg" />
+                </span>
+              ))}
+            </div>
           </div>
 
-          <div className="text-center">Made with ❤️ GAGAN BAGHEL © 2023 Studynotion</div>
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+            {FooterLink2.map((section) => (
+              <div key={section.title} className="space-y-4">
+                <h2 className={isHomePage ? "text-lg font-semibold text-white" : "text-lg font-semibold text-richblack-5"}>
+                  {section.title}
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {section.links.map((link) => (
+                    <Link key={link.title} to={link.link} className={footerLinkClass}>
+                      {link.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          className={`flex flex-col gap-3 pt-6 text-sm md:flex-row md:items-center md:justify-between ${mutedTextClass}`}
+        >
+          <p>© 2026 IntelleCraft. All rights reserved.</p>
+          <p>Built for admissions, finance, and classroom operations.</p>
         </div>
       </div>
-    </div>
+    </footer>
   );
 };
 
