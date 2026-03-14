@@ -5,6 +5,7 @@ import ReactStars from "react-rating-stars-component"
 import { useSelector } from "react-redux"
 
 import { createRating } from "../../../services/operations/courseDetailsAPI"
+import { normalizeAvatarUrl } from "../../../utils/avatar"
 import IconBtn from "../../common/IconBtn"
 
 export default function CourseReviewModal({ setReviewModal }) {
@@ -56,7 +57,7 @@ export default function CourseReviewModal({ setReviewModal }) {
         <div className="p-6">
           <div className="flex items-center justify-center gap-x-4">
             <img
-              src={user?.image}
+              src={normalizeAvatarUrl(user?.image, user?.firstName, user?.lastName)}
               alt={user?.firstName + "profile"}
               className="aspect-square w-[50px] rounded-full object-cover"
             />

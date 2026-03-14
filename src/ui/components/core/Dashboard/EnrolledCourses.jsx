@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import Image from "next/image"
+import { useCallback, useEffect, useState } from "react"
 import ProgressBar from "@ramonak/react-progress-bar"
-import { BiDotsVerticalRounded } from "react-icons/bi"
 import { useSelector } from "react-redux"
 import { useNavigate } from "@/ui/lib/router"
 
@@ -11,18 +11,23 @@ export default function EnrolledCourses() {
   const navigate = useNavigate()
 
   const [enrolledCourses, setEnrolledCourses] = useState(null)
-  const getEnrolledCourses = async () => {
-    try {
-      const res = await getUserEnrolledCourses(token);
-
-      setEnrolledCourses(res);
-    } catch (error) {
-      console.log("Could not fetch enrolled courses.")
+  const getEnrolledCourses = useCallback(async () => {
+    if (!token) {
+      setEnrolledCourses([])
+      return
     }
-  };
+
+    try {
+      const res = await getUserEnrolledCourses(token)
+      setEnrolledCourses(Array.isArray(res) ? res : [])
+    } catch (_error) {
+      setEnrolledCourses([])
+    }
+  }, [token])
+
   useEffect(() => {
-    getEnrolledCourses();
-  }, [])
+    getEnrolledCourses()
+  }, [getEnrolledCourses])
 
   return (
     <>
@@ -60,10 +65,13 @@ export default function EnrolledCourses() {
                   )
                 }}
               >
-                <img
+                <Image
                   src={course.thumbnail}
                   alt="course_img"
+                  width={56}
+                  height={56}
                   className="h-14 w-14 rounded-lg object-cover"
+                  sizes="56px"
                 />
                 <div className="flex max-w-xs flex-col gap-2">
                   <p className="font-semibold">{course.courseName}</p>

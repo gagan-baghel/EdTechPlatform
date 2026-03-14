@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { FooterLink2 } from "../../data/footer-links";
 import { Link, useLocation } from "@/ui/lib/router";
 import { FaFacebook, FaGoogle, FaTwitter, FaYoutube } from "react-icons/fa";
@@ -31,12 +32,13 @@ const Footer = () => {
           <div className="max-w-md space-y-6">
             <Link to="/" className="inline-flex items-center gap-4">
               <div className="rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
-                <img
+                <Image
                   src="/logo.png"
                   alt="IntelleCraft logo"
                   width={44}
                   height={44}
                   className="h-11 w-11 object-contain invert"
+                  sizes="44px"
                 />
               </div>
               <div>

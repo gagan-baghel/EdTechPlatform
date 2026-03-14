@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
+import Image from "next/image"
 import ReactStars from "react-rating-stars-component"
 import { Swiper, SwiperSlide } from "swiper/react"
 
@@ -9,8 +10,8 @@ import "swiper/css/pagination"
 import { FaStar } from "react-icons/fa"
 import { Autoplay, FreeMode, Pagination } from "swiper"
 
-import { apiConnector } from "../../services/apiconnector"
-import { ratingsEndpoints } from "../../services/apis"
+import { fetchReviewsCached } from "../../services/sharedData"
+import { normalizeAvatarUrl } from "../../utils/avatar"
 
 const fallbackReviews = [
   {
@@ -47,16 +48,24 @@ function ReviewSlider() {
   const truncateWords = 15
 
   useEffect(() => {
+    let ignore = false
+
     ;(async () => {
       try {
-        const { data } = await apiConnector("GET", ratingsEndpoints.REVIEWS_DETAILS_API)
-        if (data?.success && Array.isArray(data?.data)) {
-          setReviews(data.data)
+        const data = await fetchReviewsCached()
+        if (!ignore && Array.isArray(data)) {
+          setReviews(data)
         }
-      } catch (error) {
-        console.log("Could not fetch reviews", error)
+      } catch (_error) {
+        if (!ignore) {
+          setReviews([])
+        }
       }
     })()
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   const renderedReviews = useMemo(() => {
@@ -89,14 +98,14 @@ function ReviewSlider() {
               <SwiperSlide key={`${review.name}-${i}`}>
                 <div className="flex min-h-[180px] flex-col gap-3 rounded-md border border-[#dce9e7] bg-[#f6fbfb] p-4 text-[14px] text-[#0d6770]">
                   <div className="flex items-center gap-4">
-                    <img
-                      src={
-                        review.image
-                          ? review.image
-                          : `https://api.dicebear.com/5.x/initials/svg?seed=${review.firstName} ${review.lastName}`
-                      }
+                    <Image
+                      src={normalizeAvatarUrl(review.image, review.firstName, review.lastName)}
                       alt={review.name}
+                      width={36}
+                      height={36}
                       className="h-9 w-9 rounded-full object-cover"
+                      sizes="36px"
+                      unoptimized
                     />
                     <div className="flex flex-col">
                       <h1 className="font-semibold text-[#0d6770]">{review.name}</h1>

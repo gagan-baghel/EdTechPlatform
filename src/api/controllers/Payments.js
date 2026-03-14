@@ -38,7 +38,6 @@ exports.capturePayment = async(req, res) => {
             totalAmount += course.price;
         }
         catch(error) {
-            console.log(error);
             return res.status(500).json({success:false, message:error.message});
         }
     }
@@ -51,14 +50,12 @@ exports.capturePayment = async(req, res) => {
 
     try{
         const paymentResponse = await instance.orders.create(options);
-        console.log(paymentResponse,"Payments");
         res.json({
             success:true,
             message:paymentResponse,
         })
     }
     catch(error) {
-        console.log(error);
         return res.status(500).json({success:false, mesage:"Could not Initiate Order"});
     }
 
@@ -111,7 +108,6 @@ const enrollStudents = async(courses, userId) => {
             {new:true},
         )
 
-        console.log(enrolledCourse)
 
         if(!enrolledCourse) {
             throw new Error("Course not Found");
@@ -142,7 +138,6 @@ const enrollStudents = async(courses, userId) => {
         //console.log("Email Sent Successfully", emailResponse.response);
         }
         catch(error) {
-            console.log(error);
             throw error;
         }
     }
@@ -173,7 +168,6 @@ exports.sendPaymentSuccessEmail = async(req, res) => {
         return res.status(200).json({success:true, message:"Payment success email sent"})
     }
     catch(error) {
-        console.log("error in sending mail", error)
         return res.status(500).json({success:false, message:"Could not send email"})
     }
 }
@@ -181,8 +175,6 @@ exports.sendPaymentSuccessEmail = async(req, res) => {
 exports.createPaymentEntry = async(req,res)=>{
     const {orderId, paymentId, amount, courses} = req.body;
     const {id} = req.user;
-    console.log("created payment entry",orderId, paymentId, amount,id)
-    console.log("allcourses",courses)
     if (!orderId || !paymentId || !amount || !Array.isArray(courses)) {
         return res.status(400).json({success:false, message:"Missing payment details"})
     }
@@ -198,14 +190,12 @@ exports.createPaymentEntry = async(req,res)=>{
         
     }catch(error){
 
-        console.log("something bad happened while making payment")
         return res.status(500).json({success:false, message:"error while creating payment entry"})
     }    
 }
 
 exports.getUserPaymentEntries = async(req,res)=>{
     const {id} = req.user;
-    console.log("userID",id)
     
     try{
 
@@ -219,12 +209,10 @@ exports.getUserPaymentEntries = async(req,res)=>{
         if(!paymentEntries || paymentEntries.length === 0){
             return res.status(200).json({success:true, paymentEntries: []})
         }
-        console.log("CALLED APAYMENHJVF")
         return res.status(200).json({success:true,paymentEntries})
         
     }catch(error){
 
-        console.log("something bad happened while fetching payment")
         return res.status(500).json({success:false, message:"error while fetching payment entry"})
     }    
 

@@ -56,7 +56,6 @@ exports.sendOTP = async function (req, res) {
 
 
   } catch (error) {
-    console.log(error);
     return res.status(500).json({
       success: false,
       message: `error created white making otp ${error}`,
@@ -170,7 +169,6 @@ exports.signup = async (req, res) => {
 
 
   } catch (error) {
-    console.log("something bad happened while signing in tryCatch" ,error);
 
     return res.status(500).json({
         success: false,
@@ -219,7 +217,6 @@ exports.login = async (req,res)=>{
                 expiresIn:"24h"
             })
 
-            console.log(user)
 
             user.token = token;
             user.password=null;
@@ -249,7 +246,6 @@ exports.login = async (req,res)=>{
 
     }catch(error){
 
-        console.log(error,"login Faliur")
         res.status(500).json({
             success:false,
             message:"Login Error"
@@ -321,7 +317,6 @@ exports.changePassword = async (req,res) => {
       { new: true }
     );
   
-    console.log(updatedUserDetails)
   
     try {
       const emailResponse = await mailSender(
@@ -331,10 +326,8 @@ exports.changePassword = async (req,res) => {
           `${updatedUserDetails.firstName} ${updatedUserDetails.lastName}`
         )
       );
-      console.log("Email sent successfully:", emailResponse.response);
     } catch (error) {
       // If there's an error sending the email, log the error and return a 500 (Internal Server Error) error
-      console.error("Error occurred while sending email:", error);
       return res.status(500).json({
         success: false,
         message: "Error occurred while sending email",
@@ -350,7 +343,6 @@ exports.changePassword = async (req,res) => {
   
   } catch (error) {
   
-    console.log("something bad happened while resetting the password",error)
     
     return res.status(400).json({
       success:false,

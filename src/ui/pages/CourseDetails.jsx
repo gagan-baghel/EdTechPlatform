@@ -13,6 +13,7 @@ import CourseDetailsCard from "../components/core/Course/CourseDetailsCard"
 import { formatDate } from "../services/formatDate"
 import { fetchCourseDetails } from "../services/operations/courseDetailsAPI"
 import { buyCourse } from "../services/operations/studentFeaturesAPI"
+import { normalizeAvatarUrl } from "../utils/avatar"
 import GetAvgRating from "../utils/avgRating"
 import Error from "./Error"
 
@@ -43,7 +44,6 @@ function CourseDetails() {
         // console.log("course details res: ", res)
         setResponse(res)
       } catch (error) {
-        console.log("Could not fetch Course Details")
       }
     })()
   }, [courseId])
@@ -248,11 +248,11 @@ function CourseDetails() {
               <p className="text-[28px] font-semibold">Author</p>
               <div className="flex items-center gap-4 py-4">
                 <img
-                  src={
-                    instructor.image
-                      ? instructor.image
-                      : `https://api.dicebear.com/5.x/initials/svg?seed=${instructor.firstName} ${instructor.lastName}`
-                  }
+                  src={normalizeAvatarUrl(
+                    instructor.image,
+                    instructor.firstName,
+                    instructor.lastName
+                  )}
                   alt="Author"
                   className="h-14 w-14 rounded-full object-cover"
                 />

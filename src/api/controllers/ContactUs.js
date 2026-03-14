@@ -10,25 +10,17 @@ exports.contactUsController = async (req, res) => {
     })
   }
   try {
-    const emailRes = await mailSender(
+    await mailSender(
       email,
       "Your Data send successfully",
       contactUsEmail(email, firstname, lastname, message, phoneNo, countrycode)
     )
-    console.log("Contact form confirmation email sent", {
-      accepted: emailRes?.accepted?.length || 0,
-      rejected: emailRes?.rejected?.length || 0,
-    })
 
-    // send the mail to suport service 
-    
     return res.status(200).json({
       success: true,
       message: "Email send successfully",
     })
-  } catch (error) {
-    console.log("Error", error)
-    console.log("Error message :", error.message)
+  } catch (_error) {
     return res.status(500).json({
       success: false,
       message: "Something went wrong...",

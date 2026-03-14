@@ -13,7 +13,6 @@ export default function RenderTotalAmount() {
 
   const handleBuyCourse = () => {
     const courses = cart.map((course) => course._id)
-    console.log(courses,"buied course");
     buyCourse(token, courses, user, navigate, dispatch)
   }
 

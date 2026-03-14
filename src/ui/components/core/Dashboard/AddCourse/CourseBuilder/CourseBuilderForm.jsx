@@ -18,7 +18,6 @@ import IconBtn from "../../../../common/IconBtn"
 import NestedView from "./NestedView"
 
 export default function CourseBuilderForm() {
-  console.log("entered course builder")
   const {
     register,
     handleSubmit,
