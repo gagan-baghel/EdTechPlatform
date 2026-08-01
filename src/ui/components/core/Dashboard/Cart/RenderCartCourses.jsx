@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux"
 
 import { removeFromCart } from "../../../../slices/cartSlice"
 import { formatCurrency } from "../../../../utils/formatCurrency"
+import Image from "next/image"
 
 export default function RenderCartCourses() {
   const { cart } = useSelector((state) => state.cart)
@@ -20,9 +21,12 @@ export default function RenderCartCourses() {
           } ${indx !== 0 && "mt-6"} `}
         >
           <div className="flex flex-1 flex-col gap-4 xl:flex-row">
-            <img
+            <Image
               src={course?.thumbnail}
-              alt={course?.courseName}
+              alt={course?.courseName ?? "Course thumbnail"}
+              width={220}
+              height={148}
+              sizes="220px"
               className="h-[148px] w-[220px] rounded-lg object-cover"
             />
             <div className="flex flex-col space-y-1">

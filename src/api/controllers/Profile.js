@@ -55,9 +55,7 @@ exports.deleteAccount = async (req, res) => {
 	try {
 		// TODO: Find More on Job Schedule
 		// const job = schedule.scheduleJob("10 * * * * *", function () {
-		// 	console.log("The answer to life, the universe, and everything!");
 		// });
-		// console.log(job);
 		const id = req.user.id;
 		
 		const user = await User.findById({ _id: id });

@@ -10,6 +10,7 @@ import { fetchCategoriesCached } from "../../services/sharedData"
 import { ACCOUNT_TYPE } from "../../utils/constants"
 import ProfileDropdown from "../core/Auth/ProfileDropDown"
 import MobileNav from "./MobileNav"
+import SearchBar from "./SearchBar"
 
 function Navbar() {
   const { token } = useSelector((state) => state.auth)
@@ -191,6 +192,7 @@ function Navbar() {
         </nav>
         {/* Login / Signup / Dashboard */}
         <div className="hidden items-center gap-x-4 md:flex">
+          <SearchBar className="w-40 lg:w-56" />
           {user && user?.accountType !== ACCOUNT_TYPE.INSTRUCTOR && (
             <Link to="/dashboard/cart" className="relative">
               <AiOutlineShoppingCart

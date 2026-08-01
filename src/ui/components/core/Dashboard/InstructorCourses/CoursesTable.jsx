@@ -17,6 +17,7 @@ import {
 import { COURSE_STATUS } from "../../../../utils/constants"
 import ConfirmationModal from "../../../common/ConfirmationModal"
 import { formatCurrency } from "../../../../utils/formatCurrency"
+import Image from "next/image"
 
 export default function CoursesTable({ courses, setCourses }) {
   const dispatch = useDispatch()
@@ -37,7 +38,6 @@ export default function CoursesTable({ courses, setCourses }) {
     setLoading(false)
   }
 
-  // console.log("All Course ", courses)
 
   return (
     <>
@@ -73,9 +73,12 @@ export default function CoursesTable({ courses, setCourses }) {
                 className="flex gap-x-10 border-b border-richblack-800 px-6 py-8"
               >
                 <Td className="flex flex-1 gap-x-4">
-                  <img
+                  <Image
                     src={course?.thumbnail}
-                    alt={course?.courseName}
+                    alt={course?.courseName ?? "Course thumbnail"}
+                    width={220}
+                    height={148}
+                    sizes="220px"
                     className="h-[148px] w-[220px] rounded-lg object-cover"
                   />
                   <div className="flex flex-col justify-between">

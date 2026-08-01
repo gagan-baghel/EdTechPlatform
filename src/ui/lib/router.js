@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect } from "react"
 import NextLink from "next/link"
-import { usePathname, useRouter, useParams as useNextParams } from "next/navigation"
+import {
+  usePathname,
+  useRouter,
+  useParams as useNextParams,
+  useSearchParams as useNextSearchParams,
+} from "next/navigation"
 
 function normalizeSearch(value) {
   if (!value) return ""
@@ -87,6 +92,18 @@ export function useNavigate() {
   )
 }
 
+export function useSearchParams() {
+  return useNextSearchParams()
+}
+
+/**
+ * NOTE: `search` is intentionally always "".
+ * Reading useSearchParams() here would force every consumer of useLocation()
+ * — including Navbar, which renders on every route — into a Suspense boundary
+ * and opt the whole app out of static rendering.
+ * For query parameters use the `useSearchParams` export above, inside a
+ * component wrapped in its own <Suspense> boundary.
+ */
 export function useLocation() {
   const pathname = usePathname() || "/"
 

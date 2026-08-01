@@ -37,6 +37,23 @@ function createApiApp() {
   const app = express()
 
   app.use(cookieParser())
+
+  // Webhook signature is computed over the exact request bytes, so this must be
+  // mounted before express.json() replaces the body with a parsed object.
+  app.post(
+    "/v1/payment/webhook",
+    express.raw({ type: "application/json" }),
+    async (req, res) => {
+      try {
+        await initializeInfra()
+      } catch (error) {
+        console.error("Webhook infra init failed", error)
+        return res.status(500).json({ success: false })
+      }
+      return require("./controllers/Payments").razorpayWebhook(req, res)
+    }
+  )
+
   app.use(express.json())
   app.use(express.urlencoded({ extended: true }))
   app.use(

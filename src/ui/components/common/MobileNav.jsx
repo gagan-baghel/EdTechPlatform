@@ -12,6 +12,7 @@ import { NavbarLinks } from "../../data/navbar-links"
 import { ACCOUNT_TYPE } from "../../utils/constants"
 import { logout } from "../../services/operations/authAPI"
 import { normalizeAvatarUrl } from "../../utils/avatar"
+import SearchBar from "./SearchBar"
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -128,6 +129,10 @@ export default function MobileNav({ open, onClose, subLinks, categoriesLoading }
             </div>
           </div>
         )}
+
+        <div className="px-4 pt-4">
+          <SearchBar onSubmitted={onClose} />
+        </div>
 
         <nav className="flex-1 px-3 py-4">
           <ul className="flex flex-col gap-1">

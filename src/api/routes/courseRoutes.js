@@ -13,6 +13,7 @@ const {
   editCourse,
   getInstructorCourses,
   deleteCourse,
+  searchCourses,
 } = require("../controllers/Course")
 
 // Tags Controllers Import
@@ -75,6 +76,8 @@ router.post("/addSubSection", auth, isInstructor, createSubSection)
 router.get("/getInstructorCourses", auth, isInstructor, getInstructorCourses)
 // Get all Registered Courses
 router.get("/getAllCourses", getAllCourses)
+// Full-text style search across published courses
+router.get("/searchCourses", searchCourses)
 // Get Details for a Specific Courses
 router.post("/getCourseDetails", getCourseDetails)
 // Get Details for a Specific Courses

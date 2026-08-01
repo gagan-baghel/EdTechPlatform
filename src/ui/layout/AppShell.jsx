@@ -4,9 +4,9 @@ import Navbar from "../components/common/Navbar"
 
 export default function AppShell({ children }) {
   return (
-    <div className="flex min-h-screen w-screen flex-col bg-richblack-900 font-inter">
+    <div className="flex min-h-screen w-full flex-col overflow-x-hidden bg-richblack-900 font-inter">
       <Navbar />
-      {children}
+      <main id="main-content">{children}</main>
     </div>
   )
 }

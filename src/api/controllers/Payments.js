@@ -350,3 +350,82 @@ exports.getUserPaymentEntries = async (req, res) => {
 }
 
 exports.enrollStudents = enrollStudents
+
+/**
+ * Razorpay webhook — the authoritative enrolment path.
+ * The browser callback is a fast path; this is what makes enrolment survive a
+ * closed tab, a dropped connection, or a failed client request.
+ * Mounted with express.raw so the signature is verified over the exact bytes.
+ */
+exports.razorpayWebhook = async (req, res) => {
+  const secret = process.env.WEBHOOK_SECRET
+
+  if (!secret) {
+    console.error("WEBHOOK_SECRET is not configured; webhook rejected")
+    return res.status(500).json({ success: false })
+  }
+
+  const signature = req.headers["x-razorpay-signature"]
+  const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body))
+
+  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex")
+  const expectedBuf = Buffer.from(expected, "utf8")
+  const receivedBuf = Buffer.from(String(signature ?? ""), "utf8")
+
+  const valid =
+    expectedBuf.length === receivedBuf.length &&
+    crypto.timingSafeEqual(expectedBuf, receivedBuf)
+
+  if (!valid) {
+    return res.status(400).json({ success: false, message: "Invalid signature" })
+  }
+
+  let event
+  try {
+    event = JSON.parse(rawBody.toString("utf8"))
+  } catch (error) {
+    return res.status(400).json({ success: false, message: "Malformed payload" })
+  }
+
+  // Acknowledge fast; Razorpay retries on non-2xx and we never want a slow
+  // enrolment to trigger duplicate deliveries.
+  res.status(200).json({ success: true })
+
+  if (event?.event !== "payment.captured") return
+
+  try {
+    const payment = event.payload?.payment?.entity
+    const orderId = payment?.order_id
+
+    if (!orderId) return
+
+    const order = await Order.findOne({ orderId })
+
+    if (!order || order.status === "paid") return
+
+    await enrollStudents(order.courses, order.user)
+
+    order.status = "paid"
+    order.paymentId = payment.id
+    await order.save()
+
+    // Backfill the purchase-history row if the client never got to it.
+    await Payment.findOneAndUpdate(
+      { orderId, consumer: order.user },
+      {
+        $setOnInsert: {
+          consumer: order.user,
+          courses: order.courses,
+          orderId,
+          paymentId: payment.id,
+          amount: order.amount / 100,
+        },
+      },
+      { upsert: true }
+    )
+
+    console.log(`Webhook enrolled user ${order.user} for order ${orderId}`)
+  } catch (error) {
+    console.error("Webhook enrolment failed", error)
+  }
+}

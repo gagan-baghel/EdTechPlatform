@@ -9,6 +9,7 @@ import { useNavigate } from "@/ui/lib/router"
 import { addToCart } from "../../../slices/cartSlice"
 import { ACCOUNT_TYPE } from "../../../utils/constants"
 import { formatCurrency } from "../../../utils/formatCurrency"
+import Image from "next/image"
 
 
 function CourseDetailsCard({ course, setConfirmationModal, handleBuyCourse }) {
@@ -47,7 +48,6 @@ function CourseDetailsCard({ course, setConfirmationModal, handleBuyCourse }) {
     })
   }
 
-  // console.log("Student already enrolled ", course?.studentsEnroled, user?._id)
 
   return (
     <>
@@ -55,9 +55,13 @@ function CourseDetailsCard({ course, setConfirmationModal, handleBuyCourse }) {
         className={`flex flex-col gap-4 rounded-md bg-richblack-700 p-4 text-richblack-5`}
       >
         {/* Course Image */}
-        <img
+        <Image
           src={ThumbnailImage}
-          alt={course?.courseName}
+          alt={course?.courseName ?? "Course thumbnail"}
+          width={400}
+          height={300}
+          priority
+          sizes="(max-width: 768px) 100vw, 400px"
           className="max-h-[300px] min-h-[180px] w-[400px] overflow-hidden rounded-2xl object-cover md:max-w-full"
         />
 

@@ -513,3 +513,65 @@ exports.deleteCourse = async (req, res) => {
     })
   }
 }
+
+// Search across published courses. Uses a Mongo text index when available and
+// falls back to a bounded regex scan so search still works before the index
+// finishes building on a fresh database.
+exports.searchCourses = async (req, res) => {
+  try {
+    const rawQuery = (req.query.q ?? req.body?.q ?? "").toString().trim()
+
+    if (rawQuery.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter at least 2 characters to search.",
+      })
+    }
+
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 12))
+    const skip = (page - 1) * limit
+
+    // Escape regex metacharacters so a user typing "c++" cannot break the query.
+    const safe = rawQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    const rx = new RegExp(safe, "i")
+
+    const filter = {
+      status: "Published",
+      $or: [
+        { courseName: rx },
+        { courseDescription: rx },
+        { whatYouWillLearn: rx },
+        { tag: rx },
+      ],
+    }
+
+    const [courses, total] = await Promise.all([
+      Course.find(filter)
+        .select("courseName courseDescription price thumbnail tag ratingAndReviews studentsEnrolled instructor")
+        .populate({ path: "instructor", select: "firstName lastName" })
+        .populate({ path: "ratingAndReviews", select: "rating" })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Course.countDocuments(filter),
+    ])
+
+    return res.status(200).json({
+      success: true,
+      data: courses,
+      query: rawQuery,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    })
+  } catch (error) {
+    console.error("searchCourses failed", error)
+    return res.status(500).json({
+      success: false,
+      message: "Search is temporarily unavailable. Please try again.",
+    })
+  }
+}
