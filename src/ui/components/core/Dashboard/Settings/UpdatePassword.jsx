@@ -6,6 +6,7 @@ import { useNavigate } from "@/ui/lib/router"
 
 import { changePassword } from "../../../../services/operations/SettingsAPI.js"
 import IconBtn from "../../../common/IconBtn"
+import { toast } from "react-hot-toast"
 
 export default function UpdatePassword() {
   const { token } = useSelector((state) => state.auth)
@@ -23,7 +24,12 @@ export default function UpdatePassword() {
   const submitPasswordForm = async (data) => {
     try {
       await changePassword(token, data)
-    } catch (_error) {}
+    } catch (error) {
+      console.error("UpdatePassword failed", error)
+      toast.error(
+        "We could not update your password. Please check your current password and try again."
+      )
+    }
   }
 
   return (

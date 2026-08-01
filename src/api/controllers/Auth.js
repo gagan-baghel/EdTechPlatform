@@ -8,6 +8,9 @@ require('dotenv').config()
 const mailSender = require('../utils/mailSender')
 const { passwordUpdated } = require("../mail/templates/passwordUpdate")
 
+const MIN_PASSWORD_LENGTH = 8
+const MAX_OTP_ATTEMPTS = 5
+
 function getotp() {
   return otpGenrater.generate(6, {
     upperCaseAlphabets: false,
@@ -106,32 +109,51 @@ exports.signup = async (req, res) => {
       });
     }
 
-    const recentOtp = await OTP.findOne({ email })
-      .sort({ createdAt: -1 })
+    if (String(password).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+      });
+    }
+
+    // "Admin" is deliberately absent — admins are promoted in the database,
+    // never self-provisioned through a public endpoint.
+    if (!accountType || !["Student", "Instructor"].includes(accountType)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please choose either a Student or Instructor account.",
+      })
+    }
+
+    const recentOtp = await OTP.findOne({ email }).sort({ createdAt: -1 })
 
     if (!recentOtp) {
       return res.status(400).json({
         success: false,
-        message: "OTP not found or expired",
-      });
-      
-    } else if (otp != recentOtp.otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
+        message: "Your verification code has expired. Please request a new one.",
       });
     }
 
+    if (recentOtp.attempts >= MAX_OTP_ATTEMPTS) {
+      await OTP.deleteMany({ email })
+      return res.status(429).json({
+        success: false,
+        message: "Too many incorrect codes. Please request a new one.",
+      });
+    }
 
+    if (String(otp).trim() !== String(recentOtp.otp)) {
+      await OTP.updateOne({ _id: recentOtp._id }, { $inc: { attempts: 1 } })
+      return res.status(400).json({
+        success: false,
+        message: "That verification code is incorrect.",
+      });
+    }
+
+    // Consume every outstanding code for this address so none can be replayed.
+    await OTP.deleteMany({ email })
 
     const hashPassword = await bcrypt.hash(password, 10);
-
-
-
-
-    // let approved = "";
-		// approved === "Instructor" ? (approved = false) : (approved = true);
-
 
     const profileDetails = await Profile.create({
       gender:null,
@@ -139,15 +161,6 @@ exports.signup = async (req, res) => {
       about:null,
       contactNumber,
     });
-
-
-
-    if (!accountType || !["Admin", "Student", "Instructor"].includes(accountType)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid account type",
-      })
-    }
 
     const user = await User.create({
       firstName,
@@ -304,51 +317,54 @@ exports.changePassword = async (req,res) => {
     if (newPassword !== confirmNewPassword) {
       return res.status(400).json({
         success: false,
-        message: "The password and confirm password does not match",
+        message: "The new passwords do not match.",
       });
     }
-  
-  
+
+    if (String(newPassword).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({
+        success: false,
+        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+      });
+    }
+
     const hashPassword = await bcrypt.hash(newPassword, 10);
-  
+
     const updatedUserDetails = await User.findByIdAndUpdate(
       req.user.id,
       { password: hashPassword },
       { new: true }
     );
-  
-  
+
+    // The password is already changed. A failed notification email must never
+    // be reported to the user as a failed password change.
     try {
-      const emailResponse = await mailSender(
+      await mailSender(
         updatedUserDetails.email,
+        "Your password was changed",
         passwordUpdated(
           updatedUserDetails.email,
           `${updatedUserDetails.firstName} ${updatedUserDetails.lastName}`
         )
       );
     } catch (error) {
-      // If there's an error sending the email, log the error and return a 500 (Internal Server Error) error
-      return res.status(500).json({
-        success: false,
-        message: "Error occurred while sending email",
-        error: error.message,
-      });
+      console.error("Password-change notification email failed", error);
     }
-  
+
     return res.status(200).json({
       success:true,
-      message:"password changes successfully"
+      message:"Your password has been updated."
     })
-  
-  
+
+
   } catch (error) {
-  
-    
-    return res.status(400).json({
+
+    console.error("changePassword failed", error);
+    return res.status(500).json({
       success:false,
-      message:"something bad happened"
+      message:"We could not update your password. Please try again."
     })
-      
+
   }
 
 

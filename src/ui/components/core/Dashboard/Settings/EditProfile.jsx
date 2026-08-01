@@ -4,6 +4,7 @@ import { useNavigate } from "@/ui/lib/router"
 
 import { updateProfile } from "../../../../services/operations/SettingsAPI.js"
 import IconBtn from "../../../common/IconBtn"
+import { toast } from "react-hot-toast"
 
 const genders = ["Male", "Female", "Non-Binary", "Prefer not to say", "Other"]
 
@@ -22,7 +23,12 @@ export default function EditProfile() {
   const submitProfileForm = async (data) => {
     try {
       dispatch(updateProfile(token, data))
-    } catch (_error) {}
+    } catch (error) {
+      console.error("EditProfile failed", error)
+      toast.error(
+        "We could not save your profile changes. Please try again."
+      )
+    }
   }
   return (
     <>

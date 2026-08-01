@@ -16,6 +16,7 @@ import {
 } from "../../../../services/operations/courseDetailsAPI"
 import { COURSE_STATUS } from "../../../../utils/constants"
 import ConfirmationModal from "../../../common/ConfirmationModal"
+import { formatCurrency } from "../../../../utils/formatCurrency"
 
 export default function CoursesTable({ courses, setCourses }) {
   const dispatch = useDispatch()
@@ -112,7 +113,7 @@ export default function CoursesTable({ courses, setCourses }) {
                   2hr 30min
                 </Td>
                 <Td className="text-sm font-medium text-richblack-100">
-                  ₹{course.price}
+                  {formatCurrency(course.price)}
                 </Td>
                 <Td className="text-sm font-medium text-richblack-100 ">
                   <button

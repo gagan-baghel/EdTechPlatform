@@ -13,6 +13,11 @@ const OTPSchema = new  mongoose.Schema({
         type:Number,
         required:true,
     },
+    // Incremented on each failed verification so a code cannot be brute-forced.
+    attempts:{
+        type:Number,
+        default:0,
+    },
     createdAt:{
         type:Date,
         default:Date.now,
@@ -30,7 +35,7 @@ async function sendVerificationEmail(email,otp){
         
         const mailResponse = await mailSender(
             email,
-            "Verification E-mail for StudyNotion ",
+            "Verification E-mail for IntelleCraft ",
             otpTemplate(otp));
 
         

@@ -1,219 +1,352 @@
-const {instance} = require("../config/razorpay");
-const Course = require("../models/Course");
-const Payment = require("../models/Payment");
-const User = require("../models/User");
-const mailSender = require("../utils/mailSender");
-const {courseEnrollmentEmail} = require("../mail/templates/courseEnrollmentEmail");
-const { default: mongoose } = require("mongoose");
-const { paymentSuccessEmail } = require("../mail/templates/paymentSuccessEmail");
-const crypto = require("crypto");
-const CourseProgress = require("../models/CourseProgress");
+const { instance } = require("../config/razorpay")
+const Course = require("../models/Course")
+const Payment = require("../models/Payment")
+const Order = require("../models/Order")
+const User = require("../models/User")
+const mailSender = require("../utils/mailSender")
+const {
+  courseEnrollmentEmail,
+} = require("../mail/templates/courseEnrollmentEmail")
+const mongoose = require("mongoose")
+const { paymentSuccessEmail } = require("../mail/templates/paymentSuccessEmail")
+const crypto = require("crypto")
+const CourseProgress = require("../models/CourseProgress")
 
-exports.capturePayment = async(req, res) => {
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id)
 
-    const {courses} = req.body;
-    const userId = req.user.id;
+/**
+ * Creates a Razorpay order AND persists what that order is for.
+ * The persisted Order is the only source of truth at verification time —
+ * the client never gets to say which courses a payment unlocks.
+ */
+exports.capturePayment = async (req, res) => {
+  const { courses } = req.body
+  const userId = req.user.id
 
-    if(!Array.isArray(courses) || courses.length === 0) {
-        return res.status(400).json({success:false, message:"Please provide Course Ids"});
-    }
+  if (!Array.isArray(courses) || courses.length === 0) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Please select at least one course." })
+  }
 
-    let totalAmount = 0;
+  // De-duplicate so a repeated id can't inflate the total or the grant.
+  const courseIds = [...new Set(courses.map(String))]
 
-    for(const course_id of courses) {
-        let course;
-        try{
-           
-            course = await Course.findById(course_id);
-            if(!course) {
-                return res.status(404).json({success:false, message:"Could not find the course"});
-            }
+  if (courseIds.some((id) => !isValidId(id))) {
+    return res
+      .status(400)
+      .json({ success: false, message: "One or more course ids are invalid." })
+  }
 
-            const uid  = new mongoose.Types.ObjectId(userId);
+  try {
+    const uid = new mongoose.Types.ObjectId(userId)
+    let totalAmount = 0
 
-            if(course.studentsEnrolled.includes(uid)) {
-                return res.status(400).json({success:false, message:"Student is already Enrolled"});
-            }
+    for (const courseId of courseIds) {
+      const course = await Course.findById(courseId)
 
-            totalAmount += course.price;
-        }
-        catch(error) {
-            return res.status(500).json({success:false, message:error.message});
-        }
-    }
-    const currency = "INR";
-    const options = {
-        amount: totalAmount * 100,
-        currency,
-        receipt: Math.random(Date.now()).toString(),
-    } 
+      if (!course) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Course not found." })
+      }
 
-    try{
-        const paymentResponse = await instance.orders.create(options);
-        res.json({
-            success:true,
-            message:paymentResponse,
+      if (course.status !== "Published") {
+        return res.status(400).json({
+          success: false,
+          message: `"${course.courseName}" is not available for purchase.`,
         })
-    }
-    catch(error) {
-        return res.status(500).json({success:false, mesage:"Could not Initiate Order"});
+      }
+
+      if (course.studentsEnrolled.some((student) => student.equals(uid))) {
+        return res.status(400).json({
+          success: false,
+          message: `You are already enrolled in "${course.courseName}".`,
+        })
+      }
+
+      totalAmount += Number(course.price) || 0
     }
 
+    if (totalAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "This order has no payable amount.",
+      })
+    }
+
+    const amountInPaise = Math.round(totalAmount * 100)
+
+    const paymentResponse = await instance.orders.create({
+      amount: amountInPaise,
+      currency: "INR",
+      receipt: `rcpt_${crypto.randomBytes(12).toString("hex")}`,
+    })
+
+    await Order.create({
+      orderId: paymentResponse.id,
+      user: userId,
+      courses: courseIds,
+      amount: amountInPaise,
+      status: "created",
+    })
+
+    return res.status(200).json({
+      success: true,
+      message: paymentResponse,
+    })
+  } catch (error) {
+    console.error("capturePayment failed", error)
+    return res
+      .status(500)
+      .json({ success: false, message: "Could not initiate the order." })
+  }
 }
 
-exports.verifyPayment = async(req, res) => {
-    const razorpay_order_id = req.body?.razorpay_order_id;
-    const razorpay_payment_id = req.body?.razorpay_payment_id;
-    const razorpay_signature = req.body?.razorpay_signature;
-    const courses = req.body?.courses;
-    const userId = req.user.id;
+/**
+ * Verifies the Razorpay signature, then enrols from the STORED order.
+ * Idempotent: a replayed request against an already-paid order is a no-op success.
+ */
+exports.verifyPayment = async (req, res) => {
+  const razorpay_order_id = req.body?.razorpay_order_id
+  const razorpay_payment_id = req.body?.razorpay_payment_id
+  const razorpay_signature = req.body?.razorpay_signature
+  const userId = req.user.id
 
-    if(!razorpay_order_id ||
-        !razorpay_payment_id ||
-        !razorpay_signature || !courses || !userId) {
-            return res.status(400).json({success:false, message:"Payment Failed"});
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Payment details are incomplete." })
+  }
+
+  const expectedSignature = crypto
+    .createHmac("sha256", process.env.RAZORPAY_SECRET)
+    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+    .digest("hex")
+
+  const expected = Buffer.from(expectedSignature, "utf8")
+  const received = Buffer.from(String(razorpay_signature), "utf8")
+
+  // Constant-time compare; lengths must match before timingSafeEqual is legal.
+  const signatureValid =
+    expected.length === received.length &&
+    crypto.timingSafeEqual(expected, received)
+
+  if (!signatureValid) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Payment verification failed." })
+  }
+
+  try {
+    const order = await Order.findOne({ orderId: razorpay_order_id })
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found." })
     }
 
-    let body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-        .createHmac("sha256", process.env.RAZORPAY_SECRET)
-        .update(body.toString())
-        .digest("hex");
-
-    if(expectedSignature === razorpay_signature) {
-        try {
-            //enroll karwao student ko
-            await enrollStudents(courses, userId);
-            return res.status(200).json({success:true, message:"Payment Verified"});
-        } catch (error) {
-            return res.status(500).json({success:false, message:error.message});
-        }
+    if (order.user.toString() !== userId) {
+      return res
+        .status(403)
+        .json({ success: false, message: "This order belongs to another account." })
     }
-    return res.status(200).json({success:false, message:"Payment Failed"});
 
+    // Already processed — treat as success so a retry never double-charges logic.
+    if (order.status === "paid") {
+      return res
+        .status(200)
+        .json({ success: true, message: "Payment already verified." })
+    }
+
+    await enrollStudents(order.courses, userId)
+
+    order.status = "paid"
+    order.paymentId = razorpay_payment_id
+    await order.save()
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Payment verified." })
+  } catch (error) {
+    console.error("verifyPayment failed", error)
+    return res.status(500).json({
+      success: false,
+      message: "Payment succeeded but enrolment failed. Our team has been notified.",
+    })
+  }
 }
 
-const enrollStudents = async(courses, userId) => {
+/**
+ * Idempotent enrolment — safe to run from both the client callback and a webhook.
+ */
+const enrollStudents = async (courses, userId) => {
+  if (!courses?.length || !userId) {
+    throw new Error("Missing courses or user for enrolment.")
+  }
 
-    if(!courses || !userId) {
-        throw new Error("Please Provide data for Courses or UserId");
+  for (const courseId of courses) {
+    const enrolledCourse = await Course.findOneAndUpdate(
+      { _id: courseId },
+      { $addToSet: { studentsEnrolled: userId } },
+      { new: true }
+    )
+
+    if (!enrolledCourse) {
+      throw new Error("Course not found during enrolment.")
     }
 
-    for(const courseId of courses) {
-        try{
-            //find the course and enroll the student in it
-        const enrolledCourse = await Course.findOneAndUpdate(
-            {_id:courseId},
-            {$addToSet:{studentsEnrolled:userId}},
-            {new:true},
+    // upsert so a retry reuses the existing progress document
+    const courseProgress = await CourseProgress.findOneAndUpdate(
+      { courseID: courseId, userId },
+      { $setOnInsert: { completedVideos: [] } },
+      { new: true, upsert: true }
+    )
+
+    const enrolledStudent = await User.findByIdAndUpdate(
+      userId,
+      {
+        $addToSet: {
+          courses: courseId,
+          courseProgress: courseProgress._id,
+        },
+      },
+      { new: true }
+    )
+
+    if (!enrolledStudent) {
+      throw new Error("User not found during enrolment.")
+    }
+
+    // Mail must never block or fail an enrolment that already succeeded.
+    try {
+      await mailSender(
+        enrolledStudent.email,
+        `Successfully enrolled in ${enrolledCourse.courseName}`,
+        courseEnrollmentEmail(
+          enrolledCourse.courseName,
+          enrolledStudent.firstName
         )
-
-
-        if(!enrolledCourse) {
-            throw new Error("Course not Found");
-        }
-
-        const courseProgress = await CourseProgress.create({
-            courseID:courseId,
-            userId:userId,
-            completedVideos: [],
-        })
-
-        //find the student and add the course to their list of enrolledCOurses
-        const enrolledStudent = await User.findByIdAndUpdate(userId,
-            {$addToSet:{
-                courses: courseId,
-                courseProgress: courseProgress._id,
-            }},{new:true})
-        if (!enrolledStudent) {
-            throw new Error("User not found");
-        }
-            
-        ///bachhe ko mail send kardo
-        const emailResponse = await mailSender(
-            enrolledStudent.email,
-            `Successfully Enrolled into ${enrolledCourse.courseName}`,
-            courseEnrollmentEmail(enrolledCourse.courseName, `${enrolledStudent.firstName}`)
-        )    
-        //console.log("Email Sent Successfully", emailResponse.response);
-        }
-        catch(error) {
-            throw error;
-        }
+      )
+    } catch (error) {
+      console.error("Enrolment email failed", error)
     }
-
+  }
 }
 
-exports.sendPaymentSuccessEmail = async(req, res) => {
-    const {orderId, paymentId, amount} = req.body;
+exports.sendPaymentSuccessEmail = async (req, res) => {
+  const { orderId, paymentId } = req.body
+  const userId = req.user.id
 
-    const userId = req.user.id;
+  if (!orderId || !paymentId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Order details are incomplete." })
+  }
 
-    if(!orderId || !paymentId || !amount || !userId) {
-        return res.status(400).json({success:false, message:"Please provide all the fields"});
+  try {
+    // Amount comes from our record, never from the request body.
+    const order = await Order.findOne({ orderId, user: userId })
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found." })
     }
 
-    try{
-        //student ko dhundo
-        const enrolledStudent = await User.findById(userId);
-        if (!enrolledStudent) {
-            return res.status(404).json({success:false, message:"User not found"})
-        }
-        await mailSender(
-            enrolledStudent.email,
-            `Payment Recieved`,
-             paymentSuccessEmail(`${enrolledStudent.firstName}`,
-             amount/100,orderId, paymentId)
-        )
-        return res.status(200).json({success:true, message:"Payment success email sent"})
+    const enrolledStudent = await User.findById(userId)
+
+    if (!enrolledStudent) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found." })
     }
-    catch(error) {
-        return res.status(500).json({success:false, message:"Could not send email"})
-    }
+
+    await mailSender(
+      enrolledStudent.email,
+      "Payment received",
+      paymentSuccessEmail(
+        enrolledStudent.firstName,
+        order.amount / 100,
+        orderId,
+        paymentId
+      )
+    )
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Payment receipt sent." })
+  } catch (error) {
+    console.error("sendPaymentSuccessEmail failed", error)
+    return res
+      .status(500)
+      .json({ success: false, message: "Could not send the receipt email." })
+  }
 }
 
-exports.createPaymentEntry = async(req,res)=>{
-    const {orderId, paymentId, amount, courses} = req.body;
-    const {id} = req.user;
-    if (!orderId || !paymentId || !amount || !Array.isArray(courses)) {
-        return res.status(400).json({success:false, message:"Missing payment details"})
+exports.createPaymentEntry = async (req, res) => {
+  const { orderId, paymentId } = req.body
+  const userId = req.user.id
+
+  if (!orderId || !paymentId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Order details are incomplete." })
+  }
+
+  try {
+    // Courses and amount are read from the stored order, not the client.
+    const order = await Order.findOne({ orderId, user: userId })
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found." })
     }
-    try{
-        const newPayment = await Payment.create({
-            consumer:id,
-            courses,
-            orderId,
-            paymentId,
-            amount:amount/100
-        })
-        return res.status(201).json({success:true, message:"created payment entry"})
-        
-    }catch(error){
 
-        return res.status(500).json({success:false, message:"error while creating payment entry"})
-    }    
+    // Idempotent: repeated calls must not create duplicate history rows.
+    const payment = await Payment.findOneAndUpdate(
+      { orderId, consumer: userId },
+      {
+        $setOnInsert: {
+          consumer: userId,
+          courses: order.courses,
+          orderId,
+          paymentId,
+          amount: order.amount / 100,
+        },
+      },
+      { new: true, upsert: true }
+    )
+
+    return res
+      .status(201)
+      .json({ success: true, message: "Payment recorded.", data: payment })
+  } catch (error) {
+    console.error("createPaymentEntry failed", error)
+    return res
+      .status(500)
+      .json({ success: false, message: "Could not record the payment." })
+  }
 }
 
-exports.getUserPaymentEntries = async(req,res)=>{
-    const {id} = req.user;
-    
-    try{
+exports.getUserPaymentEntries = async (req, res) => {
+  const userId = req.user.id
 
-        const paymentEntries = await Payment.find({
-            consumer: id
-        }).populate({
-            path: 'courses',
-            select: 'courseName'
-        });
+  try {
+    const paymentEntries = await Payment.find({ consumer: userId })
+      .populate({ path: "courses", select: "courseName" })
+      .sort({ date: -1 })
+      .lean()
 
-        if(!paymentEntries || paymentEntries.length === 0){
-            return res.status(200).json({success:true, paymentEntries: []})
-        }
-        return res.status(200).json({success:true,paymentEntries})
-        
-    }catch(error){
-
-        return res.status(500).json({success:false, message:"error while fetching payment entry"})
-    }    
-
+    return res.status(200).json({ success: true, paymentEntries })
+  } catch (error) {
+    console.error("getUserPaymentEntries failed", error)
+    return res
+      .status(500)
+      .json({ success: false, message: "Could not load your purchase history." })
+  }
 }
+
+exports.enrollStudents = enrollStudents

@@ -8,6 +8,7 @@ import { useNavigate } from "@/ui/lib/router"
 
 import { addToCart } from "../../../slices/cartSlice"
 import { ACCOUNT_TYPE } from "../../../utils/constants"
+import { formatCurrency } from "../../../utils/formatCurrency"
 
 
 function CourseDetailsCard({ course, setConfirmationModal, handleBuyCourse }) {
@@ -62,7 +63,7 @@ function CourseDetailsCard({ course, setConfirmationModal, handleBuyCourse }) {
 
         <div className="px-4">
           <div className="space-x-3 pb-4 text-3xl font-semibold">
-            Rs. {CurrentPrice}
+            {formatCurrency(CurrentPrice)}
           </div>
           <div className="flex flex-col gap-4">
             <button

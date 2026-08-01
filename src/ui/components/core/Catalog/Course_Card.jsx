@@ -4,6 +4,7 @@ import { Link } from "@/ui/lib/router"
 
 import RatingStars from "../../common/RatingStars"
 import GetAvgRating from "../../../utils/avgRating"
+import { formatCurrency } from "../../../utils/formatCurrency"
 
 const Course_Card = ({ course, Height }) => {
   const avgReviewCount = useMemo(
@@ -30,7 +31,7 @@ const Course_Card = ({ course, Height }) => {
               {course?.courseName}
             </p>
             <span className="rounded-full bg-white/5 px-3 py-1 text-sm font-semibold text-[#fae27c]">
-              Rs. {course?.price}
+              {formatCurrency(course?.price)}
             </span>
           </div>
           <p className="text-sm text-richblack-200">

@@ -150,6 +150,35 @@ exports.editCourse = async (req, res) => {
       return res.status(403).json({ error: "Not authorized to edit this course" })
     }
 
+    // A course may only go live once it actually has something to teach.
+    // Enforced here because the client checklist is bypassable.
+    if (updates.status === "Published") {
+      const populated = await Course.findById(courseId).populate({
+        path: "courseContent",
+        populate: { path: "subSection" },
+      })
+
+      const lessonCount = (populated?.courseContent ?? []).reduce(
+        (total, section) => total + (section?.subSection?.length ?? 0),
+        0
+      )
+
+      const missing = []
+      if (lessonCount === 0) missing.push("at least one lesson with a video")
+      if (!populated?.thumbnail) missing.push("a thumbnail image")
+      if (!populated?.courseDescription) missing.push("a course description")
+      if (!populated?.whatYouWillLearn) missing.push("the learning outcomes")
+      if (populated?.price === undefined || populated?.price === null)
+        missing.push("a price")
+
+      if (missing.length) {
+        return res.status(400).json({
+          success: false,
+          message: `This course is not ready to publish. Please add ${missing.join(", ")}.`,
+        })
+      }
+    }
+
     // If Thumbnail Image is found, update it
     if (req.files && req.files.thumbnailImage) {
       const thumbnail = req.files.thumbnailImage

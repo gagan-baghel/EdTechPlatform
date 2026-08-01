@@ -29,7 +29,7 @@ export default function MyCourses() {
         <h1 className="text-3xl font-medium text-richblack-5">My Courses</h1>
         <IconBtn
           text="Add Course"
-          onclick={() => navigate("/dashboard/add-course")}
+          onClick={() => navigate("/dashboard/add-course")}
         >
           <VscAdd />
         </IconBtn>

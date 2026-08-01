@@ -16,6 +16,7 @@ import { buyCourse } from "../services/operations/studentFeaturesAPI"
 import { normalizeAvatarUrl } from "../utils/avatar"
 import GetAvgRating from "../utils/avgRating"
 import Error from "./Error"
+import { formatCurrency } from "../utils/formatCurrency"
 
 const Markdown = dynamic(() => import("react-markdown"), {
   ssr: false,
@@ -176,7 +177,7 @@ function CourseDetails() {
             </div>
             <div className="flex w-full flex-col gap-4 border-y border-y-richblack-500 py-4 lg:hidden">
               <p className="space-x-3 pb-4 text-3xl font-semibold text-richblack-5">
-                Rs. {price}
+                {formatCurrency(price)}
               </p>
               <button className="yellowButton" onClick={handleBuyCourse}>
                 Buy Now

@@ -73,7 +73,13 @@ function Catalog() {
   }
 
   if (!loading && !catalogPageData.success) {
-    return <Error />
+    return (
+      <Error
+        code="404"
+        title="We couldn't find that category"
+        message="This category may have been renamed or removed. Browse the catalog to find what you're looking for."
+      />
+    )
   }
 
   const selectedCategory = catalogPageData?.data?.selectedCategory

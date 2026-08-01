@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { updateDisplayPicture } from "../../../../services/operations/SettingsAPI.js"
 import { normalizeAvatarUrl } from "../../../../utils/avatar"
 import IconBtn from "../../../common/IconBtn"
+import { toast } from "react-hot-toast"
 
 export default function ChangeProfilePicture() {
   const { token } = useSelector((state) => state.auth)
@@ -45,7 +46,12 @@ export default function ChangeProfilePicture() {
       dispatch(updateDisplayPicture(token, formData)).then(() => {
         setLoading(false)
       })
-    } catch (_error) {}
+    } catch (error) {
+      console.error("ChangeProfilePicture failed", error)
+      toast.error(
+        "We could not update your profile picture. Please try again."
+      )
+    }
   }
 
   useEffect(() => {
@@ -84,7 +90,7 @@ export default function ChangeProfilePicture() {
               </button>
               <IconBtn
                 text={loading ? "Uploading..." : "Upload"}
-                onclick={handleFileUpload}
+                onClick={handleFileUpload}
               >
                 {!loading && (
                   <FiUpload className="text-lg text-richblack-900" />

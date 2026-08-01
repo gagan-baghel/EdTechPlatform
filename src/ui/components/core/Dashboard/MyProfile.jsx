@@ -30,7 +30,7 @@ export default function MyProfile() {
         </div>
         <IconBtn
           text="Edit"
-          onclick={() => {
+          onClick={() => {
             navigate("/dashboard/settings")
           }}
         >
@@ -42,7 +42,7 @@ export default function MyProfile() {
           <p className="text-lg font-semibold text-richblack-5">About</p>
           <IconBtn
             text="Edit"
-            onclick={() => {
+            onClick={() => {
               navigate("/dashboard/settings")
             }}
           >
@@ -66,7 +66,7 @@ export default function MyProfile() {
           </p>
           <IconBtn
             text="Edit"
-            onclick={() => {
+            onClick={() => {
               navigate("/dashboard/settings")
             }}
           >

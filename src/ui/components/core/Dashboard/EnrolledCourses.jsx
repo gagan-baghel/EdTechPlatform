@@ -1,8 +1,10 @@
 import Image from "next/image"
 import { useCallback, useEffect, useState } from "react"
 import ProgressBar from "@ramonak/react-progress-bar"
+import { TbBooks } from "react-icons/tb"
+import { toast } from "react-hot-toast"
 import { useSelector } from "react-redux"
-import { useNavigate } from "@/ui/lib/router"
+import { Link, useNavigate } from "@/ui/lib/router"
 
 import { getUserEnrolledCourses } from "../../../services/operations/profileAPI.js"
 
@@ -37,10 +39,24 @@ export default function EnrolledCourses() {
           <div className="spinner"></div>
         </div>
       ) : !enrolledCourses.length ? (
-        <p className="grid h-[10vh] w-full place-content-center text-richblack-5">
-          You have not enrolled in any course yet.
-          {/* TODO: Modify this Empty State */}
-        </p>
+        <div className="mt-10 flex flex-col items-center rounded-lg border border-dashed border-richblack-600 bg-richblack-800/40 px-6 py-14 text-center">
+          <div className="grid h-16 w-16 place-items-center rounded-full bg-richblack-700">
+            <TbBooks className="text-3xl text-yellow-50" />
+          </div>
+          <h2 className="mt-5 text-xl font-semibold text-richblack-5">
+            You haven&apos;t enrolled in a course yet
+          </h2>
+          <p className="mt-2 max-w-sm text-richblack-300">
+            Browse the catalog and pick something to start learning. Your courses
+            and progress will show up here.
+          </p>
+          <Link
+            to="/catalog/web-development"
+            className="mt-6 rounded-md bg-yellow-50 px-6 py-3 font-semibold text-richblack-900 transition hover:bg-yellow-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-offset-2 focus-visible:ring-offset-richblack-900"
+          >
+            Browse courses
+          </Link>
+        </div>
       ) : (
         <div className="my-8 text-richblack-5">
           {/* Headings */}
@@ -60,8 +76,20 @@ export default function EnrolledCourses() {
               <div
                 className="flex w-[45%] cursor-pointer items-center gap-4 px-5 py-3"
                 onClick={() => {
+                  const firstSection = course?.courseContent?.[0]
+                  const firstLesson = firstSection?.subSection?.[0]
+
+                  // Without this guard the ids stringify to "undefined" and the
+                  // learner lands on a dead route.
+                  if (!firstSection?._id || !firstLesson?._id) {
+                    toast.error(
+                      "This course has no lessons yet. You'll get access as soon as the instructor publishes them."
+                    )
+                    return
+                  }
+
                   navigate(
-                    `/view-course/${course?._id}/section/${course.courseContent?.[0]?._id}/sub-section/${course.courseContent?.[0]?.subSection?.[0]?._id}`
+                    `/view-course/${course._id}/section/${firstSection._id}/sub-section/${firstLesson._id}`
                   )
                 }}
               >

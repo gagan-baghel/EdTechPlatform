@@ -9,6 +9,8 @@ import { setSignupData } from "../../../slices/authSlice"
 import { ACCOUNT_TYPE } from "../../../utils/constants"
 import Tab from "../../common/Tab"
 
+const MIN_PASSWORD_LENGTH = 8
+
 function SignupForm() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
@@ -43,8 +45,15 @@ function SignupForm() {
   const handleOnSubmit = (e) => {
     e.preventDefault()
 
+    // Mirrors the server rule in controllers/Auth.js so the user is told
+    // before a round trip, not after.
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      toast.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
+      return
+    }
+
     if (password !== confirmPassword) {
-      toast.error("Passwords Do Not Match")
+      toast.error("The passwords do not match.")
       return
     }
     const signupData = {
@@ -148,8 +157,13 @@ function SignupForm() {
               onChange={handleOnChange}
               placeholder="Create a password"
               autoComplete="new-password"
+              minLength={MIN_PASSWORD_LENGTH}
+              aria-describedby="password-hint"
               className={`${inputClass} pr-12`}
             />
+            <p id="password-hint" className="mt-1 text-xs text-richblack-300">
+              At least {MIN_PASSWORD_LENGTH} characters
+            </p>
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}

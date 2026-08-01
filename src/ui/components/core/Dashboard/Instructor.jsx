@@ -6,6 +6,7 @@ import { Link } from "@/ui/lib/router"
 
 import { fetchInstructorCourses } from "../../../services/operations/courseDetailsAPI"
 import { getInstructorData } from "../../../services/operations/profileAPI"
+import { formatCurrency } from "../../../utils/formatCurrency"
 
 const InstructorChart = dynamic(() => import("./InstructorDashboard/InstructorChart"), {
   ssr: false,
@@ -98,7 +99,7 @@ export default function Instructor() {
                 <div>
                   <p className="text-lg text-richblack-200">Total Income</p>
                   <p className="text-3xl font-semibold text-richblack-50">
-                    Rs. {totalAmount}
+                    {formatCurrency(totalAmount)}
                   </p>
                 </div>
               </div>
@@ -135,7 +136,7 @@ export default function Instructor() {
                         |
                       </p>
                       <p className="text-xs font-medium text-richblack-300">
-                        Rs. {course.price}
+                        {formatCurrency(course.price)}
                       </p>
                     </div>
                   </div>

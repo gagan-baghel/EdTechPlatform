@@ -1,3 +1,5 @@
+"use client"
+
 import { useState } from "react"
 import { VscSignOut } from "react-icons/vsc"
 import { useDispatch, useSelector } from "react-redux"
@@ -8,9 +10,7 @@ import ConfirmationModal from "../../common/ConfirmationModal"
 import SidebarLink from "./SidebarLink"
 
 export default function Sidebar() {
-  const { user, loading: profileLoading } = useSelector(
-    (state) => state.profile
-  )
+  const { user, loading: profileLoading } = useSelector((state) => state.profile)
   const { loading: authLoading } = useSelector((state) => state.auth)
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -19,41 +19,50 @@ export default function Sidebar() {
 
   if (profileLoading || authLoading) {
     return (
-      <div className="grid h-[calc(100vh-3.5rem)] min-w-[220px] items-center border-r-[1px] border-r-richblack-700 bg-richblack-800">
-        <div className="spinner"></div>
+      <div className="grid w-full items-center border-b border-richblack-700 bg-richblack-800 py-6 md:h-[calc(100vh-3.5rem)] md:w-auto md:min-w-[220px] md:border-b-0 md:border-r">
+        <div className="spinner" />
       </div>
     )
   }
 
+  const visibleLinks = sidebarLinks.filter(
+    (link) => !link.type || user?.accountType === link.type
+  )
+
   return (
     <>
-      <div className="flex h-[calc(100vh-3.5rem)] min-w-[220px] flex-col border-r-[1px] border-r-richblack-700 bg-richblack-800 py-10">
-        <div className="flex flex-col">
-          {sidebarLinks.map((link) => {
-            if (link.type && user?.accountType !== link.type) return null
-            return (
-              <SidebarLink key={link.id} link={link} iconName={link.icon} />
-            )
-          })}
+      {/* Below md this becomes a horizontally scrollable tab strip so the
+          content column keeps the full viewport width. */}
+      <nav
+        aria-label="Dashboard"
+        className="flex w-full shrink-0 flex-row overflow-x-auto border-b border-richblack-700 bg-richblack-800 md:h-[calc(100vh-3.5rem)] md:w-auto md:min-w-[220px] md:flex-col md:overflow-x-visible md:overflow-y-auto md:border-b-0 md:border-r md:py-10"
+      >
+        <div className="flex flex-row md:flex-col">
+          {visibleLinks.map((link) => (
+            <SidebarLink key={link.id} link={link} iconName={link.icon} />
+          ))}
         </div>
-        <div className="mx-auto mt-6 mb-6 h-[1px] w-10/12 bg-richblack-700" />
-        <div className="flex flex-col">
+
+        <div className="mx-auto my-6 hidden h-[1px] w-10/12 bg-richblack-700 md:block" />
+
+        <div className="flex flex-row md:flex-col">
           <SidebarLink
             link={{ name: "Settings", path: "/dashboard/settings" }}
             iconName="VscSettingsGear"
           />
           <button
+            type="button"
             onClick={() =>
               setConfirmationModal({
-                text1: "Are you sure?",
-                text2: "You will be logged out of your account.",
-                btn1Text: "Logout",
+                text1: "Log out?",
+                text2: "You will need to sign in again to access your courses.",
+                btn1Text: "Log out",
                 btn2Text: "Cancel",
                 btn1Handler: () => dispatch(logout(navigate)),
                 btn2Handler: () => setConfirmationModal(null),
               })
             }
-            className="px-8 py-2 text-sm font-medium text-richblack-300"
+            className="shrink-0 whitespace-nowrap px-5 py-3 text-sm font-medium text-richblack-300 transition hover:text-richblack-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow-50 md:px-8 md:py-2"
           >
             <div className="flex items-center gap-x-2">
               <VscSignOut className="text-lg" />
@@ -61,7 +70,7 @@ export default function Sidebar() {
             </div>
           </button>
         </div>
-      </div>
+      </nav>
       {confirmationModal && <ConfirmationModal modalData={confirmationModal} />}
     </>
   )

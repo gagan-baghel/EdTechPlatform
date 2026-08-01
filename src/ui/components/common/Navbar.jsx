@@ -9,6 +9,7 @@ import { NavbarLinks } from "../../data/navbar-links"
 import { fetchCategoriesCached } from "../../services/sharedData"
 import { ACCOUNT_TYPE } from "../../utils/constants"
 import ProfileDropdown from "../core/Auth/ProfileDropDown"
+import MobileNav from "./MobileNav"
 
 function Navbar() {
   const { token } = useSelector((state) => state.auth)
@@ -21,6 +22,7 @@ function Navbar() {
   const [loading, setLoading] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [catalogTouched, setCatalogTouched] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     if (!catalogTouched || subLinks.length) return
@@ -54,6 +56,11 @@ function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [isHomePage])
 
+
+  // Never leave the drawer open across a navigation.
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
 
   const matchRoute = (route) => {
     return matchPath({ path: route }, location.pathname)
@@ -235,7 +242,17 @@ function Navbar() {
           {token !== null && <ProfileDropdown />} 
 
         </div>
-        <button className="mr-4 md:hidden">
+        <button
+          type="button"
+          className="relative mr-2 rounded-lg p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 md:hidden"
+          onClick={() => {
+            primeCatalogMenu()
+            setMenuOpen(true)
+          }}
+          aria-label="Open menu"
+          aria-expanded={menuOpen}
+          aria-haspopup="dialog"
+        >
           <AiOutlineMenu
             fontSize={24}
             fill={
@@ -246,8 +263,23 @@ function Navbar() {
                 : "#AFB2BF"
             }
           />
+          {totalItems > 0 && token && user?.accountType !== ACCOUNT_TYPE.INSTRUCTOR && (
+            <span
+              className="absolute right-0 top-0 grid h-4 w-4 place-items-center rounded-full bg-yellow-50 text-[10px] font-bold text-richblack-900"
+              aria-hidden="true"
+            >
+              {totalItems}
+            </span>
+          )}
         </button>
       </div>
+
+      <MobileNav
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        subLinks={subLinks}
+        categoriesLoading={loading}
+      />
     </div>
   )
 }
