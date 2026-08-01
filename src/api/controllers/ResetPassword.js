@@ -1,6 +1,6 @@
 const User = require('../models/User')
 const mailSender = require('../utils/mailSender')
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcryptjs')
 const crypto = require('crypto')
 
 const MIN_PASSWORD_LENGTH = 8
@@ -12,10 +12,18 @@ const RESET_TOKEN_TTL_MS = 15 * 60 * 1000
  * their own domain and harvest the token.
  */
 function getAppBaseUrl(req) {
-    const configured = process.env.APP_BASE_URL || process.env.NEXT_PUBLIC_SITE_URL
+    const configured =
+        process.env.APP_BASE_URL ||
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
 
     if (configured) {
-        return configured.replace(/\/+$/, "")
+        // Tolerate a value set without a protocol, which is easy to do in a
+        // hosting dashboard, rather than breaking password reset over it.
+        const withProtocol = /^https?:\/\//i.test(configured)
+            ? configured
+            : `https://${configured}`
+        return withProtocol.replace(/\/+$/, "")
     }
 
     if (process.env.NODE_ENV === "production") {
