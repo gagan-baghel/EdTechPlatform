@@ -3,9 +3,11 @@ import {
   VscAdd,
   VscCreditCard,
   VscDashboard,
+  VscGift,
   VscGraph,
   VscHistory,
   VscMortarBoard,
+  VscOrganization,
   VscSettingsGear,
   VscShield,
   VscVm,
@@ -26,6 +28,8 @@ const iconMap = {
   VscSettingsGear,
   VscShield,
   VscCreditCard,
+  VscOrganization,
+  VscGift,
 }
 
 export default function SidebarLink({ link, iconName }) {

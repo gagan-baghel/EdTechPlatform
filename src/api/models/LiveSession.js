@@ -18,6 +18,12 @@ const liveSessionSchema = new mongoose.Schema(
     durationMinutes: { type: Number, default: 60 },
     meetingUrl: { type: String, required: true },
     status: { type: String, enum: ["scheduled", "cancelled"], default: "scheduled" },
+    // Posted after the session happens, using the SAME direct-to-Cloudinary
+    // signed upload + verify-by-refetch pipeline lectures already use
+    // (getVideoUploadSignature + verifyUploadedVideo in Subsection.js) —
+    // no new video infrastructure, just the existing one applied here too.
+    recordingVideoUrl: { type: String, default: null },
+    recordingPublicId: { type: String, default: null },
   },
   { timestamps: true }
 )

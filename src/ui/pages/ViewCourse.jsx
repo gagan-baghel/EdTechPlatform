@@ -8,6 +8,7 @@ import { Link, useParams } from "@/ui/lib/router"
 import CourseReviewModal from "../components/core/ViewCourse/CourseReviewModal"
 import VideoDetailsSidebar from "../components/core/ViewCourse/VideoDetailsSidebar"
 import QuizList from "../components/core/ViewCourse/QuizList"
+import LiveSessionList from "../components/core/ViewCourse/LiveSessionList"
 import QnAPanel from "../components/core/ViewCourse/QnAPanel"
 import TutorPanel from "../components/core/ViewCourse/TutorPanel"
 import { getFullDetailsOfCourse } from "../services/operations/courseDetailsAPI"
@@ -154,6 +155,7 @@ export default function ViewCourse({ children }) {
             {children}
             {subSectionId && <TutorPanel subSectionId={subSectionId} />}
             <QuizList courseId={courseId} />
+            <LiveSessionList courseId={courseId} />
             {subSectionId && <QnAPanel courseId={courseId} subSectionId={subSectionId} />}
           </div>
         </div>

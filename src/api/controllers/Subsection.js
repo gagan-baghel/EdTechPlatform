@@ -57,6 +57,10 @@ async function verifyUploadedVideo(publicId) {
   return resource
 }
 
+// Exported for LiveSession.js's recording upload — same verify-by-
+// re-fetching-from-Cloudinary logic, no reason to duplicate it.
+exports.verifyUploadedVideo = verifyUploadedVideo
+
 exports.createSubSection = async (req, res) => {
     try {
       // Extract necessary information from the request body

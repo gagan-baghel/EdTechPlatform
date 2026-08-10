@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { FooterLink2 } from "../../data/footer-links";
 import { Link, useLocation } from "@/ui/lib/router";
 import { FaFacebook, FaGoogle, FaTwitter, FaYoutube } from "react-icons/fa";
@@ -8,6 +9,7 @@ import { FaFacebook, FaGoogle, FaTwitter, FaYoutube } from "react-icons/fa";
 const socialIcons = [FaFacebook, FaGoogle, FaTwitter, FaYoutube];
 
 const Footer = () => {
+  const t = useTranslations("Footer");
   const location = useLocation();
   const isHomePage = location.pathname === "/";
   const sectionBorderClass = isHomePage ? "border-white/10" : "border-richblack-700";
@@ -90,7 +92,7 @@ const Footer = () => {
         <div
           className={`flex flex-col gap-3 pt-6 text-sm md:flex-row md:items-center md:justify-between ${mutedTextClass}`}
         >
-          <p>© 2026 IntelleCraft. All rights reserved.</p>
+          <p>© 2026 IntelleCraft. {t("rights")}</p>
           <p>Built for admissions, finance, and classroom operations.</p>
         </div>
       </div>

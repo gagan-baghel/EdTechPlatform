@@ -1,0 +1,37 @@
+{
+  "Navbar": {
+    "home": "Home",
+    "subscribe": "Subscribe",
+    "aboutUs": "About Us",
+    "contactUs": "Contact Us",
+    "login": "Log in",
+    "signup": "Sign up",
+    "cart": "Cart"
+  },
+  "Footer": {
+    "rights": "All rights reserved."
+  },
+  "Home": {
+    "heroTitlePrefix": "Education,",
+    "heroTitleHighlight": "reimagined.",
+    "heroSubtitle": "A meticulously crafted operating system for the world's most innovative schools. From enrollment to graduation, everything just works.",
+    "createAccount": "Create Free Account",
+    "watchKeynote": "Watch Keynote"
+  },
+  "CourseCard": {
+    "buyNow": "Buy Now",
+    "addToCart": "Add to Cart",
+    "goToCourse": "Go To Course",
+    "saveForLater": "Save for later",
+    "saved": "Saved",
+    "share": "Share"
+  },
+  "Auth": {
+    "loginTitle": "Welcome Back",
+    "loginSubtitle": "Build skills for today, tomorrow, and beyond.",
+    "email": "Email Address",
+    "password": "Password",
+    "signupPrompt": "Don't have an account?",
+    "loginPrompt": "Already have an account?"
+  }
+}

@@ -19,6 +19,8 @@ import {
 import { BsChevronDown, BsPlug } from "react-icons/bs"
 import { FaGoogle, FaMicrosoft, FaSlack } from "react-icons/fa"
 
+import { useTranslations } from "next-intl"
+
 import { Link } from "@/ui/lib/router"
 
 import Footer from "../components/common/Footer"
@@ -142,6 +144,7 @@ function CountUpBar() {
 
 function Home() {
   const marquee = useMemo(() => [...logos, ...logos], [])
+  const t = useTranslations("Home")
 
   return (
     <div className="min-h-screen bg-richblack-900 selection:bg-[#c3ebfa] selection:text-richblack-900">
@@ -171,13 +174,13 @@ function Home() {
 
         <div className="relative z-10 mx-auto mt-20 max-w-5xl px-6 text-center">
           <h1 className="mb-8 text-6xl font-black leading-[1.05] tracking-tighter text-white md:text-8xl lg:text-[100px]">
-            Education, <br className="hidden md:block" />
+            {t("heroTitlePrefix")} <br className="hidden md:block" />
             <span className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-transparent">
-              reimagined.
+              {t("heroTitleHighlight")}
             </span>
           </h1>
           <p className="mx-auto mb-12 max-w-3xl text-xl font-medium leading-relaxed text-richblack-100 md:text-2xl">
-            A meticulously crafted operating system for the world&apos;s most innovative schools. From enrollment to graduation, everything just works.
+            {t("heroSubtitle")}
           </p>
 
           <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">
@@ -185,7 +188,7 @@ function Home() {
               to="/signup"
               className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-10 py-5 text-lg font-bold text-richblack-900 shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all hover:scale-105 active:scale-95 sm:w-auto"
             >
-              Create Free Account
+              {t("createAccount")}
               <AiOutlineArrowRight className="text-xl" />
             </Link>
             <Link
@@ -193,7 +196,7 @@ function Home() {
               className="group flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-richblack-800/65 px-10 py-5 text-lg font-bold text-white backdrop-blur-md transition-all hover:bg-richblack-700/80 sm:w-auto"
             >
               <AiOutlinePlayCircle className="text-2xl transition-colors group-hover:text-[#c3ebfa]" />
-              Watch Keynote
+              {t("watchKeynote")}
             </Link>
           </div>
         </div>

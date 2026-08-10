@@ -2,6 +2,7 @@ const LiveSession = require("../models/LiveSession")
 const Course = require("../models/Course")
 const User = require("../models/User")
 const { notify } = require("../utils/notify")
+const { verifyUploadedVideo } = require("./Subsection")
 
 exports.scheduleSession = async (req, res) => {
   try {
@@ -55,12 +56,54 @@ exports.listSessionsForCourse = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized" })
     }
 
-    const sessions = await LiveSession.find({ course: courseId, status: "scheduled" })
-      .sort({ scheduledAt: 1 })
+    // Not filtered to status:"scheduled" — a session that already happened
+    // stays visible (and relevant) once its recording is uploaded, so
+    // excluding non-"scheduled" sessions here would hide every recording.
+    // Only "cancelled" is excluded.
+    const sessions = await LiveSession.find({ course: courseId, status: { $ne: "cancelled" } })
+      .sort({ scheduledAt: -1 })
       .lean()
     return res.status(200).json({ success: true, data: sessions })
   } catch (error) {
     return res.status(500).json({ success: false, message: "Could not load sessions" })
+  }
+}
+
+/**
+ * Attaches a recording after the session happens. Takes a Cloudinary
+ * public_id from the client (uploaded there directly, using the same
+ * signed-upload flow lecture videos use — see getVideoUploadSignature in
+ * Subsection.js) and re-verifies it server-side rather than trusting a
+ * client-supplied URL, same principle as createSubSection.
+ */
+exports.uploadRecording = async (req, res) => {
+  try {
+    const { sessionId } = req.params
+    const { videoPublicId } = req.body
+    if (!videoPublicId) {
+      return res.status(400).json({ success: false, message: "videoPublicId is required" })
+    }
+
+    const session = await LiveSession.findOne({ _id: sessionId, instructor: req.user.id })
+    if (!session) {
+      return res.status(403).json({ success: false, message: "Not authorized for this session" })
+    }
+
+    let resource
+    try {
+      resource = await verifyUploadedVideo(videoPublicId)
+    } catch (error) {
+      return res.status(400).json({ success: false, message: "Could not verify the uploaded recording" })
+    }
+
+    session.recordingVideoUrl = resource.secure_url
+    session.recordingPublicId = videoPublicId
+    await session.save()
+
+    return res.status(200).json({ success: true, data: session })
+  } catch (error) {
+    console.error("uploadRecording failed", error)
+    return res.status(500).json({ success: false, message: "Could not attach recording" })
   }
 }
 

@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import copy from "copy-to-clipboard"
 import { toast } from "react-hot-toast"
+import { useTranslations } from "next-intl"
 import { BsFillCaretRightFill } from "react-icons/bs"
 import { FaShareSquare } from "react-icons/fa"
 import { FiBookmark } from "react-icons/fi"
@@ -21,6 +22,7 @@ function CourseDetailsCard({ course, handleBuyCourse, handleAddToCart }) {
   const { token } = useSelector((state) => state.auth)
   const navigate = useNavigate()
   const [saved, setSaved] = useState(false)
+  const t = useTranslations("CourseCard")
 
   const handleToggleSave = async () => {
     if (!token) {
@@ -80,12 +82,12 @@ function CourseDetailsCard({ course, handleBuyCourse, handleAddToCart }) {
               }
             >
               {user && course?.studentsEnrolled.includes(user?._id)
-                ? "Go To Course"
-                : "Buy Now"}
+                ? t("goToCourse")
+                : t("buyNow")}
             </button>
             {(!user || !course?.studentsEnrolled.includes(user?._id)) && (
               <button onClick={handleAddToCart} className="blackButton">
-                Add to Cart
+                {t("addToCart")}
               </button>
             )}
           </div>
@@ -109,7 +111,7 @@ function CourseDetailsCard({ course, handleBuyCourse, handleAddToCart }) {
               className="flex items-center gap-2 text-yellow-100"
               onClick={handleShare}
             >
-              <FaShareSquare size={15} /> Share
+              <FaShareSquare size={15} /> {t("share")}
             </button>
             {(!user || !course?.studentsEnrolled.includes(user?._id)) && (
               <button
@@ -117,7 +119,7 @@ function CourseDetailsCard({ course, handleBuyCourse, handleAddToCart }) {
                 onClick={handleToggleSave}
               >
                 <FiBookmark size={15} className={saved ? "fill-yellow-50" : ""} />
-                {saved ? "Saved" : "Save for later"}
+                {saved ? t("saved") : t("saveForLater")}
               </button>
             )}
           </div>

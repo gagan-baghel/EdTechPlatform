@@ -98,6 +98,36 @@ export const couponEndpoints = {
   COUPONS_BASE_API: BASE_URL + "/coupons",
 }
 
+// SUBSCRIPTION API
+export const subscriptionEndpoints = {
+  LIST_PLANS_API: BASE_URL + "/subscriptions/plans",
+  CREATE_SUBSCRIPTION_API: BASE_URL + "/subscriptions",
+  MY_SUBSCRIPTION_API: BASE_URL + "/subscriptions/mine",
+  CANCEL_SUBSCRIPTION_API: BASE_URL + "/subscriptions/cancel",
+}
+
+// ORGANIZATION (B2B) API
+export const organizationEndpoints = {
+  CREATE_ORG_API: BASE_URL + "/organizations",
+  MY_ORGS_API: BASE_URL + "/organizations/mine",
+  JOIN_ORG_API: BASE_URL + "/organizations/join",
+}
+
+// AFFILIATE API
+export const affiliateEndpoints = {
+  MY_REFERRAL_CODE_API: BASE_URL + "/affiliate/my-code",
+  SET_REFERRER_API: BASE_URL + "/affiliate/set-referrer",
+  MY_REFERRALS_API: BASE_URL + "/affiliate/my-referrals",
+}
+
+// LIVE SESSION API
+export const liveSessionEndpoints = {
+  CREATE_SESSION_API: BASE_URL + "/live-sessions",
+  SESSIONS_FOR_COURSE_API: (courseId) => BASE_URL + `/live-sessions/course/${courseId}`,
+  CANCEL_SESSION_API: (sessionId) => BASE_URL + `/live-sessions/${sessionId}/cancel`,
+  UPLOAD_RECORDING_API: (sessionId) => BASE_URL + `/live-sessions/${sessionId}/recording`,
+}
+
 // SETTINGS PAGE API
 export const settingsEndpoints = {
   UPDATE_DISPLAY_PICTURE_API: BASE_URL + "/profile/updateDisplayPicture",

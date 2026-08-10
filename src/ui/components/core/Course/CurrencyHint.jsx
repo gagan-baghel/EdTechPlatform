@@ -1,13 +1,14 @@
 "use client"
 
-import { useState } from "react"
-
 import { CURRENCY_RATES, approximateForeignPrice } from "../../../utils/currencyRates"
+import { useCurrencyPreference } from "../../../hooks/useCurrencyPreference"
 
 // Approximate-only display next to the real (INR) price — see
 // currencyRates.js for why this isn't real multi-currency checkout.
+// The choice persists (useCurrencyPreference) so picking USD once on a
+// course card shows USD everywhere else too, not just on this card.
 export default function CurrencyHint({ amountRupees }) {
-  const [currency, setCurrency] = useState("")
+  const [currency, setCurrency] = useCurrencyPreference()
 
   if (!amountRupees) return null
 

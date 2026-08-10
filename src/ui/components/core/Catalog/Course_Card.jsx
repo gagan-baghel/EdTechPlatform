@@ -5,12 +5,18 @@ import { Link } from "@/ui/lib/router"
 import RatingStars from "../../common/RatingStars"
 import GetAvgRating from "../../../utils/avgRating"
 import { formatCurrency } from "../../../utils/formatCurrency"
+import { approximateForeignPrice } from "../../../utils/currencyRates"
+import { useCurrencyPreference } from "../../../hooks/useCurrencyPreference"
 
 const Course_Card = ({ course, Height }) => {
   const avgReviewCount = useMemo(
     () => GetAvgRating(course.ratingAndReviews),
     [course.ratingAndReviews]
   )
+  // Read-only here — the picker itself lives on CourseDetailsCard; this
+  // just respects whatever currency the visitor already chose there.
+  const [currency] = useCurrencyPreference()
+  const approx = currency ? approximateForeignPrice(course?.price, currency) : null
 
   return (
     <Link to={`/courses/${course._id}`}>
@@ -32,8 +38,11 @@ const Course_Card = ({ course, Height }) => {
             <h3 className="text-xl font-semibold leading-8 text-richblack-5">
               {course?.courseName}
             </h3>
-            <span className="rounded-full bg-white/5 px-3 py-1 text-sm font-semibold text-[#fae27c]">
-              {formatCurrency(course?.price)}
+            <span className="flex flex-col items-end gap-0.5">
+              <span className="rounded-full bg-white/5 px-3 py-1 text-sm font-semibold text-[#fae27c]">
+                {formatCurrency(course?.price)}
+              </span>
+              {approx && <span className="text-xs text-richblack-400">≈ {approx}</span>}
             </span>
           </div>
           <p className="text-sm text-richblack-200">

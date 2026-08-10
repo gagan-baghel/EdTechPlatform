@@ -4,7 +4,7 @@ import { setLoading, setToken } from "../../slices/authSlice"
 import { resetCart } from "../../slices/cartSlice"
 import { setUser } from "../../slices/profileSlice"
 import { apiConnector } from "../apiconnector"
-import { endpoints } from "../apis"
+import { endpoints, affiliateEndpoints } from "../apis"
 import { normalizeUserAvatar } from "../../utils/avatar"
 
 const {
@@ -74,6 +74,30 @@ export function signUp(
   }
 }
 
+// Best-effort, called once after every login — see ReferralCapture in
+// AppProviders.jsx for where pendingReferralCode gets set. Cleared
+// immediately regardless of outcome: the backend also rejects a second
+// attribution attempt (referredBy already set), so there's nothing to
+// gain by retrying, and a failed/foreign code shouldn't keep getting
+// resubmitted on every subsequent login.
+async function claimPendingReferral(token) {
+  const referralCode = localStorage.getItem("pendingReferralCode")
+  if (!referralCode) return
+
+  localStorage.removeItem("pendingReferralCode")
+  try {
+    await apiConnector(
+      "POST",
+      affiliateEndpoints.SET_REFERRER_API,
+      { referralCode },
+      { Authorization: `Bearer ${token}` }
+    )
+  } catch (error) {
+    // Silent — an invalid/self/already-set referral code is not the
+    // user's problem to see a toast about mid-login.
+  }
+}
+
 export function login(email, password, navigate) {
   return async (dispatch) => {
     dispatch(setLoading(true))
@@ -94,6 +118,8 @@ export function login(email, password, navigate) {
 
       localStorage.setItem("token", JSON.stringify(response.data.token))
       localStorage.setItem("user", JSON.stringify(normalizedUser))
+
+      claimPendingReferral(response.data.token)
 
       navigate(normalizedUser?.onboarded ? "/dashboard/my-profile" : "/onboarding")
     } catch (_error) {

@@ -9,12 +9,31 @@ import rootReducer from "../reducer"
 import { useNavigate } from "../lib/router"
 import { getUserDetails } from "../services/operations/profileAPI"
 import { useAccessibilityPrefs } from "../hooks/useAccessibilityPrefs"
+import LocaleProvider from "./LocaleProvider"
 
 // Applies the stored reduced-motion/font-size preference on every page
 // load, not just while Settings happens to be mounted — the hook's
 // localStorage read + class-toggle effect needs to run once at the root.
 function AccessibilityBootstrap() {
   useAccessibilityPrefs()
+  return null
+}
+
+// Captures ?ref=CODE from any landing URL, root-level so it works no
+// matter which page a referral link points at (a course page, the
+// homepage, etc). Stored for consumption after signup/login — see
+// authAPI.js's login(), where setReferrer actually gets called once a
+// token exists. Only stores; never overwrites an already-pending code, so
+// clicking a second referral link before signing up doesn't reassign
+// attribution.
+function ReferralCapture() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get("ref")
+    if (ref && !localStorage.getItem("pendingReferralCode")) {
+      localStorage.setItem("pendingReferralCode", ref.toUpperCase())
+    }
+  }, [])
   return null
 }
 
@@ -69,10 +88,13 @@ export default function AppProviders({ children }) {
 
   return (
     <Provider store={storeRef.current}>
-      <AuthBootstrap />
-      <AccessibilityBootstrap />
-      {children}
-      <Toaster />
+      <LocaleProvider>
+        <AuthBootstrap />
+        <AccessibilityBootstrap />
+        <ReferralCapture />
+        {children}
+        <Toaster />
+      </LocaleProvider>
     </Provider>
   )
 }

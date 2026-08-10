@@ -62,4 +62,19 @@ export const sidebarLinks = [
     type: ACCOUNT_TYPE.ADMIN,
     icon: "VscShield",
   },
+  {
+    id: 10,
+    name: "Organizations",
+    path: "/dashboard/organizations",
+    // No type restriction — buying/joining seats isn't role-gated
+    // server-side (Organization.js), any account type can do both.
+    icon: "VscOrganization",
+  },
+  {
+    id: 11,
+    name: "Refer & Earn",
+    path: "/dashboard/affiliate",
+    // Also not role-gated server-side (Affiliate.js) — anyone can refer.
+    icon: "VscGift",
+  },
 ];

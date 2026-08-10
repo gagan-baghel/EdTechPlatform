@@ -2,12 +2,14 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import { AiOutlineMenu, AiOutlineShoppingCart } from "react-icons/ai"
 import { BsChevronDown } from "react-icons/bs"
+import { useTranslations } from "next-intl"
 import { useSelector } from "react-redux"
 import { Link, matchPath, useLocation } from "@/ui/lib/router"
 
 import { NavbarLinks } from "../../data/navbar-links"
 import { fetchCategoriesCached } from "../../services/sharedData"
 import { ACCOUNT_TYPE } from "../../utils/constants"
+import { SUPPORTED_LOCALES, useLocaleSwitcher } from "../../providers/LocaleProvider"
 import ProfileDropdown from "../core/Auth/ProfileDropDown"
 import MobileNav from "./MobileNav"
 import NotificationBell from "./NotificationBell"
@@ -19,6 +21,8 @@ function Navbar() {
   const { totalItems } = useSelector((state) => state.cart)
   const location = useLocation()
   const isHomePage = location.pathname === "/"
+  const t = useTranslations("Navbar")
+  const { locale, setLocale } = useLocaleSwitcher()
 
   const [subLinks, setSubLinks] = useState([])
   const [loading, setLoading] = useState(false)
@@ -183,7 +187,7 @@ function Navbar() {
                             : "text-richblack-25"
                       }`}
                     >
-                      {link.title}
+                      {link.titleKey ? t(link.titleKey) : link.title}
                     </p>
                   </Link>
                 )}
@@ -223,7 +227,7 @@ function Navbar() {
                     : "rounded-[8px] border border-richblack-700 bg-richblack-800 px-[12px] py-[8px] text-richblack-100"
                 }`}
               >
-                Log in
+                {t("login")}
               </button>
             </Link>
           )}
@@ -238,10 +242,24 @@ function Navbar() {
                     : "rounded-[8px] border border-richblack-700 bg-richblack-800 px-[12px] py-[8px] text-richblack-100"
                 }`}
               >
-                Sign up
+                {t("signup")}
               </button>
             </Link>
           )}
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value)}
+            aria-label="Select language"
+            className={`rounded-md border bg-transparent px-2 py-1 text-xs ${
+              isHomePage ? "border-white/20 text-white" : "border-richblack-600 text-richblack-100"
+            }`}
+          >
+            {SUPPORTED_LOCALES.map((l) => (
+              <option key={l.code} value={l.code} className="text-richblack-900">
+                {l.label}
+              </option>
+            ))}
+          </select>
           {token !== null && <NotificationBell />}
           {token !== null && <ProfileDropdown />}
 
