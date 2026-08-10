@@ -93,7 +93,7 @@ export default function ChangeProfilePicture() {
                 onClick={handleFileUpload}
               >
                 {!loading && (
-                  <FiUpload className="text-lg text-richblack-900" />
+                  <FiUpload className="text-lg text-ink" />
                 )}
               </IconBtn>
             </div>

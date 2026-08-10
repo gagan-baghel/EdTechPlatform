@@ -33,7 +33,10 @@ function Template({ eyebrow, title, subtitle, image, formType }) {
   const content = contentByType[formType]
 
   return (
-    <section className="relative isolate overflow-hidden bg-richblack-900">
+    // Pinned dark — see pages/About.jsx's comment; same gradient hero /
+    // glow pattern (covers both Login and Signup, which just pass title
+    // content into this shared shell).
+    <section data-theme="dark" className="relative isolate overflow-hidden bg-richblack-900">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(195,235,250,0.18),_transparent_28%)]" />
       <div className="absolute inset-y-0 right-0 w-[45%] bg-[radial-gradient(circle_at_center,_rgba(250,226,124,0.1),_transparent_58%)]" />
       <div
@@ -54,7 +57,7 @@ function Template({ eyebrow, title, subtitle, image, formType }) {
             <div className="mb-6 inline-flex max-w-max items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-100 backdrop-blur-xl">
               {eyebrow || content.badge}
             </div>
-            <h1 className="max-w-3xl text-5xl font-black leading-[1.02] tracking-tighter text-white sm:text-6xl lg:text-7xl xl:text-[5.4rem]">
+            <h1 className="max-w-3xl text-5xl font-black leading-[1.02] tracking-tighter text-richblack-5 sm:text-6xl lg:text-7xl xl:text-[5.4rem]">
               {title}
             </h1>
             <p className="mt-4 max-w-xl text-base leading-relaxed text-richblack-100 sm:text-lg">
@@ -86,7 +89,7 @@ function Template({ eyebrow, title, subtitle, image, formType }) {
             <div className="w-full rounded-[36px] border border-white/10 bg-richblack-800/75 p-6 shadow-[0_35px_120px_rgba(0,8,20,0.55)] backdrop-blur-2xl sm:p-8">
               <div className="mb-8">
                 <div>
-                  <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                  <h2 className="text-3xl font-bold tracking-tight text-richblack-5 sm:text-4xl">
                     {content.cardTitle}
                   </h2>
                   <p className="mt-2 max-w-xl text-sm leading-6 text-richblack-200 sm:text-base">
@@ -100,7 +103,7 @@ function Template({ eyebrow, title, subtitle, image, formType }) {
                   to="/login"
                   className={`flex-1 rounded-full px-4 py-3 text-center text-sm font-semibold transition-all ${
                     formType === "login"
-                      ? "bg-white text-richblack-900 shadow-[0_12px_30px_rgba(255,255,255,0.16)]"
+                      ? "bg-white text-ink shadow-[0_12px_30px_rgba(255,255,255,0.16)]"
                       : "text-richblack-300 hover:text-richblack-5"
                   }`}
                 >
@@ -110,7 +113,7 @@ function Template({ eyebrow, title, subtitle, image, formType }) {
                   to="/signup"
                   className={`flex-1 rounded-full px-4 py-3 text-center text-sm font-semibold transition-all ${
                     formType === "signup"
-                      ? "bg-white text-richblack-900 shadow-[0_12px_30px_rgba(255,255,255,0.16)]"
+                      ? "bg-white text-ink shadow-[0_12px_30px_rgba(255,255,255,0.16)]"
                       : "text-richblack-300 hover:text-richblack-5"
                   }`}
                 >

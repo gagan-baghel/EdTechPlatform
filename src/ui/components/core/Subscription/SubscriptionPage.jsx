@@ -64,7 +64,7 @@ export default function SubscriptionPage() {
   const isActive = mySubscription && mySubscription.status !== "cancelled"
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-16 text-white">
+    <div className="mx-auto max-w-4xl px-4 py-16 text-richblack-5">
       <h1 className="text-center text-3xl font-semibold">All-access subscription</h1>
       <p className="mx-auto mt-3 max-w-xl text-center text-richblack-300">
         One plan, every published course — no per-course purchases.

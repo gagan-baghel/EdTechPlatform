@@ -7,7 +7,31 @@ import { toast } from "react-hot-toast"
 import { apiConnector } from "../../../../services/apiconnector"
 import { profileEndpoints } from "../../../../services/apis"
 import { useAccessibilityPrefs } from "../../../../hooks/useAccessibilityPrefs"
+import { useTheme } from "../../../../providers/ThemeProvider"
+import { SUPPORTED_LOCALES, useLocaleSwitcher } from "../../../../providers/LocaleProvider"
 import Card from "../../../common/Card"
+
+// Intl.supportedValuesOf is modern (Chrome 99+/Safari 15.4+) but not
+// universal — the whole timezone select degrades to a short curated list
+// on anything older instead of throwing.
+function listTimezones() {
+  try {
+    return Intl.supportedValuesOf("timeZone")
+  } catch {
+    return [
+      "UTC",
+      "Asia/Kolkata",
+      "Asia/Dubai",
+      "Asia/Singapore",
+      "Europe/London",
+      "Europe/Berlin",
+      "America/New_York",
+      "America/Chicago",
+      "America/Los_Angeles",
+      "Australia/Sydney",
+    ]
+  }
+}
 
 export default function PreferencesPanel() {
   const { token } = useSelector((state) => state.auth)
@@ -17,7 +41,13 @@ export default function PreferencesPanel() {
   const [weeklyGoalMinutes, setWeeklyGoalMinutes] = useState(details.weeklyGoalMinutes ?? 0)
   const [defaultPlaybackSpeed, setDefaultPlaybackSpeed] = useState(details.defaultPlaybackSpeed ?? 1)
   const [autoplayNext, setAutoplayNext] = useState(details.autoplayNext ?? true)
+  const [timezone, setTimezoneState] = useState(
+    details.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
+  )
   const { reducedMotion, setReducedMotion, fontScale, setFontScale } = useAccessibilityPrefs()
+  const { theme, setTheme } = useTheme()
+  const { locale, setLocale } = useLocaleSwitcher()
+  const timezones = listTimezones()
 
   const savePreferences = async (patch) => {
     try {
@@ -27,6 +57,21 @@ export default function PreferencesPanel() {
     } catch (error) {
       toast.error("Could not save preference")
     }
+  }
+
+  const handleTimezoneChange = (value) => {
+    setTimezoneState(value)
+    savePreferences({ timezone: value })
+  }
+
+  const handleThemeChange = (value) => {
+    setTheme(value)
+    savePreferences({ theme: value })
+  }
+
+  const handleLocaleChange = (value) => {
+    setLocale(value)
+    savePreferences({ locale: value })
   }
 
   const handleExportData = async () => {
@@ -90,6 +135,51 @@ export default function PreferencesPanel() {
               }}
               className="h-4 w-4 rounded border-richblack-500 bg-richblack-700"
             />
+          </label>
+        </div>
+      </Card>
+
+      <Card padding="p-6" className="my-6">
+        <h2 className="mb-4 text-lg font-semibold text-richblack-5">Appearance & language</h2>
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1 text-sm text-richblack-100">
+            Theme
+            <select
+              value={theme}
+              onChange={(e) => handleThemeChange(e.target.value)}
+              className="form-style w-40"
+            >
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-richblack-100">
+            Language
+            <select
+              value={locale}
+              onChange={(e) => handleLocaleChange(e.target.value)}
+              className="form-style w-40"
+            >
+              {SUPPORTED_LOCALES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm text-richblack-100">
+            Timezone
+            <select
+              value={timezone}
+              onChange={(e) => handleTimezoneChange(e.target.value)}
+              className="form-style w-full max-w-xs"
+            >
+              {timezones.map((tz) => (
+                <option key={tz} value={tz}>
+                  {tz}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
       </Card>

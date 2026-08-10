@@ -35,6 +35,28 @@ const profileSchema = new  mongoose.Schema({
     autoplayNext: {
         type: Boolean,
         default: true,
+    },
+    // Appearance & language (Settings). theme/locale are also mirrored to
+    // localStorage for instant client-side effect (ThemeProvider.jsx,
+    // LocaleProvider.jsx) — stored here too so they follow the user across
+    // devices instead of resetting on a fresh browser.
+    theme: {
+        type: String,
+        enum: ["dark", "light"],
+        default: "dark",
+    },
+    locale: {
+        type: String,
+        enum: ["en", "hi"],
+        default: "en",
+    },
+    // IANA zone name (e.g. "Asia/Kolkata"). Used by formatDate.js wherever
+    // a component passes it through, instead of the viewer's local
+    // browser zone — matters for anything read across devices/timezones,
+    // like an instructor scheduling a live session for students elsewhere.
+    timezone: {
+        type: String,
+        default: null,
     }
 
 })

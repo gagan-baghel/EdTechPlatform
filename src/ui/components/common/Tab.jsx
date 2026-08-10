@@ -8,7 +8,7 @@ export default function Tab({ tabData, field, setField }) {
           onClick={() => setField(tab.type)}
           className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold transition-all duration-200 ${
             field === tab.type
-              ? "bg-gradient-to-r from-[#c3ebfa] to-white text-richblack-900 shadow-[0_12px_30px_rgba(195,235,250,0.18)]"
+              ? "bg-gradient-to-r from-[#c3ebfa] to-white text-ink shadow-[0_12px_30px_rgba(195,235,250,0.18)]"
               : "bg-transparent text-richblack-300 hover:text-richblack-5"
           }`}
         >

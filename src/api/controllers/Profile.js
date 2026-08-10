@@ -70,7 +70,7 @@ exports.updateProfile = async (req, res) => {
  */
 exports.updatePreferences = async (req, res) => {
 	try {
-		const { weeklyGoalMinutes, defaultPlaybackSpeed, autoplayNext } = req.body
+		const { weeklyGoalMinutes, defaultPlaybackSpeed, autoplayNext, theme, locale, timezone } = req.body
 
 		const userDetails = await User.findById(req.user.id)
 		if (!userDetails) {
@@ -81,6 +81,9 @@ exports.updatePreferences = async (req, res) => {
 		if (weeklyGoalMinutes !== undefined) update.weeklyGoalMinutes = Number(weeklyGoalMinutes)
 		if (defaultPlaybackSpeed !== undefined) update.defaultPlaybackSpeed = Number(defaultPlaybackSpeed)
 		if (autoplayNext !== undefined) update.autoplayNext = Boolean(autoplayNext)
+		if (theme !== undefined && ["dark", "light"].includes(theme)) update.theme = theme
+		if (locale !== undefined && ["en", "hi"].includes(locale)) update.locale = locale
+		if (timezone !== undefined) update.timezone = timezone || null
 
 		const profile = await Profile.findByIdAndUpdate(userDetails.additionalDetails, update, { new: true })
 

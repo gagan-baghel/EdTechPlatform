@@ -60,7 +60,7 @@ export default function Onboarding() {
 
   if (user.accountType === ACCOUNT_TYPE.INSTRUCTOR) {
     return (
-      <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-2xl flex-col items-center justify-center px-4 text-center text-white">
+      <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-2xl flex-col items-center justify-center px-4 text-center text-richblack-5">
         <h1 className="text-3xl font-semibold">Welcome, {user.firstName}</h1>
         <p className="mt-4 text-richblack-300">
           Here&apos;s the fastest path to your first published course:
@@ -78,7 +78,7 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-xl flex-col items-center justify-center px-4 text-center text-white">
+    <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-xl flex-col items-center justify-center px-4 text-center text-richblack-5">
       <h1 className="text-3xl font-semibold">Welcome, {user.firstName}</h1>
       <p className="mt-4 text-richblack-300">What brings you here? This helps us point you at the right courses.</p>
 

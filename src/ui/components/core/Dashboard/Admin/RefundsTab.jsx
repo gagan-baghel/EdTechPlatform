@@ -82,7 +82,7 @@ export default function RefundsTab() {
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-pink-700 px-4 py-2 font-semibold text-white disabled:opacity-60"
+          className="rounded-md bg-pink-700 px-4 py-2 font-semibold text-paper disabled:opacity-60"
         >
           {submitting ? "Processing..." : "Issue refund"}
         </button>

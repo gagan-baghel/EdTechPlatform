@@ -37,7 +37,9 @@ const stats = [
 
 function About() {
   return (
-    <div className="bg-richblack-900 text-white">
+    // Pinned dark — the hero's gradient text/glows (#c3ebfa/#fae27c) are
+    // tuned only for a dark backdrop, same as Home.jsx.
+    <div data-theme="dark" className="bg-richblack-900 text-richblack-5">
       <section className="relative overflow-hidden px-6 py-20 sm:px-8 lg:px-10 lg:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(195,235,250,0.18),_transparent_30%)]" />
         <div className="absolute inset-y-0 right-0 w-[40%] bg-[radial-gradient(circle_at_center,_rgba(250,226,124,0.09),_transparent_60%)]" />
@@ -46,7 +48,7 @@ function About() {
             <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-100 backdrop-blur-xl">
               About IntelleCraft
             </div>
-            <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[1.02] tracking-tighter text-white sm:text-6xl lg:text-7xl">
+            <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[1.02] tracking-tighter text-richblack-5 sm:text-6xl lg:text-7xl">
               Modern school operations,{" "}
               <span className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-transparent">
                 kept simple.
@@ -62,7 +64,7 @@ function About() {
                   key={item.label}
                   className="rounded-[24px] border border-white/10 bg-richblack-800/70 px-4 py-5 text-center backdrop-blur-xl"
                 >
-                  <div className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+                  <div className="text-2xl font-black tracking-tight text-richblack-5 sm:text-3xl">
                     {item.value}
                   </div>
                   <div className="mt-1 text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-richblack-300 sm:text-[0.72rem]">
@@ -75,14 +77,14 @@ function About() {
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <Link
                 to="/signup"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-richblack-900 transition-all hover:scale-[1.01]"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-ink transition-all hover:scale-[1.01]"
               >
                 Start free
                 <AiOutlineArrowRight className="h-5 w-5" />
               </Link>
               <Link
                 to="/contact"
-                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-richblack-800/70 px-8 py-4 text-sm font-semibold text-white transition-all hover:bg-richblack-700/80"
+                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-richblack-800/70 px-8 py-4 text-sm font-semibold text-richblack-5 transition-all hover:bg-richblack-700/80"
               >
                 Talk to us
               </Link>
@@ -142,7 +144,7 @@ function About() {
               <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-300">
                 Why we built it
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-richblack-5 sm:text-4xl">
                 Schools need sharper systems, not more tabs.
               </h2>
               <p className="mt-4 text-base leading-8 text-richblack-200">
@@ -164,7 +166,7 @@ function About() {
 
       <section className="px-6 pb-20 sm:px-8 lg:px-10 lg:pb-24">
         <div className="mx-auto max-w-5xl rounded-[36px] border border-white/10 bg-richblack-800/70 px-6 py-10 text-center shadow-[0_30px_90px_rgba(0,8,20,0.42)] backdrop-blur-xl sm:px-10">
-          <h2 className="text-4xl font-black tracking-tighter text-white sm:text-5xl">
+          <h2 className="text-4xl font-black tracking-tighter text-richblack-5 sm:text-5xl">
             Build a calmer campus workflow.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-richblack-200">
@@ -173,13 +175,13 @@ function About() {
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
               to="/signup"
-              className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-sm font-bold text-richblack-900 transition-all hover:scale-[1.01]"
+              className="inline-flex items-center justify-center rounded-full bg-white px-8 py-4 text-sm font-bold text-ink transition-all hover:scale-[1.01]"
             >
               Create account
             </Link>
             <Link
               to="/contact"
-              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-richblack-900/70 px-8 py-4 text-sm font-semibold text-white transition-all hover:bg-richblack-800"
+              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-richblack-900/70 px-8 py-4 text-sm font-semibold text-richblack-5 transition-all hover:bg-richblack-800"
             >
               Contact sales
             </Link>

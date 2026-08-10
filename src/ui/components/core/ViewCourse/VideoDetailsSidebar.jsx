@@ -166,7 +166,7 @@ export default function VideoDetailsSidebar({ setReviewModal, open = false, onCl
                           <span
                             className={`grid h-4 w-4 shrink-0 place-items-center rounded-sm border text-[10px] ${
                               isComplete
-                                ? "border-caribbeangreen-300 bg-caribbeangreen-300 text-richblack-900"
+                                ? "border-caribbeangreen-300 bg-caribbeangreen-300 text-ink"
                                 : "border-richblack-400"
                             }`}
                             aria-hidden="true"

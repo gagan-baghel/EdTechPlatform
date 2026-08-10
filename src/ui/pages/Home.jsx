@@ -147,7 +147,13 @@ function Home() {
   const t = useTranslations("Home")
 
   return (
-    <div className="min-h-screen bg-richblack-900 selection:bg-[#c3ebfa] selection:text-richblack-900">
+    // Pinned dark regardless of the site theme — this page is a full-bleed
+    // photo/gradient marketing page, not app chrome; see globals.css's
+    // [data-theme="dark"] comment for why.
+    <div
+      data-theme="dark"
+      className="min-h-screen bg-richblack-900 selection:bg-[#c3ebfa] selection:text-ink"
+    >
       <section className="relative flex min-h-[800px] h-screen items-center justify-center overflow-hidden bg-richblack-900">
         <div className="absolute inset-0 h-[120%] w-full">
           <Image
@@ -186,7 +192,7 @@ function Home() {
           <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">
             <Link
               to="/signup"
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-10 py-5 text-lg font-bold text-richblack-900 shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all hover:scale-105 active:scale-95 sm:w-auto"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-10 py-5 text-lg font-bold text-ink shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all hover:scale-105 active:scale-95 sm:w-auto"
             >
               {t("createAccount")}
               <AiOutlineArrowRight className="text-xl" />

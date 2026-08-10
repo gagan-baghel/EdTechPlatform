@@ -41,7 +41,7 @@ export default function RenderSteps() {
                 } ${step > item.id && "bg-yellow-50 text-yellow-50"}} `}
               >
                 {step > item.id ? (
-                  <FaCheck className="font-bold text-richblack-900" />
+                  <FaCheck className="font-bold text-ink" />
                 ) : (
                   item.id
                 )}

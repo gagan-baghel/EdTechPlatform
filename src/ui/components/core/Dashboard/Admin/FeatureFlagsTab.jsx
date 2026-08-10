@@ -43,7 +43,7 @@ export default function FeatureFlagsTab() {
           placeholder="new_flag_key"
           className="form-style"
         />
-        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-richblack-900">
+        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-ink">
           Add flag
         </button>
       </form>
@@ -70,7 +70,7 @@ export default function FeatureFlagsTab() {
                 type="button"
                 onClick={() => handleToggle(flag)}
                 className={`rounded-md px-4 py-2 text-sm font-semibold ${
-                  flag.enabled ? "bg-caribbeangreen-200 text-richblack-900" : "bg-richblack-600 text-richblack-100"
+                  flag.enabled ? "bg-caribbeangreen-200 text-ink" : "bg-richblack-600 text-richblack-100"
                 }`}
               >
                 {flag.enabled ? "Enabled" : "Disabled"}

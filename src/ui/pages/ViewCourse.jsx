@@ -92,7 +92,7 @@ export default function ViewCourse({ children }) {
             <button
               type="button"
               onClick={loadCourse}
-              className="rounded-md bg-yellow-50 px-5 py-2 font-semibold text-richblack-900 transition hover:bg-yellow-25"
+              className="rounded-md bg-yellow-50 px-5 py-2 font-semibold text-ink transition hover:bg-yellow-25"
             >
               Try again
             </button>
@@ -121,7 +121,7 @@ export default function ViewCourse({ children }) {
           </p>
           <Link
             to="/dashboard/enrolled-courses"
-            className="mt-6 inline-block rounded-md bg-yellow-50 px-5 py-2 font-semibold text-richblack-900 transition hover:bg-yellow-25"
+            className="mt-6 inline-block rounded-md bg-yellow-50 px-5 py-2 font-semibold text-ink transition hover:bg-yellow-25"
           >
             Back to my courses
           </Link>

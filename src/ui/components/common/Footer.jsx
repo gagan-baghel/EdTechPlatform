@@ -46,7 +46,11 @@ const Footer = () => {
                 />
               </div>
               <div>
-                <span className="block text-2xl font-semibold tracking-tight text-white">
+                <span
+                  className={`block text-2xl font-semibold tracking-tight ${
+                    isHomePage ? "text-white" : "text-richblack-5"
+                  }`}
+                >
                   IntelleCraft
                 </span>
                 <span className={`text-sm ${eyebrowTextClass}`}>

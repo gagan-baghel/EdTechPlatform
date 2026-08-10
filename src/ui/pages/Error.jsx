@@ -10,7 +10,8 @@ export default function Error({
   message = "The link may be out of date, or the page may have moved.",
 }) {
   return (
-    <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-richblack-900 px-6 py-16">
+    // Pinned dark — see About.jsx's comment; same gradient-text pattern.
+    <div data-theme="dark" className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-richblack-900 px-6 py-16">
       <div className="w-full max-w-lg text-center">
         <p className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-7xl font-black tracking-tighter text-transparent sm:text-8xl">
           {code}
@@ -23,7 +24,7 @@ export default function Error({
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Link
             to="/"
-            className="rounded-md bg-yellow-50 px-6 py-3 font-semibold text-richblack-900 transition hover:bg-yellow-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-offset-2 focus-visible:ring-offset-richblack-900"
+            className="rounded-md bg-yellow-50 px-6 py-3 font-semibold text-ink transition hover:bg-yellow-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-offset-2 focus-visible:ring-offset-richblack-900"
           >
             Back to home
           </Link>

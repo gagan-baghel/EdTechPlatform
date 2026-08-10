@@ -81,7 +81,7 @@ export default function CouponsTab() {
             className="form-style w-28"
           />
         </div>
-        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-richblack-900">
+        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-ink">
           Create
         </button>
       </form>

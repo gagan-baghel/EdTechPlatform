@@ -5,6 +5,84 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Light/dark theme (Settings > Appearance, useTheme.js sets data-theme on
+ * <html>). The richblack-* scale is used ~1000 times across the app as
+ * "page chrome" (backgrounds, borders, body text) — rather than touching
+ * every className, the scale's VALUES become swappable CSS variables and
+ * every Tailwind richblack-* utility resolves through them (see
+ * tailwind.config.js). Light mode is a straight positional reversal of
+ * the already-designed dark scale (shade 5 takes shade 900's value, 25
+ * takes 800's, etc.) — this reuses contrast relationships that are
+ * already correct in one direction instead of hand-picking 12 new colors,
+ * so nothing can end up with worse contrast than something already in the
+ * app.
+ *
+ * --ink and --paper do NOT change with theme — they back text-ink/
+ * text-paper, used where richblack-900/richblack-5 were previously text
+ * sitting on a FIXED accent surface (a yellow-50 button, a white pill,
+ * caribbeangreen/pink status badges). Accent colors themselves don't
+ * shift between themes, so that text can't shift either without breaking
+ * contrast — see the text-ink/text-paper migration in the component
+ * files for the ~55 sites this applied to.
+ */
+:root {
+  --richblack-5: 241 242 255;
+  --richblack-25: 219 221 234;
+  --richblack-50: 197 199 212;
+  --richblack-100: 175 178 191;
+  --richblack-200: 153 157 170;
+  --richblack-300: 131 136 148;
+  --richblack-400: 110 114 127;
+  --richblack-500: 88 93 105;
+  --richblack-600: 66 72 84;
+  --richblack-700: 44 51 63;
+  --richblack-800: 22 29 41;
+  --richblack-900: 0 8 20;
+
+  --ink: 0 8 20;
+  --paper: 241 242 255;
+}
+
+:root[data-theme="light"] {
+  --richblack-5: 0 8 20;
+  --richblack-25: 22 29 41;
+  --richblack-50: 44 51 63;
+  --richblack-100: 66 72 84;
+  --richblack-200: 88 93 105;
+  --richblack-300: 110 114 127;
+  --richblack-400: 131 136 148;
+  --richblack-500: 153 157 170;
+  --richblack-600: 175 178 191;
+  --richblack-700: 197 199 212;
+  --richblack-800: 219 221 234;
+  --richblack-900: 241 242 255;
+}
+
+/*
+ * Escape hatch for sections that can't flip: the homepage hero (and a
+ * couple of similar full-bleed marketing sections) hardcode a dark photo
+ * background with text colored to match — the light-mode override above
+ * would flip the TEXT while the PHOTO stays dark, breaking contrast.
+ * Applying data-theme="dark" on a wrapper re-pins everything inside it to
+ * dark values regardless of the site-wide setting, via plain CSS
+ * cascade — no JS, no per-element opt-out needed. See Home.jsx's root div.
+ */
+[data-theme="dark"] {
+  --richblack-5: 241 242 255;
+  --richblack-25: 219 221 234;
+  --richblack-50: 197 199 212;
+  --richblack-100: 175 178 191;
+  --richblack-200: 153 157 170;
+  --richblack-300: 131 136 148;
+  --richblack-400: 110 114 127;
+  --richblack-500: 88 93 105;
+  --richblack-600: 66 72 84;
+  --richblack-700: 44 51 63;
+  --richblack-800: 22 29 41;
+  --richblack-900: 0 8 20;
+}
+
 html,
 body {
   overflow-x: hidden;
@@ -14,7 +92,7 @@ body {
 /* Firefox */
 * {
   scrollbar-width: auto;
-  scrollbar-color: #afb2bf;
+  scrollbar-color: rgb(var(--richblack-100));
 }
 
 /* Chrome, Edge, and Safari */
@@ -23,11 +101,11 @@ body {
 }
 
 *::-webkit-scrollbar-track {
-  background: #000814;
+  background: rgb(var(--richblack-900));
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #afb2bf;
+  background-color: rgb(var(--richblack-100));
   border-radius: 10px;
   visibility: hidden;
 }
@@ -51,7 +129,7 @@ details > summary::-webkit-details-marker {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: 9px solid #f1f2ff;
+  border: 9px solid rgb(var(--richblack-5));
   animation: spinner-bulqg1 0.8s infinite linear alternate,
     spinner-oaa3wk 1.6s infinite linear;
 }
@@ -215,7 +293,7 @@ details > summary::-webkit-details-marker {
 
 /* Buttons */
 .yellowButton {
-  @apply cursor-pointer rounded-md bg-yellow-50 px-[20px] py-[8px] font-semibold text-richblack-900;
+  @apply cursor-pointer rounded-md bg-yellow-50 px-[20px] py-[8px] font-semibold text-ink;
 }
 
 /* Swiper CSS Starts */

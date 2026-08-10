@@ -294,7 +294,7 @@ export default function CourseInformationForm() {
             onClick={() => {
               dispatch(setStep(2))}}
             disabled={loading}
-            className={`flex cursor-pointer items-center gap-x-2 rounded-md bg-richblack-300 py-[8px] px-[20px] font-semibold text-richblack-900`}
+            className={`flex cursor-pointer items-center gap-x-2 rounded-md bg-richblack-300 py-[8px] px-[20px] font-semibold text-ink`}
           >
             Continue Wihout Saving
           </button>

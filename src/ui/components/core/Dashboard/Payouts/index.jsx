@@ -130,7 +130,7 @@ export default function Payouts() {
           <button
             type="submit"
             disabled={saving}
-            className="w-fit rounded-md bg-yellow-50 px-6 py-2 font-semibold text-richblack-900 disabled:opacity-60"
+            className="w-fit rounded-md bg-yellow-50 px-6 py-2 font-semibold text-ink disabled:opacity-60"
           >
             {saving ? "Saving..." : profile ? "Update details" : "Submit details"}
           </button>

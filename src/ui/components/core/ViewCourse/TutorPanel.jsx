@@ -54,7 +54,7 @@ export default function TutorPanel({ subSectionId }) {
         <button
           type="submit"
           disabled={asking}
-          className="rounded-md bg-yellow-50 px-4 py-2 text-sm font-semibold text-richblack-900"
+          className="rounded-md bg-yellow-50 px-4 py-2 text-sm font-semibold text-ink"
         >
           {asking ? "Thinking..." : "Ask"}
         </button>

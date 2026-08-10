@@ -99,7 +99,7 @@ export default function MobileNav({ open, onClose, subLinks, categoriesLoading }
         className="absolute right-0 top-0 flex h-full w-[85%] max-w-sm flex-col overflow-y-auto border-l border-richblack-700 bg-richblack-900 shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-richblack-700 px-5 py-4">
-          <span className="text-lg font-semibold text-white">Menu</span>
+          <span className="text-lg font-semibold text-richblack-5">Menu</span>
           <button
             type="button"
             onClick={onClose}
@@ -195,7 +195,7 @@ export default function MobileNav({ open, onClose, subLinks, categoriesLoading }
                     Cart
                   </span>
                   {totalItems > 0 && (
-                    <span className="grid h-6 min-w-6 place-items-center rounded-full bg-yellow-50 px-2 text-xs font-bold text-richblack-900">
+                    <span className="grid h-6 min-w-6 place-items-center rounded-full bg-yellow-50 px-2 text-xs font-bold text-ink">
                       {totalItems}
                     </span>
                   )}
@@ -236,7 +236,7 @@ export default function MobileNav({ open, onClose, subLinks, categoriesLoading }
               <Link
                 to="/signup"
                 onClick={onClose}
-                className="rounded-lg bg-yellow-50 px-4 py-3 text-center font-semibold text-richblack-900 transition hover:bg-yellow-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50"
+                className="rounded-lg bg-yellow-50 px-4 py-3 text-center font-semibold text-ink transition hover:bg-yellow-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50"
               >
                 Sign up
               </Link>

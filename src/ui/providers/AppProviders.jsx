@@ -10,6 +10,7 @@ import { useNavigate } from "../lib/router"
 import { getUserDetails } from "../services/operations/profileAPI"
 import { useAccessibilityPrefs } from "../hooks/useAccessibilityPrefs"
 import LocaleProvider from "./LocaleProvider"
+import ThemeProvider from "./ThemeProvider"
 
 // Applies the stored reduced-motion/font-size preference on every page
 // load, not just while Settings happens to be mounted — the hook's
@@ -88,13 +89,15 @@ export default function AppProviders({ children }) {
 
   return (
     <Provider store={storeRef.current}>
-      <LocaleProvider>
-        <AuthBootstrap />
-        <AccessibilityBootstrap />
-        <ReferralCapture />
-        {children}
-        <Toaster />
-      </LocaleProvider>
+      <ThemeProvider>
+        <LocaleProvider>
+          <AuthBootstrap />
+          <AccessibilityBootstrap />
+          <ReferralCapture />
+          {children}
+          <Toaster />
+        </LocaleProvider>
+      </ThemeProvider>
     </Provider>
   )
 }

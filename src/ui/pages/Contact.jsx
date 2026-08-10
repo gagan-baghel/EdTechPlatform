@@ -10,7 +10,8 @@ const contactImage =
 
 function Contact() {
   return (
-    <div className="bg-richblack-900 text-white">
+    // Pinned dark — see About.jsx's comment; same gradient hero pattern.
+    <div data-theme="dark" className="bg-richblack-900 text-richblack-5">
       <section className="relative overflow-hidden px-6 py-20 sm:px-8 lg:px-10 lg:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(195,235,250,0.18),_transparent_32%)]" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
@@ -18,7 +19,7 @@ function Contact() {
             <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-100 backdrop-blur-xl">
               Contact us
             </div>
-            <h1 className="mt-6 text-5xl font-black leading-[1.02] tracking-tighter text-white sm:text-6xl lg:text-7xl">
+            <h1 className="mt-6 text-5xl font-black leading-[1.02] tracking-tighter text-richblack-5 sm:text-6xl lg:text-7xl">
               Let&apos;s keep it{" "}
               <span className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-transparent">
                 simple.

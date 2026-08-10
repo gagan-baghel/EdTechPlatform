@@ -11,20 +11,32 @@ module.exports = {
       white: "#fff",
       black: "#000",
       transparent: "#ffffff00",
+      // Values come from CSS custom properties (globals.css), not literal
+      // hex — that's what lets Settings > Appearance flip every
+      // richblack-* utility in the app between dark and light without
+      // touching any component's className. rgb(var(..) / <alpha-value>)
+      // is the standard Tailwind pattern for CSS-variable colors that
+      // still support opacity modifiers (bg-richblack-800/50 etc).
       richblack: {
-        5: "#F1F2FF",
-        25: "#DBDDEA",
-        50: "#C5C7D4",
-        100: "#AFB2BF",
-        200: "#999DAA",
-        300: "#838894",
-        400: "#6E727F",
-        500: "#585D69",
-        600: "#424854",
-        700: "#2C333F",
-        800: "#161D29",
-        900: "#000814",
+        5: "rgb(var(--richblack-5) / <alpha-value>)",
+        25: "rgb(var(--richblack-25) / <alpha-value>)",
+        50: "rgb(var(--richblack-50) / <alpha-value>)",
+        100: "rgb(var(--richblack-100) / <alpha-value>)",
+        200: "rgb(var(--richblack-200) / <alpha-value>)",
+        300: "rgb(var(--richblack-300) / <alpha-value>)",
+        400: "rgb(var(--richblack-400) / <alpha-value>)",
+        500: "rgb(var(--richblack-500) / <alpha-value>)",
+        600: "rgb(var(--richblack-600) / <alpha-value>)",
+        700: "rgb(var(--richblack-700) / <alpha-value>)",
+        800: "rgb(var(--richblack-800) / <alpha-value>)",
+        900: "rgb(var(--richblack-900) / <alpha-value>)",
       },
+      // Fixed regardless of theme — text sitting on an accent surface
+      // (buttons, badges) that doesn't itself change between themes.
+      // See globals.css's comment on --ink/--paper for why these exist
+      // instead of just using richblack-900/richblack-5 for this.
+      ink: "rgb(var(--ink) / <alpha-value>)",
+      paper: "rgb(var(--paper) / <alpha-value>)",
       richblue: {
         5: "#ECF5FF",
         25: "#C6D6E1",

@@ -69,7 +69,7 @@ export default function CopilotOutlineHelper() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-yellow-50 px-4 py-2 text-sm font-semibold text-richblack-900"
+          className="rounded-md bg-yellow-50 px-4 py-2 text-sm font-semibold text-ink"
         >
           {loading ? "Drafting..." : "Draft outline"}
         </button>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import Image from "next/image"
 import { AiOutlineMenu, AiOutlineShoppingCart } from "react-icons/ai"
 import { BsChevronDown } from "react-icons/bs"
+import { FiMoon, FiSun } from "react-icons/fi"
 import { useTranslations } from "next-intl"
 import { useSelector } from "react-redux"
 import { Link, matchPath, useLocation } from "@/ui/lib/router"
@@ -10,6 +11,7 @@ import { NavbarLinks } from "../../data/navbar-links"
 import { fetchCategoriesCached } from "../../services/sharedData"
 import { ACCOUNT_TYPE } from "../../utils/constants"
 import { SUPPORTED_LOCALES, useLocaleSwitcher } from "../../providers/LocaleProvider"
+import { useTheme } from "../../providers/ThemeProvider"
 import ProfileDropdown from "../core/Auth/ProfileDropDown"
 import MobileNav from "./MobileNav"
 import NotificationBell from "./NotificationBell"
@@ -23,6 +25,7 @@ function Navbar() {
   const isHomePage = location.pathname === "/"
   const t = useTranslations("Navbar")
   const { locale, setLocale } = useLocaleSwitcher()
+  const { theme, toggleTheme } = useTheme()
 
   const [subLinks, setSubLinks] = useState([])
   const [loading, setLoading] = useState(false)
@@ -109,8 +112,22 @@ function Navbar() {
             />
           </div>
           <div className="flex flex-col">
-            <span className="text-xl font-semibold tracking-tight text-white">IntelleCraft</span>
-            <span className="hidden text-xs uppercase tracking-[0.24em] text-white/55 lg:block">
+            {/* Fixed white only in the transparent-over-hero-image state
+                (home, unscrolled) — everywhere else the navbar has its own
+                opaque, theme-flipping background, so the logo needs to
+                flip with it or it goes invisible in light mode. */}
+            <span
+              className={`text-xl font-semibold tracking-tight ${
+                isHomePage && !scrolled ? "text-white" : "text-richblack-5"
+              }`}
+            >
+              IntelleCraft
+            </span>
+            <span
+              className={`hidden text-xs uppercase tracking-[0.24em] lg:block ${
+                isHomePage && !scrolled ? "text-white/55" : "text-richblack-5/55"
+              }`}
+            >
               Education OS
             </span>
           </div>
@@ -145,7 +162,7 @@ function Navbar() {
                     >
                       <p>{link.title}</p>
                       <BsChevronDown />
-                      <div className="invisible absolute left-[50%] top-[50%] z-[1000] flex w-[200px] translate-x-[-50%] translate-y-[3em] flex-col rounded-lg bg-richblack-5 p-4 text-richblack-900 opacity-0 transition-all duration-150 group-hover:visible group-hover:translate-y-[1.65em] group-hover:opacity-100 lg:w-[300px]">
+                      <div className="invisible absolute left-[50%] top-[50%] z-[1000] flex w-[200px] translate-x-[-50%] translate-y-[3em] flex-col rounded-lg bg-richblack-5 p-4 text-ink opacity-0 transition-all duration-150 group-hover:visible group-hover:translate-y-[1.65em] group-hover:opacity-100 lg:w-[300px]">
                         <div className="absolute left-[50%] top-0 -z-10 h-6 w-6 translate-x-[80%] translate-y-[-40%] rotate-45 select-none rounded bg-richblack-5"></div>
                         {loading ? (
                           <p className="text-center">Loading...</p>
@@ -223,7 +240,10 @@ function Navbar() {
                   isHomePage
                     ? scrolled
                       ? "border border-richblack-600 bg-richblack-800 text-richblack-5 hover:bg-richblack-700"
-                      : "border border-white/15 bg-richblack-800/70 text-white hover:bg-richblack-700/80"
+                      : // Fixed, not richblack-800/70 — this sits directly on
+                        // the permanently-dark hero image, so it must stay
+                        // dark-translucent regardless of site theme.
+                        "border border-white/15 bg-[#161D29]/70 text-white hover:bg-[#161D29]/90"
                     : "rounded-[8px] border border-richblack-700 bg-richblack-800 px-[12px] py-[8px] text-richblack-100"
                 }`}
               >
@@ -237,8 +257,8 @@ function Navbar() {
                 className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 ${
                   isHomePage
                     ? scrolled
-                      ? "bg-yellow-50 text-richblack-900 hover:bg-yellow-25"
-                      : "bg-yellow-50 text-richblack-900 hover:bg-yellow-25"
+                      ? "bg-yellow-50 text-ink hover:bg-yellow-25"
+                      : "bg-yellow-50 text-ink hover:bg-yellow-25"
                     : "rounded-[8px] border border-richblack-700 bg-richblack-800 px-[12px] py-[8px] text-richblack-100"
                 }`}
               >
@@ -255,11 +275,22 @@ function Navbar() {
             }`}
           >
             {SUPPORTED_LOCALES.map((l) => (
-              <option key={l.code} value={l.code} className="text-richblack-900">
+              <option key={l.code} value={l.code} className="text-ink">
                 {l.label}
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+            className={`rounded-md p-1.5 transition-colors ${
+              isHomePage ? "text-white hover:bg-white/10" : "text-richblack-100 hover:bg-richblack-700"
+            }`}
+          >
+            {theme === "dark" ? <FiSun size={16} /> : <FiMoon size={16} />}
+          </button>
           {token !== null && <NotificationBell />}
           {token !== null && <ProfileDropdown />}
 
@@ -287,7 +318,7 @@ function Navbar() {
           />
           {totalItems > 0 && token && user?.accountType !== ACCOUNT_TYPE.INSTRUCTOR && (
             <span
-              className="absolute right-0 top-0 grid h-4 w-4 place-items-center rounded-full bg-yellow-50 text-[10px] font-bold text-richblack-900"
+              className="absolute right-0 top-0 grid h-4 w-4 place-items-center rounded-full bg-yellow-50 text-[10px] font-bold text-ink"
               aria-hidden="true"
             >
               {totalItems}

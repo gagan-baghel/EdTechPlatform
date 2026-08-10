@@ -17,7 +17,7 @@ import { cn } from "../../lib/cn"
  * clearing in one pass.
  */
 const VARIANTS = {
-  primary: "bg-yellow-50 text-richblack-900 hover:brightness-95",
+  primary: "bg-yellow-50 text-ink hover:brightness-95",
   secondary: "bg-richblack-800 text-richblack-5 hover:brightness-110",
   // The generic bordered button (error pages, Search pagination, etc —
   // the audit's "outline secondary" pattern).
@@ -27,9 +27,9 @@ const VARIANTS = {
   // outline=true on IconBtn, but this is the contract a caller that did
   // would be relying on, so it's kept exact rather than folded into
   // "outline" above and silently changed.
-  iconBtnOutline: "border border-yellow-50 bg-transparent text-richblack-900 hover:bg-richblack-900/5",
-  ghost: "bg-richblack-300 text-richblack-900 hover:bg-richblack-200",
-  danger: "bg-pink-700 text-white hover:bg-pink-600",
+  iconBtnOutline: "border border-yellow-50 bg-transparent text-ink hover:bg-richblack-900/5",
+  ghost: "bg-richblack-300 text-ink hover:bg-richblack-200",
+  danger: "bg-pink-700 text-paper hover:bg-pink-600",
   pill: "rounded-full bg-transparent text-richblack-300 hover:text-richblack-100",
 }
 

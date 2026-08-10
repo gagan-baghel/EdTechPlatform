@@ -138,7 +138,7 @@ export default function PayoutsTab() {
             className="form-style mt-1"
           />
         </label>
-        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-richblack-900">
+        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-ink">
           Generate
         </button>
       </form>
@@ -184,7 +184,7 @@ export default function PayoutsTab() {
                       <button
                         type="button"
                         onClick={() => handleMarkPaid(payout._id)}
-                        className="rounded-md bg-caribbeangreen-200 px-3 py-1 text-sm font-semibold text-richblack-900"
+                        className="rounded-md bg-caribbeangreen-200 px-3 py-1 text-sm font-semibold text-ink"
                       >
                         Mark paid
                       </button>

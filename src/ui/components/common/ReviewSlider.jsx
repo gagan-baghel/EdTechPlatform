@@ -74,7 +74,7 @@ function ReviewSlider() {
   }, [reviews])
 
   return (
-    <div className="w-full text-richblack-900">
+    <div className="w-full text-ink">
       <div className="my-10 max-w-maxContentTab lg:max-w-maxContent">
         <Swiper
           slidesPerView={1}

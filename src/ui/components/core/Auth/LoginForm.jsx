@@ -89,7 +89,7 @@ function LoginForm() {
       </label>
       <button
         type="submit"
-        className="mt-2 rounded-full bg-white px-6 py-4 text-base font-bold text-richblack-900 shadow-[0_18px_45px_rgba(255,255,255,0.14)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_22px_55px_rgba(255,255,255,0.2)] active:scale-[0.99]"
+        className="mt-2 rounded-full bg-white px-6 py-4 text-base font-bold text-ink shadow-[0_18px_45px_rgba(255,255,255,0.14)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_22px_55px_rgba(255,255,255,0.2)] active:scale-[0.99]"
       >
         Sign In
       </button>

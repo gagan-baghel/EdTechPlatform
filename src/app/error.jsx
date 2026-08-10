@@ -23,7 +23,7 @@ export default function RouteError({ error, reset }) {
           <button
             type="button"
             onClick={() => reset()}
-            className="rounded-md bg-yellow-50 px-6 py-3 font-semibold text-richblack-900 transition hover:bg-yellow-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-offset-2 focus-visible:ring-offset-richblack-900"
+            className="rounded-md bg-yellow-50 px-6 py-3 font-semibold text-ink transition hover:bg-yellow-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-offset-2 focus-visible:ring-offset-richblack-900"
           >
             Try again
           </button>

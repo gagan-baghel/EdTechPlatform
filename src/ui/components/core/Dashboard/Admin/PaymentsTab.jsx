@@ -44,7 +44,7 @@ export default function PaymentsTab() {
           placeholder="Customer email"
           className="form-style"
         />
-        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-richblack-900">
+        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-ink">
           Look up
         </button>
       </form>

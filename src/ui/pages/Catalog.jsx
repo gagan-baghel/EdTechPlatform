@@ -69,7 +69,7 @@ function Catalog() {
 
   if (loading || !catalogPageData) {
     return (
-      <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-richblack-900">
+      <div data-theme="dark" className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-richblack-900">
         <Spinner />
       </div>
     )
@@ -91,7 +91,8 @@ function Catalog() {
   const featuredCourses = active === 1 ? selectedCategory?.courses : latest
 
   return (
-    <div className="bg-richblack-900 text-white">
+    // Pinned dark — see About.jsx's comment; same gradient hero pattern.
+    <div data-theme="dark" className="bg-richblack-900 text-richblack-5">
       <section className="relative overflow-hidden px-6 py-20 sm:px-8 lg:px-10 lg:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(195,235,250,0.18),_transparent_32%)]" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
@@ -103,7 +104,7 @@ function Catalog() {
               / Catalog /{" "}
               <span className="text-[#c3ebfa]">{selectedCategory?.name}</span>
             </p>
-            <h1 className="mt-5 text-5xl font-black leading-[1.02] tracking-tighter text-white sm:text-6xl lg:text-7xl">
+            <h1 className="mt-5 text-5xl font-black leading-[1.02] tracking-tighter text-richblack-5 sm:text-6xl lg:text-7xl">
               {selectedCategory?.name},{" "}
               <span className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-transparent">
                 curated cleanly.
@@ -144,7 +145,7 @@ function Catalog() {
               <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-300">
                 Featured
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-richblack-5 sm:text-4xl">
                 Courses to get started
               </h2>
             </div>
@@ -155,7 +156,7 @@ function Catalog() {
                 onClick={() => setActive(1)}
                 className={`rounded-full px-5 py-3 text-sm font-semibold transition-all ${
                   active === 1
-                    ? "bg-white text-richblack-900"
+                    ? "bg-white text-ink"
                     : "text-richblack-300 hover:text-richblack-5"
                 }`}
               >
@@ -166,7 +167,7 @@ function Catalog() {
                 onClick={() => setActive(2)}
                 className={`rounded-full px-5 py-3 text-sm font-semibold transition-all ${
                   active === 2
-                    ? "bg-white text-richblack-900"
+                    ? "bg-white text-ink"
                     : "text-richblack-300 hover:text-richblack-5"
                 }`}
               >
@@ -187,7 +188,7 @@ function Catalog() {
             <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-300">
               Related category
             </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-richblack-5 sm:text-4xl">
               Top courses in {differentCategory?.name}
             </h2>
             <div className="mt-8">
@@ -204,7 +205,7 @@ function Catalog() {
               <p className="text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-300">
                 Best sellers
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              <h2 className="mt-3 text-3xl font-bold tracking-tight text-richblack-5 sm:text-4xl">
                 Frequently bought
               </h2>
             </div>

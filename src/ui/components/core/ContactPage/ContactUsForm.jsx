@@ -181,7 +181,7 @@ const ContactUsForm = () => {
       <button
         disabled={loading}
         type="submit"
-        className={`rounded-full bg-white px-6 py-4 text-center text-sm font-bold text-richblack-900 shadow-[0_18px_45px_rgba(255,255,255,0.14)] 
+        className={`rounded-full bg-white px-6 py-4 text-center text-sm font-bold text-ink shadow-[0_18px_45px_rgba(255,255,255,0.14)] 
          ${
            !loading &&
            "transition-all duration-200 hover:scale-[1.01] hover:shadow-[0_22px_55px_rgba(255,255,255,0.2)]"

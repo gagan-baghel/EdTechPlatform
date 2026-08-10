@@ -125,7 +125,7 @@ export default function DeleteAccount() {
                 type="button"
                 onClick={closeDialog}
                 disabled={deleting}
-                className="rounded-md bg-richblack-300 px-5 py-2 font-semibold text-richblack-900 transition hover:bg-richblack-200 disabled:opacity-60"
+                className="rounded-md bg-richblack-300 px-5 py-2 font-semibold text-ink transition hover:bg-richblack-200 disabled:opacity-60"
               >
                 Keep my account
               </button>
@@ -133,7 +133,7 @@ export default function DeleteAccount() {
                 type="button"
                 onClick={handleDeleteAccount}
                 disabled={!canDelete}
-                className="rounded-md bg-pink-700 px-5 py-2 font-semibold text-white transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md bg-pink-700 px-5 py-2 font-semibold text-paper transition hover:bg-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {deleting ? "Deleting..." : "Delete forever"}
               </button>

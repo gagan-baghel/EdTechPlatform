@@ -43,7 +43,7 @@ export default function RootLayout({ children }) {
       <body>
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-md focus:bg-yellow-50 focus:px-4 focus:py-2 focus:font-semibold focus:text-richblack-900"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-md focus:bg-yellow-50 focus:px-4 focus:py-2 focus:font-semibold focus:text-ink"
         >
           Skip to content
         </a>

@@ -77,7 +77,7 @@ export default function Search() {
   }, [runSearch])
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-richblack-900 text-white">
+    <div className="min-h-[calc(100vh-3.5rem)] bg-richblack-900 text-richblack-5">
       <div className="mx-auto w-11/12 max-w-6xl py-10">
         <h1 className="text-3xl font-semibold text-richblack-5 sm:text-4xl">
           {query ? <>Results for &ldquo;{query}&rdquo;</> : "Search courses"}
@@ -164,7 +164,7 @@ export default function Search() {
             <button
               type="button"
               onClick={runSearch}
-              className="mt-6 rounded-md bg-yellow-50 px-6 py-3 font-semibold text-richblack-900 transition hover:bg-yellow-25"
+              className="mt-6 rounded-md bg-yellow-50 px-6 py-3 font-semibold text-ink transition hover:bg-yellow-25"
             >
               Try again
             </button>
