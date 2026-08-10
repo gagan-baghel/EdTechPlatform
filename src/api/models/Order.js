@@ -28,12 +28,24 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["created", "paid"],
+    enum: ["created", "paid", "refunded"],
     default: "created",
     index: true,
   },
   paymentId: {
     type: String,
+  },
+  // Set when a coupon was applied at checkout. discountAmount is in paise,
+  // same unit as `amount` (which is already the POST-discount total sent
+  // to Razorpay) — kept for the receipt/history display and for the
+  // usedCount increment on settle, not re-validated at settle time.
+  couponCode: {
+    type: String,
+    default: null,
+  },
+  discountAmount: {
+    type: Number,
+    default: 0,
   },
   createdAt: {
     type: Date,

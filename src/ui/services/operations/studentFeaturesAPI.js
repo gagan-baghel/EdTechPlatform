@@ -45,7 +45,7 @@ function loadScript(src) {
   return razorpayScriptPromise
 }
 
-export async function buyCourse(token, courses, userDetails, navigate, dispatch) {
+export async function buyCourse(token, courses, userDetails, navigate, dispatch, couponCode = null) {
   if (!RAZORPAY_PUBLIC_KEY) {
     toast.error("Payments are not configured. Please contact support.")
     return
@@ -69,7 +69,7 @@ export async function buyCourse(token, courses, userDetails, navigate, dispatch)
     const orderResponse = await apiConnector(
       "POST",
       COURSE_PAYMENT_API,
-      { courses },
+      couponCode ? { courses, couponCode } : { courses },
       { Authorization: `Bearer ${token}` }
     )
 

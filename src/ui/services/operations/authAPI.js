@@ -95,8 +95,7 @@ export function login(email, password, navigate) {
       localStorage.setItem("token", JSON.stringify(response.data.token))
       localStorage.setItem("user", JSON.stringify(normalizedUser))
 
-
-      navigate("/dashboard/my-profile")
+      navigate(normalizedUser?.onboarded ? "/dashboard/my-profile" : "/onboarding")
     } catch (_error) {
       toast.error("Login Failed")
     } finally {
@@ -150,7 +149,21 @@ export function resetPassword(password, confirmPassword, token, navigate) {
 }
 
 export function logout(navigate) {
-  return (dispatch) => {
+  return async (dispatch, getState) => {
+    const { token } = getState().auth
+    if (token) {
+      try {
+        // Best-effort: revokes the session server-side so the JWT can't be
+        // replayed after logout. If this fails (network blip), still clear
+        // local state below — the user's own intent to log out shouldn't
+        // be blocked by it.
+        await apiConnector("POST", endpoints.LOGOUT_API, null, {
+          Authorization: `Bearer ${token}`,
+        })
+      } catch (error) {
+        // Swallowed deliberately — see comment above.
+      }
+    }
     dispatch(setToken(null))
     dispatch(setUser(null))
     dispatch(resetCart())

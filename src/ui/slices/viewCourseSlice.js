@@ -5,6 +5,8 @@ const initialState = {
   courseEntireData: [],
   completedLectures: [],
   totalNoOfLectures: 0,
+  // Progress v2: per-lecture watch position, [{ subSection, positionSeconds }].
+  watchState: [],
 }
 
 const viewCourseSlice = createSlice({
@@ -26,6 +28,9 @@ const viewCourseSlice = createSlice({
     updateCompletedLectures: (state, action) => {
       state.completedLectures = [...state.completedLectures, action.payload]
     },
+    setWatchState: (state, action) => {
+      state.watchState = action.payload
+    },
   },
 })
 
@@ -35,6 +40,7 @@ export const {
   setTotalNoOfLectures,
   setCompletedLectures,
   updateCompletedLectures,
+  setWatchState,
 } = viewCourseSlice.actions
 
 export default viewCourseSlice.reducer

@@ -1,3 +1,5 @@
+"use client"
+
 import Image from "next/image";
 import { FooterLink2 } from "../../data/footer-links";
 import { Link, useLocation } from "@/ui/lib/router";

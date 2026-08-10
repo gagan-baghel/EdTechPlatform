@@ -27,9 +27,11 @@ const Course_Card = ({ course, Height }) => {
         </div>
         <div className="flex flex-col gap-3 p-5">
           <div className="flex items-start justify-between gap-4">
-            <p className="text-xl font-semibold leading-8 text-richblack-5">
+            {/* Was a <p> — the entire catalog was unnavigable by heading
+                for screen-reader users skimming a grid of cards. */}
+            <h3 className="text-xl font-semibold leading-8 text-richblack-5">
               {course?.courseName}
-            </p>
+            </h3>
             <span className="rounded-full bg-white/5 px-3 py-1 text-sm font-semibold text-[#fae27c]">
               {formatCurrency(course?.price)}
             </span>
@@ -40,7 +42,9 @@ const Course_Card = ({ course, Height }) => {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-yellow-5">{avgReviewCount || 0}</span>
             <RatingStars Review_Count={avgReviewCount} />
-            <span className="text-sm text-richblack-400">
+            {/* richblack-400 on richblack-800 is ~3.4:1, below the 4.5:1 AA
+                floor for body text; richblack-300 clears it. */}
+            <span className="text-sm text-richblack-300">
               {course?.ratingAndReviews?.length} Ratings
             </span>
           </div>

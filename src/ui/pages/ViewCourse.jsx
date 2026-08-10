@@ -7,16 +7,20 @@ import { Link, useParams } from "@/ui/lib/router"
 
 import CourseReviewModal from "../components/core/ViewCourse/CourseReviewModal"
 import VideoDetailsSidebar from "../components/core/ViewCourse/VideoDetailsSidebar"
+import QuizList from "../components/core/ViewCourse/QuizList"
+import QnAPanel from "../components/core/ViewCourse/QnAPanel"
+import TutorPanel from "../components/core/ViewCourse/TutorPanel"
 import { getFullDetailsOfCourse } from "../services/operations/courseDetailsAPI"
 import {
   setCompletedLectures,
   setCourseSectionData,
   setEntireCourseData,
   setTotalNoOfLectures,
+  setWatchState,
 } from "../slices/viewCourseSlice"
 
 export default function ViewCourse({ children }) {
-  const { courseId } = useParams()
+  const { courseId, subSectionId } = useParams()
   const { token } = useSelector((state) => state.auth)
   const dispatch = useDispatch()
 
@@ -40,6 +44,7 @@ export default function ViewCourse({ children }) {
       dispatch(setCourseSectionData(content))
       dispatch(setEntireCourseData(details))
       dispatch(setCompletedLectures(courseData.completedVideos ?? []))
+      dispatch(setWatchState(courseData.watchState ?? []))
 
       const lectures = content.reduce(
         (total, section) => total + (section?.subSection?.length ?? 0),
@@ -145,7 +150,12 @@ export default function ViewCourse({ children }) {
         />
 
         <div className="min-h-0 flex-1 overflow-y-auto lg:h-[calc(100vh-3.5rem)]">
-          <div className="mx-auto w-full max-w-5xl px-4 py-4 sm:px-6">{children}</div>
+          <div className="mx-auto w-full max-w-5xl px-4 py-4 sm:px-6">
+            {children}
+            {subSectionId && <TutorPanel subSectionId={subSectionId} />}
+            <QuizList courseId={courseId} />
+            {subSectionId && <QnAPanel courseId={courseId} subSectionId={subSectionId} />}
+          </div>
         </div>
       </div>
       {reviewModal && <CourseReviewModal setReviewModal={setReviewModal} />}

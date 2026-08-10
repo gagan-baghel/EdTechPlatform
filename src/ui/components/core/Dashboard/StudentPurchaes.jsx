@@ -4,6 +4,7 @@ import { studentEndpoints } from "../../../services/apis"
 import { useSelector } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
 import { formatDate } from "../../../services/formatDate"
+import Spinner from "../../common/Spinner"
 export default function StudentPurchaes() {
   const { token } = useSelector((state) => state.auth)
   const [paymentHistory, setPaymentHistory] = useState([])
@@ -38,7 +39,7 @@ export default function StudentPurchaes() {
 
       {loading ? (
         <div className="grid min-h-[260px] place-items-center">
-          <div className="spinner"></div>
+          <Spinner />
         </div>
       ) : (
         <Table className="my-8 rounded-t-xl border border-richblack-800">

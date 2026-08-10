@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import { BiInfoCircle } from "react-icons/bi"
@@ -9,7 +11,12 @@ import ConfirmationModal from "../components/common/ConfirmationModal"
 import Footer from "../components/common/Footer"
 import RatingStars from "../components/common/RatingStars"
 import CourseAccordionBar from "../components/core/Course/CourseAccordionBar"
+import BoughtTogether from "../components/core/Course/BoughtTogether"
 import CourseDetailsCard from "../components/core/Course/CourseDetailsCard"
+import { toast } from "react-hot-toast"
+
+import { addToCart } from "../slices/cartSlice"
+import { ACCOUNT_TYPE } from "../utils/constants"
 import { formatDate } from "../services/formatDate"
 import { fetchCourseDetails } from "../services/operations/courseDetailsAPI"
 import { buyCourse } from "../services/operations/studentFeaturesAPI"
@@ -17,6 +24,7 @@ import { normalizeAvatarUrl } from "../utils/avatar"
 import GetAvgRating from "../utils/avgRating"
 import Error from "./Error"
 import { formatCurrency } from "../utils/formatCurrency"
+import Spinner from "../components/common/Spinner"
 
 const Markdown = dynamic(() => import("react-markdown"), {
   ssr: false,
@@ -79,7 +87,7 @@ function CourseDetails() {
   if (loading || !response) {
     return (
       <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
-        <div className="spinner"></div>
+        <Spinner />
       </div>
     )
   }
@@ -116,10 +124,32 @@ function CourseDetails() {
     })
   }
 
+  // Lifted up from CourseDetailsCard so both the desktop card and the
+  // mobile "Add to Cart" button below (which has no card of its own) share
+  // one definition — the mobile button previously had no handler at all.
+  const handleAddToCart = () => {
+    if (user && user?.accountType === ACCOUNT_TYPE.INSTRUCTOR) {
+      toast.error("You are an Instructor. You can't buy a course.")
+      return
+    }
+    if (token) {
+      dispatch(addToCart(response.data.courseDetails))
+      return
+    }
+    setConfirmationModal({
+      text1: "You are not logged in!",
+      text2: "Please login to add To Cart",
+      btn1Text: "Login",
+      btn2Text: "Cancel",
+      btn1Handler: () => navigate("/login"),
+      btn2Handler: () => setConfirmationModal(null),
+    })
+  }
+
   if (paymentLoading) {
     return (
       <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
-        <div className="spinner"></div>
+        <Spinner />
       </div>
     )
   }
@@ -176,15 +206,17 @@ function CourseDetails() {
               <button className="yellowButton" onClick={handleBuyCourse}>
                 Buy Now
               </button>
-              <button className="blackButton">Add to Cart</button>
+              <button className="blackButton" onClick={handleAddToCart}>
+                Add to Cart
+              </button>
             </div>
           </div>
           {/* Courses Card */}
           <div className="right-[1rem] top-[60px] mx-auto hidden min-h-[600px] w-1/3 max-w-[410px] translate-y-24 md:translate-y-0 lg:absolute  lg:block">
             <CourseDetailsCard
               course={response?.data?.courseDetails}
-              setConfirmationModal={setConfirmationModal}
               handleBuyCourse={handleBuyCourse}
+              handleAddToCart={handleAddToCart}
             />
           </div>
         </div>
@@ -237,6 +269,8 @@ function CourseDetails() {
                 />
               ))}
             </div>
+
+            <BoughtTogether courseId={course_id} />
 
             {/* Author Details */}
             <div className="mb-12 py-4">

@@ -7,6 +7,7 @@ import { useSelector } from "react-redux"
 import { Link, useNavigate } from "@/ui/lib/router"
 
 import { getUserEnrolledCourses } from "../../../services/operations/profileAPI.js"
+import Spinner from "../../common/Spinner"
 
 export default function EnrolledCourses() {
   const { token } = useSelector((state) => state.auth)
@@ -36,7 +37,7 @@ export default function EnrolledCourses() {
       <div className="text-3xl text-richblack-50">Enrolled Courses</div>
       {!enrolledCourses ? (
         <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
-          <div className="spinner"></div>
+          <Spinner />
         </div>
       ) : !enrolledCourses.length ? (
         <div className="mt-10 flex flex-col items-center rounded-lg border border-dashed border-richblack-600 bg-richblack-800/40 px-6 py-14 text-center">
@@ -74,14 +75,36 @@ export default function EnrolledCourses() {
               key={i}
             >
               <div
-                className="flex w-[45%] cursor-pointer items-center gap-4 px-5 py-3"
+                role="button"
+                tabIndex={0}
+                aria-label={`Continue ${course?.courseName ?? "course"}`}
+                className="flex w-[45%] cursor-pointer items-center gap-4 px-5 py-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-inset"
                 onClick={() => {
-                  const firstSection = course?.courseContent?.[0]
-                  const firstLesson = firstSection?.subSection?.[0]
+                  // Resume where the learner left off — find the section
+                  // that contains lastWatchedSubSection, if there is one —
+                  // rather than always reopening lesson 1 regardless of
+                  // progress, which is what this did before.
+                  let targetSection = course?.courseContent?.[0]
+                  let targetLesson = targetSection?.subSection?.[0]
+
+                  if (course?.lastWatchedSubSection) {
+                    const resumeSection = course.courseContent?.find((section) =>
+                      section.subSection?.some(
+                        (lesson) => lesson._id === course.lastWatchedSubSection
+                      )
+                    )
+                    const resumeLesson = resumeSection?.subSection?.find(
+                      (lesson) => lesson._id === course.lastWatchedSubSection
+                    )
+                    if (resumeSection && resumeLesson) {
+                      targetSection = resumeSection
+                      targetLesson = resumeLesson
+                    }
+                  }
 
                   // Without this guard the ids stringify to "undefined" and the
                   // learner lands on a dead route.
-                  if (!firstSection?._id || !firstLesson?._id) {
+                  if (!targetSection?._id || !targetLesson?._id) {
                     toast.error(
                       "This course has no lessons yet. You'll get access as soon as the instructor publishes them."
                     )
@@ -89,8 +112,17 @@ export default function EnrolledCourses() {
                   }
 
                   navigate(
-                    `/view-course/${course._id}/section/${firstSection._id}/sub-section/${firstLesson._id}`
+                    `/view-course/${course._id}/section/${targetSection._id}/sub-section/${targetLesson._id}`
                   )
+                }}
+                onKeyDown={(e) => {
+                  // role="button" on a div gets none of a real <button>'s
+                  // built-in Enter/Space activation — this is what makes
+                  // this row actually operable from a keyboard.
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    e.currentTarget.click()
+                  }
                 }}
               >
                 <Image

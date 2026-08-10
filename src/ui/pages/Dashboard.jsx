@@ -1,6 +1,7 @@
 import { useSelector } from "react-redux"
 
 import Sidebar from "../components/core/Dashboard/Sidebar"
+import Spinner from "../components/common/Spinner"
 
 function Dashboard({ children }) {
   const { loading: profileLoading } = useSelector((state) => state.profile)
@@ -9,7 +10,7 @@ function Dashboard({ children }) {
   if (profileLoading || authLoading) {
     return (
       <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
-        <div className="spinner"></div>
+        <Spinner />
       </div>
     )
   }

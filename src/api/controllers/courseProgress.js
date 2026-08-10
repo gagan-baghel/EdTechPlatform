@@ -1,9 +1,46 @@
-const mongoose = require("mongoose")
 const Section = require("../models/Section")
 const SubSection = require("../models/SubSection")
 const CourseProgress = require("../models/CourseProgress")
 const Course = require("../models/Course")
 const User = require("../models/User")
+const { emitEvent, EVENT_VERBS } = require("../utils/emitEvent")
+const { checkAndIssueCertificate } = require("./Certificate")
+
+// Auto-complete a lecture once this much of it has been watched, without
+// requiring the manual "Mark As Completed" click. 90% rather than 100% —
+// end-of-video credits/outros and a player that never quite reaches the
+// last fraction of a second shouldn't be the difference between done and
+// not done.
+const AUTO_COMPLETE_THRESHOLD = 0.9
+
+/**
+ * Shared by updateCourseProgress and updateWatchPosition — both need to
+ * confirm the caller is actually enrolled and that the subsection really
+ * belongs to the course before touching progress for either.
+ */
+async function verifyEnrollmentAndSubsection(userId, courseId, subsectionId) {
+  const user = await User.findById(userId).select("courses")
+  if (!user || !user.courses?.some((id) => id.toString() === courseId)) {
+    return { error: "User is not enrolled in this course" }
+  }
+
+  const subsection = await SubSection.findById(subsectionId)
+  if (!subsection) {
+    return { error: "Invalid subsection" }
+  }
+
+  const section = await Section.findOne({ subSection: subsectionId })
+  if (!section) {
+    return { error: "Invalid subsection" }
+  }
+
+  const course = await Course.findOne({ _id: courseId, courseContent: section._id })
+  if (!course) {
+    return { error: "Subsection does not belong to this course" }
+  }
+
+  return { subsection }
+}
 
 exports.updateCourseProgress = async (req, res) => {
   const { courseId, subsectionId } = req.body
@@ -13,102 +50,172 @@ exports.updateCourseProgress = async (req, res) => {
     if (!courseId || !subsectionId) {
       return res.status(400).json({ error: "courseId and subsectionId are required" })
     }
-    const user = await User.findById(userId).select("courses")
-    if (!user || !user.courses?.some((id) => id.toString() === courseId)) {
-      return res.status(403).json({ error: "User is not enrolled in this course" })
-    }
-    // Check if the subsection is valid
-    const subsection = await SubSection.findById(subsectionId)
-    if (!subsection) {
-      return res.status(404).json({ error: "Invalid subsection" })
-    }
-    const section = await Section.findOne({ subSection: subsectionId })
-    if (!section) {
-      return res.status(404).json({ error: "Invalid subsection" })
-    }
-    const course = await Course.findOne({ _id: courseId, courseContent: section._id })
-    if (!course) {
-      return res.status(400).json({ error: "Subsection does not belong to this course" })
+
+    const { error } = await verifyEnrollmentAndSubsection(userId, courseId, subsectionId)
+    if (error) {
+      return res.status(403).json({ error })
     }
 
-    // Find the course progress document for the user and course
-    let courseProgress = await CourseProgress.findOne({
-      courseID: courseId,
-      userId: userId,
+    // upsert rather than 404 — a user enrolled before CourseProgress was
+    // guaranteed to be created at enrolment time would otherwise be
+    // permanently unable to record progress on that course.
+    let courseProgress = await CourseProgress.findOneAndUpdate(
+      { courseID: courseId, userId },
+      { $setOnInsert: { completedVideos: [] } },
+      { new: true, upsert: true }
+    )
+
+    if (courseProgress.completedVideos.includes(subsectionId)) {
+      return res.status(400).json({ error: "Subsection already completed" })
+    }
+
+    courseProgress.completedVideos.push(subsectionId)
+    await courseProgress.save()
+
+    await emitEvent(EVENT_VERBS.LECTURE_COMPLETED, {
+      actor: userId,
+      object: { type: "SubSection", id: subsectionId },
+      context: { courseId },
     })
 
-    if (!courseProgress) {
-      // If course progress doesn't exist, create a new one
-      return res.status(404).json({
-        success: false,
-        message: "Course progress Does Not Exist",
-      })
-    } else {
-      // If course progress exists, check if the subsection is already completed
-      if (courseProgress.completedVideos.includes(subsectionId)) {
-        return res.status(400).json({ error: "Subsection already completed" })
-      }
+    await checkAndIssueCertificate(userId, courseId)
 
-      // Push the subsection into the completedVideos array
-      courseProgress.completedVideos.push(subsectionId)
-    }
-
-    // Save the updated course progress
-    await courseProgress.save()
     return res.status(200).json({ message: "Course progress updated" })
-
-
   } catch (error) {
     return res.status(500).json({ error: "Internal server error" })
   }
 }
 
-// exports.getProgressPercentage = async (req, res) => {
-//   const { courseId } = req.body
-//   const userId = req.user.id
+/**
+ * Heartbeat from the player — called periodically while a lecture plays
+ * (throttled client-side, not per video frame). Records where the viewer
+ * actually is, not just whether they clicked a button at the end.
+ */
+exports.updateWatchPosition = async (req, res) => {
+  const { courseId, subsectionId, positionSeconds, durationSeconds } = req.body
+  const userId = req.user.id
 
-//   if (!courseId) {
-//     return res.status(400).json({ error: "Course ID not provided." })
-//   }
+  try {
+    if (!courseId || !subsectionId || positionSeconds === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: "courseId, subsectionId and positionSeconds are required",
+      })
+    }
 
-//   try {
-//     // Find the course progress document for the user and course
-//     let courseProgress = await CourseProgress.findOne({
-//       courseID: courseId,
-//       userId: userId,
-//     })
-//       .populate({
-//         path: "courseID",
-//         populate: {
-//           path: "courseContent",
-//         },
-//       })
-//       .exec()
+    const position = Number(positionSeconds)
+    if (!Number.isFinite(position) || position < 0) {
+      return res.status(400).json({ success: false, error: "Invalid positionSeconds" })
+    }
 
-//     if (!courseProgress) {
-//       return res
-//         .status(400)
-//         .json({ error: "Can not find Course Progress with these IDs." })
-//     }
-//     let lectures = 0
-//     courseProgress.courseID.courseContent?.forEach((sec) => {
-//       lectures += sec.subSection.length || 0
-//     })
+    const { error } = await verifyEnrollmentAndSubsection(userId, courseId, subsectionId)
+    if (error) {
+      return res.status(403).json({ success: false, error })
+    }
 
-//     let progressPercentage =
-//       (courseProgress.completedVideos.length / lectures) * 100
+    let courseProgress = await CourseProgress.findOneAndUpdate(
+      { courseID: courseId, userId },
+      { $setOnInsert: { completedVideos: [] } },
+      { new: true, upsert: true }
+    )
 
-//     // To make it up to 2 decimal point
-//     const multiplier = Math.pow(10, 2)
-//     progressPercentage =
-//       Math.round(progressPercentage * multiplier) / multiplier
+    const existingEntry = courseProgress.watchState.find(
+      (entry) => entry.subSection.toString() === subsectionId
+    )
+    const isFirstHeartbeatForThisLecture = !existingEntry
 
-//     return res.status(200).json({
-//       data: progressPercentage,
-//       message: "Succesfully fetched Course progress",
-//     })
-//   } catch (error) {
-//     console.error(error)
-//     return res.status(500).json({ error: "Internal server error" })
-//   }
-// }
+    if (existingEntry) {
+      existingEntry.positionSeconds = position
+      existingEntry.updatedAt = new Date()
+    } else {
+      courseProgress.watchState.push({ subSection: subsectionId, positionSeconds: position })
+    }
+    courseProgress.lastWatchedSubSection = subsectionId
+
+    const duration = Number(durationSeconds)
+    const watchedEnough =
+      Number.isFinite(duration) && duration > 0 && position / duration >= AUTO_COMPLETE_THRESHOLD
+
+    let justCompleted = false
+    if (watchedEnough && !courseProgress.completedVideos.includes(subsectionId)) {
+      courseProgress.completedVideos.push(subsectionId)
+      justCompleted = true
+    }
+
+    await courseProgress.save()
+
+    if (isFirstHeartbeatForThisLecture) {
+      await emitEvent(EVENT_VERBS.LECTURE_STARTED, {
+        actor: userId,
+        object: { type: "SubSection", id: subsectionId },
+        context: { courseId },
+      })
+    } else {
+      await emitEvent(EVENT_VERBS.LECTURE_PROGRESSED, {
+        actor: userId,
+        object: { type: "SubSection", id: subsectionId },
+        context: { courseId, positionSeconds: position },
+      })
+    }
+
+    if (justCompleted) {
+      await emitEvent(EVENT_VERBS.LECTURE_COMPLETED, {
+        actor: userId,
+        object: { type: "SubSection", id: subsectionId },
+        context: { courseId, auto: true },
+      })
+      await checkAndIssueCertificate(userId, courseId)
+    }
+
+    return res.status(200).json({ success: true, autoCompleted: justCompleted })
+  } catch (error) {
+    return res.status(500).json({ success: false, error: "Internal server error" })
+  }
+}
+
+exports.getProgressPercentage = async (req, res) => {
+  const { courseId } = req.body
+  const userId = req.user.id
+
+  if (!courseId) {
+    return res.status(400).json({ error: "Course ID not provided." })
+  }
+
+  try {
+    const courseProgress = await CourseProgress.findOne({
+      courseID: courseId,
+      userId: userId,
+    })
+      .populate({
+        path: "courseID",
+        populate: {
+          path: "courseContent",
+        },
+      })
+      .exec()
+
+    if (!courseProgress) {
+      return res
+        .status(400)
+        .json({ error: "Can not find Course Progress with these IDs." })
+    }
+    let lectures = 0
+    courseProgress.courseID.courseContent?.forEach((sec) => {
+      lectures += sec.subSection.length || 0
+    })
+
+    let progressPercentage =
+      lectures > 0 ? (courseProgress.completedVideos.length / lectures) * 100 : 0
+
+    const multiplier = Math.pow(10, 2)
+    progressPercentage = Math.round(progressPercentage * multiplier) / multiplier
+
+    return res.status(200).json({
+      data: progressPercentage,
+      message: "Succesfully fetched Course progress",
+    })
+  } catch (error) {
+    console.error(error)
+    return res.status(500).json({ error: "Internal server error" })
+  }
+}

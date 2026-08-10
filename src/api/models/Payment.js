@@ -36,5 +36,9 @@ const paymentSchema = new  mongoose.Schema({
 
 })
 
+// Payments.js upserts on this exact pair from both the client callback and
+// the webhook backfill — without a unique index backing it, that upsert is
+// not race-safe. See scripts/ensure-indexes.js; autoIndex is off (connectDB.js).
+paymentSchema.index({ orderId: 1, consumer: 1 }, { unique: true })
 
 module.exports = mongoose.models.Payment || mongoose.model("Payment",paymentSchema)

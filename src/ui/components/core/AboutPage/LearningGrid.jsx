@@ -8,7 +8,7 @@ const LearningGridArray = [
     heading: "World-Class Learning for",
     highlightText: "Anyone, Anywhere",
     description:
-      "Studynotion partners with more than 275+ leading universities and companies to bring flexible, affordable, job-relevant online learning to individuals and organizations worldwide.",
+      "IntelleCraft brings flexible, affordable, job-relevant online learning to individuals and organizations, taught by instructors working in the field.",
     BtnText: "Learn More",
     BtnLink: "/",
   },
@@ -16,31 +16,31 @@ const LearningGridArray = [
     order: 1,
     heading: "Curriculum Based on Industry Needs",
     description:
-      "Save time and money! The Belajar curriculum is made to be easier to understand and in line with industry needs.",
+      "Save time and money! Every course is built to be easy to follow and aligned with what the industry actually asks for.",
   },
   {
     order: 2,
     heading: "Our Learning Methods",
     description:
-      "Studynotion partners with more than 275+ leading universities and companies to bring",
+      "Learn at your own pace with video lessons, hands-on practice, and progress tracking that picks up right where you left off.",
   },
   {
     order: 3,
     heading: "Certification",
     description:
-      "Studynotion partners with more than 275+ leading universities and companies to bring",
+      "Finish a course and walk away with proof of what you learned — something worth showing an employer.",
   },
   {
     order: 4,
     heading: `Rating "Auto-grading"`,
     description:
-      "Studynotion partners with more than 275+ leading universities and companies to bring",
+      "Get quick, consistent feedback on your progress so you always know where you stand.",
   },
   {
     order: 5,
     heading: "Ready to Work",
     description:
-      "Studynotion partners with more than 275+ leading universities and companies to bring",
+      "Every course is built around real, job-relevant skills — not just theory.",
   },
 ];
 

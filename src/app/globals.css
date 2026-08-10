@@ -242,7 +242,11 @@ details > summary::-webkit-details-marker {
   @apply text-[14px] text-richblack-5;
 }
 .form-style {
-  @apply rounded-lg bg-richblack-700 p-3 text-[16px] leading-[24px] text-richblack-5 shadow-[0_1px_0_0] shadow-white/50 placeholder:text-richblack-400 focus:outline-none;
+  /* focus:outline-none removes the browser's default ring — the
+     focus-visible rule right after is the replacement. Without it, every
+     input using this class (every form in the dashboard) has no visible
+     focus indicator at all for keyboard users. */
+  @apply rounded-lg bg-richblack-700 p-3 text-[16px] leading-[24px] text-richblack-5 shadow-[0_1px_0_0] shadow-white/50 placeholder:text-richblack-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50;
 }
 .section_heading {
   @apply text-2xl font-bold text-richblack-5 lg:text-4xl;
@@ -275,4 +279,24 @@ details > summary::-webkit-details-marker {
   to {
     transform: translateX(-50%);
   }
+}
+
+/* Accessibility settings (Settings > Accessibility) — applied as classes
+   on <html> by useAccessibilityPrefs.js. */
+.a11y-reduced-motion,
+.a11y-reduced-motion *,
+.a11y-reduced-motion *::before,
+.a11y-reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+.a11y-font-large {
+  font-size: 112.5%;
+}
+
+.a11y-font-x-large {
+  font-size: 125%;
 }

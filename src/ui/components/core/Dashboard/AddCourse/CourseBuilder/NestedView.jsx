@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { AiFillCaretDown } from "react-icons/ai"
 import { FaPlus } from "react-icons/fa"
-import { MdEdit } from "react-icons/md"
+import { MdDragIndicator, MdEdit } from "react-icons/md"
 import { RiDeleteBin6Line } from "react-icons/ri"
 import { RxDropdownMenu } from "react-icons/rx"
 import { useDispatch, useSelector } from "react-redux"
@@ -9,6 +9,8 @@ import { useDispatch, useSelector } from "react-redux"
 import {
   deleteSection,
   deleteSubSection,
+  reorderSections,
+  reorderSubSections,
 } from "../../../../../services/operations/courseDetailsAPI"
 import { setCourse } from "../../../../../slices/courseSlice"
 import ConfirmationModal from "../../../../common/ConfirmationModal"
@@ -24,6 +26,61 @@ export default function NestedView({ handleChangeEditSectionName }) {
   const [editSubSection, setEditSubSection] = useState(null)
   // to keep track of confirmation modal
   const [confirmationModal, setConfirmationModal] = useState(null)
+  // Native HTML5 drag-and-drop — no new dependency for something the
+  // platform already does. Tracks {type: "section"|"subsection", id,
+  // sectionId?} for whatever's currently being dragged.
+  const [dragged, setDragged] = useState(null)
+
+  const handleSectionDrop = async (targetSectionId) => {
+    if (!dragged || dragged.type !== "section" || dragged.id === targetSectionId) {
+      setDragged(null)
+      return
+    }
+    const currentIds = course.courseContent.map((s) => s._id)
+    const fromIndex = currentIds.indexOf(dragged.id)
+    const toIndex = currentIds.indexOf(targetSectionId)
+    const reordered = [...currentIds]
+    reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, dragged.id)
+
+    setDragged(null)
+    const updatedCourse = await reorderSections(
+      { courseId: course._id, orderedSectionIds: reordered },
+      token
+    )
+    if (updatedCourse) dispatch(setCourse(updatedCourse))
+  }
+
+  const handleSubSectionDrop = async (sectionId, targetSubSectionId) => {
+    if (
+      !dragged ||
+      dragged.type !== "subsection" ||
+      dragged.sectionId !== sectionId ||
+      dragged.id === targetSubSectionId
+    ) {
+      setDragged(null)
+      return
+    }
+    const section = course.courseContent.find((s) => s._id === sectionId)
+    const currentIds = section.subSection.map((sub) => sub._id)
+    const fromIndex = currentIds.indexOf(dragged.id)
+    const toIndex = currentIds.indexOf(targetSubSectionId)
+    const reordered = [...currentIds]
+    reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, dragged.id)
+
+    setDragged(null)
+    const updatedSection = await reorderSubSections(
+      { sectionId, orderedSubSectionIds: reordered },
+      token
+    )
+    if (updatedSection) {
+      const updatedCourseContent = course.courseContent.map((s) =>
+        s._id === sectionId ? updatedSection : s
+      )
+      dispatch(setCourse({ ...course, courseContent: updatedCourseContent }))
+    }
+  }
 
   const handleDeleleSection = async (sectionId) => {
     const result = await deleteSection({
@@ -58,10 +115,25 @@ export default function NestedView({ handleChangeEditSectionName }) {
       >
         {course?.courseContent?.map((section) => (
           // Section Dropdown
-          <details key={section._id} open>
+          <details
+            key={section._id}
+            open
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => handleSectionDrop(section._id)}
+            className={dragged?.type === "section" && dragged.id !== section._id ? "opacity-90" : ""}
+          >
             {/* Section Dropdown Content */}
             <summary className="flex cursor-pointer items-center justify-between border-b-2 border-b-richblack-600 py-2">
               <div className="flex items-center gap-x-3">
+                <span
+                  draggable
+                  onDragStart={() => setDragged({ type: "section", id: section._id })}
+                  className="cursor-grab text-richblack-400 active:cursor-grabbing"
+                  aria-label="Drag to reorder section"
+                  title="Drag to reorder"
+                >
+                  <MdDragIndicator className="text-xl" />
+                </span>
                 <RxDropdownMenu className="text-2xl text-richblack-50" />
                 <p className="font-semibold text-richblack-50">
                   {section.sectionName}
@@ -101,10 +173,37 @@ export default function NestedView({ handleChangeEditSectionName }) {
               {section.subSection.map((data) => (
                 <div
                   key={data?._id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View lecture ${data.title}`}
                   onClick={() => setViewSubSection(data)}
-                  className="flex cursor-pointer items-center justify-between gap-x-3 border-b-2 border-b-richblack-600 py-2"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      setViewSubSection(data)
+                    }
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.stopPropagation()
+                    handleSubSectionDrop(section._id, data._id)
+                  }}
+                  className="flex cursor-pointer items-center justify-between gap-x-3 border-b-2 border-b-richblack-600 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-inset"
                 >
                   <div className="flex items-center gap-x-3 py-2 ">
+                    <span
+                      draggable
+                      onDragStart={(e) => {
+                        e.stopPropagation()
+                        setDragged({ type: "subsection", id: data._id, sectionId: section._id })
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="cursor-grab text-richblack-400 active:cursor-grabbing"
+                      aria-label="Drag to reorder lecture"
+                      title="Drag to reorder"
+                    >
+                      <MdDragIndicator className="text-lg" />
+                    </span>
                     <RxDropdownMenu className="text-2xl text-richblack-50" />
                     <p className="font-semibold text-richblack-50">
                       {data.title}

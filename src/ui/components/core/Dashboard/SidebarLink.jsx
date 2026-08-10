@@ -1,10 +1,13 @@
 import {
   VscAccount,
   VscAdd,
+  VscCreditCard,
   VscDashboard,
+  VscGraph,
   VscHistory,
   VscMortarBoard,
   VscSettingsGear,
+  VscShield,
   VscVm,
 } from "react-icons/vsc"
 import { useDispatch } from "react-redux"
@@ -17,9 +20,12 @@ const iconMap = {
   VscDashboard,
   VscVm,
   VscAdd,
+  VscGraph,
   VscMortarBoard,
   VscHistory,
   VscSettingsGear,
+  VscShield,
+  VscCreditCard,
 }
 
 export default function SidebarLink({ link, iconName }) {
@@ -32,7 +38,17 @@ export default function SidebarLink({ link, iconName }) {
   return (
     <NavLink
       to={link.path}
-      onClick={() => dispatch(resetCourseState())}
+      onClick={() => {
+        // Previously fired on EVERY sidebar click, so navigating to "My
+        // Courses" to check something mid-wizard silently discarded the
+        // instructor's step/course progress. "Add Course" unambiguously
+        // means "start a new course," so only that link resets — editing
+        // an existing draft goes through My Courses → Edit instead, which
+        // loads that course into the slice itself.
+        if (link.path === "/dashboard/add-course") {
+          dispatch(resetCourseState())
+        }
+      }}
       aria-current={isActive ? "page" : undefined}
       className={`relative shrink-0 whitespace-nowrap px-5 py-3 text-sm font-medium md:px-8 md:py-2 ${
         isActive ? "bg-yellow-800 text-yellow-50" : "bg-opacity-0 text-richblack-300"

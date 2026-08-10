@@ -8,6 +8,7 @@ import { sidebarLinks } from "../../../data/dashboard-links"
 import { logout } from "../../../services/operations/authAPI"
 import ConfirmationModal from "../../common/ConfirmationModal"
 import SidebarLink from "./SidebarLink"
+import Spinner from "../../common/Spinner"
 
 export default function Sidebar() {
   const { user, loading: profileLoading } = useSelector((state) => state.profile)
@@ -20,7 +21,7 @@ export default function Sidebar() {
   if (profileLoading || authLoading) {
     return (
       <div className="grid w-full items-center border-b border-richblack-700 bg-richblack-800 py-6 md:h-[calc(100vh-3.5rem)] md:w-auto md:min-w-[220px] md:border-b-0 md:border-r">
-        <div className="spinner" />
+        <Spinner />
       </div>
     )
   }

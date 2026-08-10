@@ -28,6 +28,20 @@ export const sidebarLinks = [
     icon: "VscAdd",
   },
   {
+    id: 8,
+    name: "Payouts",
+    path: "/dashboard/payouts",
+    type: ACCOUNT_TYPE.INSTRUCTOR,
+    icon: "VscCreditCard",
+  },
+  {
+    id: 9,
+    name: "My Learning",
+    path: "/dashboard/my-learning",
+    type: ACCOUNT_TYPE.STUDENT,
+    icon: "VscGraph",
+  },
+  {
     id: 5,
     name: "Enrolled Courses",
     path: "/dashboard/enrolled-courses",
@@ -40,5 +54,12 @@ export const sidebarLinks = [
     path: "/dashboard/purchase-history",
     type: ACCOUNT_TYPE.STUDENT,
     icon: "VscHistory",
+  },
+  {
+    id: 7,
+    name: "Admin",
+    path: "/dashboard/admin",
+    type: ACCOUNT_TYPE.ADMIN,
+    icon: "VscShield",
   },
 ];

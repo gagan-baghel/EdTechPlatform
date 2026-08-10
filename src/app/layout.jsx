@@ -1,27 +1,7 @@
 import "./globals.css"
 import AppShell from "../ui/layout/AppShell"
 import AppProviders from "../ui/providers/AppProviders"
-
-/**
- * Never let a misconfigured env var fail the build. Vercel users commonly set
- * this without a protocol ("myapp.vercel.app"), which makes `new URL()` throw.
- * VERCEL_URL is injected by the platform and also has no protocol.
- */
-function resolveSiteUrl() {
-  const raw =
-    process.env.APP_BASE_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "") ||
-    "http://localhost:3000"
-
-  const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
-
-  try {
-    return new URL(withProtocol).origin
-  } catch {
-    return "http://localhost:3000"
-  }
-}
+import { resolveSiteUrl } from "../ui/utils/siteUrl"
 
 const SITE_URL = resolveSiteUrl()
 const DESCRIPTION =

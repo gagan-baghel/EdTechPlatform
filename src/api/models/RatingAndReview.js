@@ -23,6 +23,13 @@ const ratingAndReviewSchema = new mongoose.Schema({
 	},
 });
 
+// createRating checks for an existing review then creates one — a
+// find-then-create with no atomic guarantee. This is the guarantee: a
+// second concurrent request for the same {user, course} fails on the
+// index instead of creating a duplicate review. See
+// scripts/ensure-indexes.js; autoIndex is off (connectDB.js).
+ratingAndReviewSchema.index({ user: 1, course: 1 }, { unique: true });
+
 // Export the RatingAndReview model
 module.exports =
   mongoose.models.RatingAndReview ||

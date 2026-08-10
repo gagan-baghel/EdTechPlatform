@@ -27,8 +27,14 @@ exports.createSection = async (req, res) => {
 			})
 		}
 
-		// Create a new section with the given name
-		const newSection = await Section.create({ sectionName });
+		// Create a new section with the given name. order is set from the
+		// course's current section count so sections stay in creation order
+		// by default — same effect as the old array-position-only ordering,
+		// but now an explicit, independently-updatable value.
+		const newSection = await Section.create({
+			sectionName,
+			order: course.courseContent.length,
+		});
 
 		// Add the new section to the course's content array
 		const updatedCourse = await Course.findByIdAndUpdate(
@@ -42,8 +48,10 @@ exports.createSection = async (req, res) => {
 		)
 			.populate({
 				path: "courseContent",
+				options: { sort: { order: 1 } },
 				populate: {
 					path: "subSection",
+					options: { sort: { order: 1 } },
 				},
 			})
 			.exec();
@@ -94,8 +102,10 @@ exports.updateSection = async (req, res) => {
 		const course = await Course.findById(courseId)
 		.populate({
 			path:"courseContent",
+			options: { sort: { order: 1 } },
 			populate:{
 				path:"subSection",
+				options: { sort: { order: 1 } },
 			},
 		})
 		.exec();
@@ -110,6 +120,76 @@ exports.updateSection = async (req, res) => {
 			success: false,
 			message: "Internal server error",
 		});
+	}
+};
+
+// REORDER sections — persists a new order for the sections in a course.
+// Takes the array of section ids in their new order rather than explicit
+// {id, order} pairs; the index in the array IS the new order value, which
+// matches how a drag-drop UI naturally produces its result (a reordered
+// list of ids) and avoids the client having to compute order numbers itself.
+exports.reorderSections = async (req, res) => {
+	try {
+		const { courseId, orderedSectionIds } = req.body;
+		if (!courseId || !Array.isArray(orderedSectionIds) || orderedSectionIds.length === 0) {
+			return res.status(400).json({
+				success: false,
+				message: "Missing required properties",
+			})
+		}
+
+		const course = await Course.findOne({
+			_id: courseId,
+			instructor: req.user.id,
+		})
+		if (!course) {
+			return res.status(403).json({
+				success: false,
+				message: "Not authorized to modify this course",
+			})
+		}
+
+		// Every id must actually belong to this course — otherwise an
+		// instructor could reorder (and thus prove membership of) another
+		// course's section ids by id-guessing.
+		const belongsToCourse = orderedSectionIds.every((id) =>
+			course.courseContent.some((existingId) => existingId.toString() === id)
+		)
+		if (
+			!belongsToCourse ||
+			orderedSectionIds.length !== course.courseContent.length
+		) {
+			return res.status(400).json({
+				success: false,
+				message: "orderedSectionIds must be exactly the course's existing sections",
+			})
+		}
+
+		await Promise.all(
+			orderedSectionIds.map((sectionId, index) =>
+				Section.updateOne({ _id: sectionId }, { order: index })
+			)
+		)
+
+		const updatedCourse = await Course.findById(courseId)
+			.populate({
+				path: "courseContent",
+				options: { sort: { order: 1 } },
+				populate: { path: "subSection", options: { sort: { order: 1 } } },
+			})
+			.exec()
+
+		res.status(200).json({
+			success: true,
+			message: "Sections reordered",
+			updatedCourse,
+		})
+	} catch (error) {
+		res.status(500).json({
+			success: false,
+			message: "Internal server error",
+			error: error.message,
+		})
 	}
 };
 
@@ -156,8 +236,10 @@ exports.deleteSection = async (req, res) => {
 		//find the updated course and return 
 		const course = await Course.findById(courseId).populate({
 			path:"courseContent",
+			options: { sort: { order: 1 } },
 			populate: {
-				path: "subSection"
+				path: "subSection",
+				options: { sort: { order: 1 } },
 			}
 		})
 		.exec();

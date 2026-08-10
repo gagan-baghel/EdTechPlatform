@@ -1,6 +1,6 @@
 const RatingAndReview = require("../models/RatingAndReview")
 const Course = require("../models/Course")
-const mongoose = require("mongoose")
+const { notify } = require("../utils/notify")
 
 // Create a new rating and review
 exports.createRating = async (req, res) => {
@@ -47,13 +47,26 @@ exports.createRating = async (req, res) => {
       })
     }
 
-    // Create a new rating and review
-    const ratingReview = await RatingAndReview.create({
-      rating,
-      review,
-      course: courseId,
-      user: userId,
-    })
+    // The findOne check above is a friendly-message optimisation, not the
+    // guarantee — two review submissions for the same {user, course} can
+    // both pass it. The unique index is the real guarantee.
+    let ratingReview
+    try {
+      ratingReview = await RatingAndReview.create({
+        rating,
+        review,
+        course: courseId,
+        user: userId,
+      })
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(403).json({
+          success: false,
+          message: "Course already reviewed by user",
+        })
+      }
+      throw error
+    }
 
     // Add the rating and review to the course
     await Course.findByIdAndUpdate(courseId, {
@@ -61,7 +74,13 @@ exports.createRating = async (req, res) => {
         ratingAndReviews: ratingReview,
       },
     })
-    await courseDetails.save()
+
+    await notify(courseDetails.instructor, {
+      type: "new_review",
+      title: `New ${rating}-star review on ${courseDetails.courseName}`,
+      body: review,
+      link: `/dashboard/instructor`,
+    })
 
     return res.status(201).json({
       success: true,
@@ -72,44 +91,6 @@ exports.createRating = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message,
-    })
-  }
-}
-
-// Get the average rating for a course
-exports.getAverageRating = async (req, res) => {
-  try {
-    const courseId = req.body.courseId
-
-    // Calculate the average rating using the MongoDB aggregation pipeline
-    const result = await RatingAndReview.aggregate([
-      {
-        $match: {
-          course: new mongoose.Types.ObjectId(courseId), // Convert courseId to ObjectId
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          averageRating: { $avg: "$rating" },
-        },
-      },
-    ])
-
-    if (result.length > 0) {
-      return res.status(200).json({
-        success: true,
-        averageRating: result[0].averageRating,
-      })
-    }
-
-    // If no ratings are found, return 0 as the default rating
-    return res.status(200).json({ success: true, averageRating: 0 })
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to retrieve the rating for the course",
       error: error.message,
     })
   }

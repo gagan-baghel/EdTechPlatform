@@ -5,6 +5,7 @@ import { Link } from "@/ui/lib/router"
 
 import LoginForm from "./LoginForm"
 import SignupForm from "./SignupForm"
+import Spinner from "../../common/Spinner"
 
 const contentByType = {
   login: {
@@ -45,7 +46,7 @@ function Template({ eyebrow, title, subtitle, image, formType }) {
       />
       {loading ? (
         <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
-          <div className="spinner"></div>
+          <Spinner />
         </div>
       ) : (
         <div className="relative mx-auto grid min-h-[calc(100vh-3.5rem)] w-full max-w-7xl grid-cols-1 gap-10 px-6 py-8 sm:px-8 sm:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:px-10 lg:py-14">

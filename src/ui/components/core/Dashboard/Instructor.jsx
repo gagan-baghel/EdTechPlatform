@@ -7,6 +7,7 @@ import { Link } from "@/ui/lib/router"
 import { fetchInstructorCourses } from "../../../services/operations/courseDetailsAPI"
 import { getInstructorData } from "../../../services/operations/profileAPI"
 import { formatCurrency } from "../../../utils/formatCurrency"
+import Spinner from "../../common/Spinner"
 
 const InstructorChart = dynamic(() => import("./InstructorDashboard/InstructorChart"), {
   ssr: false,
@@ -65,7 +66,7 @@ export default function Instructor() {
         </p>
       </div>
       {loading ? (
-        <div className="spinner"></div>
+        <Spinner />
       ) : courses.length > 0 ? (
         <div>
           <div className="my-4 flex h-[450px] space-x-4">

@@ -59,7 +59,7 @@ exports.categoryPageDetails = async (req, res) => {
       const selectedCategory = await Category.findById(categoryId)
         .populate({
           path: "courses",
-          match: { status: "Published" },
+          match: { status: "Published", deletedAt: null },
           populate: "ratingAndReviews",
         })
         .exec()
@@ -94,18 +94,22 @@ exports.categoryPageDetails = async (req, res) => {
         )
           .populate({
             path: "courses",
-            match: { status: "Published" },
+            match: { status: "Published", deletedAt: null },
           })
           .exec()
       }
-      // Get top-selling courses across all categories
+      // Get top-selling courses across all categories. This route has no
+      // auth guard — scope the nested instructor populate or an
+      // unauthenticated caller gets every instructor's password hash and
+      // live reset token along for free.
       const allCategories = await Category.find()
         .populate({
           path: "courses",
-          match: { status: "Published" },
+          match: { status: "Published", deletedAt: null },
           populate: {
             path: "instructor",
-        },
+            select: "firstName lastName userImage",
+          },
         })
         .exec()
       const allCourses = allCategories.flatMap((category) => category.courses)

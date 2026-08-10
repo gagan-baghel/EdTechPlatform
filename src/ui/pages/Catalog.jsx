@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useEffect, useState } from "react"
 import dynamic from "next/dynamic"
 import Image from "next/image"
@@ -10,6 +12,7 @@ import { getCatalogaPageData } from "../services/operations/pageAndComponentData
 import { fetchCategoriesCached } from "../services/sharedData"
 import Course_Card from "../components/core/Catalog/Course_Card"
 import Error from "./Error"
+import Spinner from "../components/common/Spinner"
 
 const CourseSlider = dynamic(() => import("../components/core/Catalog/CourseSlider"), {
   ssr: false,
@@ -67,7 +70,7 @@ function Catalog() {
   if (loading || !catalogPageData) {
     return (
       <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-richblack-900">
-        <div className="spinner"></div>
+        <Spinner />
       </div>
     )
   }

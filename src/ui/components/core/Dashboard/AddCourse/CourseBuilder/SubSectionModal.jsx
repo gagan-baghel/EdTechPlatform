@@ -11,6 +11,7 @@ import {
 import { setCourse } from "../../../../../slices/courseSlice"
 import IconBtn from "../../../../common/IconBtn"
 import Upload from "../Upload"
+import AttachmentsManager from "./AttachmentsManager"
 
 export default function SubSectionModal({
   modalData,
@@ -30,6 +31,8 @@ export default function SubSectionModal({
 
   const dispatch = useDispatch()
   const [loading, setLoading] = useState(false)
+  const [videoUploading, setVideoUploading] = useState(false)
+  const [attachments, setAttachments] = useState(modalData?.attachments || [])
   const { token } = useSelector((state) => state.auth)
   const { course } = useSelector((state) => state.course)
 
@@ -38,12 +41,14 @@ export default function SubSectionModal({
       setValue("lectureTitle", modalData.title)
       setValue("lectureDesc", modalData.description)
       setValue("lectureVideo", modalData.videoUrl)
+      setValue("freePreview", Boolean(modalData.freePreview))
     }
   }, [
     edit,
     modalData.description,
     modalData.title,
     modalData.videoUrl,
+    modalData.freePreview,
     setValue,
     view,
   ])
@@ -54,7 +59,8 @@ export default function SubSectionModal({
     if (
       currentValues.lectureTitle !== modalData.title ||
       currentValues.lectureDesc !== modalData.description ||
-      currentValues.lectureVideo !== modalData.videoUrl
+      currentValues.lectureVideo !== modalData.videoUrl ||
+      currentValues.freePreview !== Boolean(modalData.freePreview)
     ) {
       return true
     }
@@ -74,7 +80,10 @@ export default function SubSectionModal({
       formData.append("description", currentValues.lectureDesc)
     }
     if (currentValues.lectureVideo !== modalData.videoUrl) {
-      formData.append("video", currentValues.lectureVideo)
+      formData.append("videoPublicId", currentValues.lectureVideo)
+    }
+    if (currentValues.freePreview !== Boolean(modalData.freePreview)) {
+      formData.append("freePreview", currentValues.freePreview)
     }
     setLoading(true)
     const result = await updateSubSection(formData, token)
@@ -93,6 +102,14 @@ export default function SubSectionModal({
   const onSubmit = async (data) => {
     if (view) return
 
+    // A disabled submit button already blocks this, but Enter-to-submit on
+    // a text field bypasses a disabled button entirely — this is the real
+    // guard against submitting before the upload has produced a public_id.
+    if (videoUploading) {
+      toast.error("Please wait for the video to finish uploading.")
+      return
+    }
+
     if (edit) {
       if (!isFormUpdated()) {
         toast.error("No changes made to the form")
@@ -106,7 +123,8 @@ export default function SubSectionModal({
     formData.append("sectionId", modalData)
     formData.append("title", data.lectureTitle)
     formData.append("description", data.lectureDesc)
-    formData.append("video", data.lectureVideo)
+    formData.append("videoPublicId", data.lectureVideo)
+    formData.append("freePreview", Boolean(data.freePreview))
     setLoading(true)
     const result = await createSubSection(formData, token)
     if (result) {
@@ -129,7 +147,7 @@ export default function SubSectionModal({
           <p className="text-xl font-semibold text-richblack-5">
             {view && "Viewing"} {add && "Adding"} {edit && "Editing"} Lecture
           </p>
-          <button onClick={() => (!loading ? setModalData(null) : {})}>
+          <button onClick={() => (!loading && !videoUploading ? setModalData(null) : {})}>
             <RxCross2 className="text-2xl text-richblack-5" />
           </button>
         </div>
@@ -148,6 +166,7 @@ export default function SubSectionModal({
             video={true}
             viewData={view ? modalData.videoUrl : null}
             editData={edit ? modalData.videoUrl : null}
+            onUploadingChange={setVideoUploading}
           />
           {/* Lecture Title */}
           <div className="flex flex-col space-y-2">
@@ -158,11 +177,13 @@ export default function SubSectionModal({
               disabled={view || loading}
               id="lectureTitle"
               placeholder="Enter Lecture Title"
+              aria-invalid={errors.lectureTitle ? "true" : undefined}
+              aria-describedby={errors.lectureTitle ? "lectureTitle-error" : undefined}
               {...register("lectureTitle", { required: true })}
               className="form-style w-full"
             />
             {errors.lectureTitle && (
-              <span className="ml-2 text-xs tracking-wide text-pink-200">
+              <span id="lectureTitle-error" role="alert" className="ml-2 text-xs tracking-wide text-pink-200">
                 Lecture title is required
               </span>
             )}
@@ -177,20 +198,49 @@ export default function SubSectionModal({
               disabled={view || loading}
               id="lectureDesc"
               placeholder="Enter Lecture Description"
+              aria-invalid={errors.lectureDesc ? "true" : undefined}
+              aria-describedby={errors.lectureDesc ? "lectureDesc-error" : undefined}
               {...register("lectureDesc", { required: true })}
               className="form-style resize-x-none min-h-[130px] w-full"
             />
             {errors.lectureDesc && (
-              <span className="ml-2 text-xs tracking-wide text-pink-200">
+              <span id="lectureDesc-error" role="alert" className="ml-2 text-xs tracking-wide text-pink-200">
                 Lecture Description is required
               </span>
             )}
           </div>
           {!view && (
+            <label htmlFor="freePreview" className="inline-flex items-center gap-2 text-sm text-richblack-300">
+              <input
+                type="checkbox"
+                id="freePreview"
+                disabled={loading}
+                {...register("freePreview")}
+                className="h-4 w-4 rounded border-richblack-500 bg-richblack-700"
+              />
+              Let anyone preview this lecture for free, before buying
+            </label>
+          )}
+          {edit && modalData._id && (
+            <AttachmentsManager
+              subSectionId={modalData._id}
+              attachments={attachments}
+              onChange={setAttachments}
+            />
+          )}
+          {!view && (
             <div className="flex justify-end">
               <IconBtn
-                disabled={loading}
-                text={loading ? "Loading.." : edit ? "Save Changes" : "Save"}
+                disabled={loading || videoUploading}
+                text={
+                  loading
+                    ? "Loading.."
+                    : videoUploading
+                    ? "Uploading video…"
+                    : edit
+                    ? "Save Changes"
+                    : "Save"
+                }
               />
             </div>
           )}

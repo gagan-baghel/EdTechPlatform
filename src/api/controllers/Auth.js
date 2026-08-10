@@ -7,6 +7,8 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const mailSender = require('../utils/mailSender')
 const { passwordUpdated } = require("../mail/templates/passwordUpdate")
+const crypto = require('crypto')
+const Session = require("../models/Session")
 
 const MIN_PASSWORD_LENGTH = 8
 const MAX_OTP_ATTEMPTS = 5
@@ -162,15 +164,30 @@ exports.signup = async (req, res) => {
       contactNumber,
     });
 
-    const user = await User.create({
-      firstName,
-      lastName,
-      email,
-      password:hashPassword,
-      accountType,
-      additionalDetails: profileDetails._id,
-      userImage: `https://api.dicebear.com/7.x/initials/svg?seed=${firstName} ${lastName}`,
-    });
+    // The findOne check above is a friendly-message optimisation, not the
+    // guarantee — two signups for the same email can both pass it. The
+    // unique index on User.email is the real guarantee, and this is what
+    // happens when it's the one that catches the race.
+    let user
+    try {
+      user = await User.create({
+        firstName,
+        lastName,
+        email,
+        password:hashPassword,
+        accountType,
+        additionalDetails: profileDetails._id,
+        userImage: `https://api.dicebear.com/7.x/initials/svg?seed=${firstName} ${lastName}`,
+      });
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(403).json({
+          success: false,
+          message: "User already exists",
+        });
+      }
+      throw error
+    }
 
 
 
@@ -207,7 +224,7 @@ exports.login = async (req,res)=>{
             })
         }
 
-        const user = await User.findOne({email}).populate('additionalDetails');
+        const user = await User.findOne({email}).select("+password").populate('additionalDetails');
 
 
 
@@ -220,19 +237,46 @@ exports.login = async (req,res)=>{
 
         if(await bcrypt.compare(password,user.password)){
 
+            // Checked after the password compare, not before, so a
+            // suspended account doesn't get a differently-worded error
+            // that would let someone probe suspension status without
+            // knowing the password.
+            if (user.active === false) {
+                return res.status(403).json({
+                    success: false,
+                    message: "This account has been suspended. Contact support for help.",
+                })
+            }
+
+            const jti = crypto.randomBytes(16).toString("hex")
             const payload = {
                 email:user.email,
                 id:user._id,
-                accountType:user.accountType
+                accountType:user.accountType,
+                jti,
             }
 
             const token = jwt.sign(payload,process.env.JWT_SECRET,{
                 expiresIn:"24h"
             })
 
+            // Backs "log out everywhere" / "revoke this session" in Settings
+            // — see auth.js middleware for the other half of this.
+            await Session.create({
+                user: user._id,
+                jti,
+                userAgent: req.headers["user-agent"] || "",
+                ip: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.socket?.remoteAddress || "",
+            })
 
-            user.token = token;
-            user.password=null;
+
+            // password was fetched above (select("+password")) to run the
+            // bcrypt compare — strip it before the doc goes into the
+            // response. Not setting user.token: the client reads the JWT
+            // from the top-level `token` field below, so copying it onto
+            // `user` too would just be a second copy of the secret sitting
+            // in Redux/localStorage for no benefit.
+            user.password = undefined;
 
             const options = {
                 expires: new Date(Date.now()+3*24*60*60*1000),
@@ -278,28 +322,28 @@ exports.changePassword = async (req,res) => {
     
 
     const { oldPassword, newPassword, confirmNewPassword } = req.body;
-  
-    if (
-      !oldPassword ||
-      !confirmNewPassword ||
-      !newPassword
-    ) {
-  
+
+    // confirmNewPassword is optional: the Settings form has never sent it
+    // (UpdatePassword.jsx only collects oldPassword + newPassword), so
+    // requiring it made this endpoint impossible to succeed from the UI.
+    // Still enforced below when a caller does send it.
+    if (!oldPassword || !newPassword) {
+
       return res.status(403).json({
         success: false,
         message: "invalid information please provide all fields ",
       });
-  
+
     }
   
-    const user = await User.findById(req.user.id)
+    const user = await User.findById(req.user.id).select("+password")
     if (!user) {
       return res.status(404).json({
         success: false,
         message: "User not found",
       })
     }
-  
+
     const isPasswordMatch = await bcrypt.compare(
       oldPassword,
       user.password
@@ -314,7 +358,7 @@ exports.changePassword = async (req,res) => {
   
     } 
   
-    if (newPassword !== confirmNewPassword) {
+    if (confirmNewPassword !== undefined && newPassword !== confirmNewPassword) {
       return res.status(400).json({
         success: false,
         message: "The new passwords do not match.",
@@ -335,6 +379,18 @@ exports.changePassword = async (req,res) => {
       { password: hashPassword },
       { new: true }
     );
+
+    // A password change is exactly the moment a stolen token should stop
+    // working everywhere else — revoke every OTHER session (not this
+    // request's own, so the user isn't logged out mid-flow).
+    try {
+      await Session.updateMany(
+        { user: req.user.id, jti: { $ne: req.user.jti } },
+        { $set: { revoked: true } }
+      )
+    } catch (error) {
+      console.error("Session revocation on password change failed", error);
+    }
 
     // The password is already changed. A failed notification email must never
     // be reported to the user as a failed password change.
@@ -369,4 +425,109 @@ exports.changePassword = async (req,res) => {
 
 
 
+}
+
+/**
+ * Promotes an existing, already-verified user to Admin. This is the only
+ * way an Admin account can come to exist — signup explicitly rejects
+ * accountType: "Admin" (see above), and that rejection is intentionally
+ * left alone by this route: it promotes, it never creates.
+ *
+ * Gated on a header matching ADMIN_SETUP_KEY rather than req.user/auth,
+ * because the whole reason this route exists is that a fresh deployment
+ * has no admin account yet to authenticate as. 404s (not 403) when the
+ * env var is unset, so the route's existence isn't observable to a caller
+ * who doesn't already know the key.
+ */
+exports.bootstrapAdmin = async (req, res) => {
+  try {
+    const setupKey = process.env.ADMIN_SETUP_KEY
+
+    if (!setupKey) {
+      return res.status(404).json({ success: false, message: "Not found" })
+    }
+
+    if (req.headers["x-setup-key"] !== setupKey) {
+      return res.status(404).json({ success: false, message: "Not found" })
+    }
+
+    const { email } = req.body
+    if (!email) {
+      return res.status(400).json({ success: false, message: "email is required" })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({ success: false, message: "No user with that email" })
+    }
+
+    if (user.accountType === "Admin") {
+      return res.status(200).json({ success: true, message: "Already an admin" })
+    }
+
+    user.accountType = "Admin"
+    await user.save()
+
+    return res.status(200).json({ success: true, message: `${email} is now an Admin` })
+  } catch (error) {
+    console.error("bootstrapAdmin failed", error)
+    return res.status(500).json({ success: false, message: "Could not promote user" })
+  }
+}
+
+/**
+ * Actually revokes the current session server-side. Previously "logout"
+ * was purely client-side (localStorage.removeItem) — the JWT stayed
+ * valid for its full 24h lifetime after a user believed they'd logged out.
+ */
+exports.logout = async (req, res) => {
+  try {
+    if (req.user?.jti) {
+      await Session.updateOne({ jti: req.user.jti }, { $set: { revoked: true } })
+    }
+    res.clearCookie("token")
+    return res.status(200).json({ success: true, message: "Logged out" })
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Could not log out" })
+  }
+}
+
+exports.listMySessions = async (req, res) => {
+  try {
+    const sessions = await Session.find({ user: req.user.id, revoked: false })
+      .sort({ lastSeenAt: -1 })
+      .lean()
+
+    const withCurrent = sessions.map((s) => ({ ...s, isCurrent: s.jti === req.user.jti }))
+    return res.status(200).json({ success: true, data: withCurrent })
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Could not load sessions" })
+  }
+}
+
+exports.revokeSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params
+    await Session.updateOne({ _id: sessionId, user: req.user.id }, { $set: { revoked: true } })
+    return res.status(200).json({ success: true, message: "Session revoked" })
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Could not revoke session" })
+  }
+}
+
+/**
+ * "Log out everywhere" — revokes every session for this account except
+ * the one making the request, so the user isn't immediately logged out
+ * of the device they're using to click the button.
+ */
+exports.revokeAllOtherSessions = async (req, res) => {
+  try {
+    await Session.updateMany(
+      { user: req.user.id, jti: { $ne: req.user.jti } },
+      { $set: { revoked: true } }
+    )
+    return res.status(200).json({ success: true, message: "Signed out of all other devices" })
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Could not revoke sessions" })
+  }
 }

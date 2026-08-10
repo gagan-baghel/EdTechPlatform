@@ -5,9 +5,15 @@ import { useNavigate, useParams } from "@/ui/lib/router"
 
 import { BigPlayButton, Player } from "video-react"
 
-import { markLectureAsComplete } from "../../../services/operations/courseDetailsAPI"
+import { markLectureAsComplete, updateWatchPosition } from "../../../services/operations/courseDetailsAPI"
 import { updateCompletedLectures } from "../../../slices/viewCourseSlice"
 import IconBtn from "../../common/IconBtn"
+
+// How often to send a watch-position heartbeat while playing. Frequent
+// enough that closing the tab loses at most this much progress; infrequent
+// enough not to spam the API on the native timeupdate event, which fires
+// roughly every 250ms.
+const HEARTBEAT_INTERVAL_MS = 15000
 
 const VideoDetails = () => {
   const { courseId, sectionId, subSectionId } = useParams()
@@ -15,11 +21,16 @@ const VideoDetails = () => {
   const playerRef = useRef(null)
   const dispatch = useDispatch()
   const { token } = useSelector((state) => state.auth)
-  const { courseSectionData, courseEntireData, completedLectures } =
+  const { user } = useSelector((state) => state.profile)
+  const { courseSectionData, courseEntireData, completedLectures, watchState } =
     useSelector((state) => state.viewCourse)
+  const defaultPlaybackSpeed = user?.additionalDetails?.defaultPlaybackSpeed || 1
+  const autoplayNext = user?.additionalDetails?.autoplayNext !== false
 
   const [videoEnded, setVideoEnded] = useState(false)
   const [loading, setLoading] = useState(false)
+  const lastHeartbeatAtRef = useRef(0)
+  const hasResumedRef = useRef(false)
 
   const currentSectionIndex = useMemo(
     () => courseSectionData.findIndex((section) => section._id === sectionId),
@@ -47,7 +58,54 @@ const VideoDetails = () => {
 
   useEffect(() => {
     setVideoEnded(false)
+    hasResumedRef.current = false
+    lastHeartbeatAtRef.current = 0
   }, [subSectionId])
+
+  // Resume where the viewer left off — once per lecture load, not on every
+  // timeupdate tick. onLoadedMetadata is the earliest point the player's
+  // duration/seek target is actually valid to act on.
+  const handleLoadedMetadata = () => {
+    if (playerRef.current) {
+      playerRef.current.playbackRate = defaultPlaybackSpeed
+    }
+
+    if (hasResumedRef.current) return
+    hasResumedRef.current = true
+
+    const savedPosition = watchState.find(
+      (entry) => entry.subSection === subSectionId
+    )?.positionSeconds
+
+    if (savedPosition && playerRef.current) {
+      playerRef.current.seek(savedPosition)
+    }
+  }
+
+  const handleTimeUpdate = () => {
+    if (!playerRef.current) return
+
+    const now = Date.now()
+    if (now - lastHeartbeatAtRef.current < HEARTBEAT_INTERVAL_MS) return
+    lastHeartbeatAtRef.current = now
+
+    const { currentTime, duration } = playerRef.current.getState().player
+    if (!currentTime) return
+
+    updateWatchPosition(
+      {
+        courseId,
+        subsectionId: subSectionId,
+        positionSeconds: currentTime,
+        durationSeconds: duration,
+      },
+      token
+    ).then((result) => {
+      if (result?.autoCompleted && !completedLectures.includes(subSectionId)) {
+        dispatch(updateCompletedLectures(subSectionId))
+      }
+    })
+  }
 
   // check if the lecture is the first video of the course
   const isFirstVideo = () => {
@@ -130,7 +188,12 @@ const VideoDetails = () => {
           ref={playerRef}
           aspectRatio="16:9"
           playsInline
-          onEnded={() => setVideoEnded(true)}
+          onEnded={() => {
+            setVideoEnded(true)
+            if (autoplayNext && !isLastVideo()) goToNextVideo()
+          }}
+          onLoadedMetadata={handleLoadedMetadata}
+          onTimeUpdate={handleTimeUpdate}
           src={videoData?.videoUrl}
         >
           <BigPlayButton position="center" />
@@ -190,6 +253,25 @@ const VideoDetails = () => {
 
       <h1 className="mt-4 text-3xl font-semibold">{videoData?.title}</h1>
       <p className="pt-2 pb-6">{videoData?.description}</p>
+
+      {videoData?.attachments?.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-2 font-semibold text-richblack-5">Resources</p>
+          <div className="flex flex-col gap-2">
+            {videoData.attachments.map((attachment) => (
+              <a
+                key={attachment._id}
+                href={attachment.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 rounded-md border border-richblack-700 px-3 py-2 text-sm text-richblack-100 hover:border-yellow-50 hover:text-yellow-50"
+              >
+                {attachment.name}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

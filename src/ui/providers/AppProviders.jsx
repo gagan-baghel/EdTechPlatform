@@ -8,6 +8,15 @@ import { Toaster } from "react-hot-toast"
 import rootReducer from "../reducer"
 import { useNavigate } from "../lib/router"
 import { getUserDetails } from "../services/operations/profileAPI"
+import { useAccessibilityPrefs } from "../hooks/useAccessibilityPrefs"
+
+// Applies the stored reduced-motion/font-size preference on every page
+// load, not just while Settings happens to be mounted — the hook's
+// localStorage read + class-toggle effect needs to run once at the root.
+function AccessibilityBootstrap() {
+  useAccessibilityPrefs()
+  return null
+}
 
 function makeStore() {
   return configureStore({
@@ -61,6 +70,7 @@ export default function AppProviders({ children }) {
   return (
     <Provider store={storeRef.current}>
       <AuthBootstrap />
+      <AccessibilityBootstrap />
       {children}
       <Toaster />
     </Provider>

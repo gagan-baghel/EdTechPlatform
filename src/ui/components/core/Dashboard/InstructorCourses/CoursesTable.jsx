@@ -9,9 +9,12 @@ import { HiClock } from "react-icons/hi"
 import { RiDeleteBin6Line } from "react-icons/ri"
 import { useNavigate } from "@/ui/lib/router"
 
+import { HiOutlineDuplicate } from "react-icons/hi"
+
 import { formatDate } from "../../../../services/formatDate"
 import {
   deleteCourse,
+  duplicateCourse,
   fetchInstructorCourses,
 } from "../../../../services/operations/courseDetailsAPI"
 import { COURSE_STATUS } from "../../../../utils/constants"
@@ -35,6 +38,16 @@ export default function CoursesTable({ courses, setCourses }) {
       setCourses(result)
     }
     setConfirmationModal(null)
+    setLoading(false)
+  }
+
+  const handleDuplicate = async (courseId) => {
+    setLoading(true)
+    await duplicateCourse({ courseId }, token)
+    const result = await fetchInstructorCourses(token)
+    if (result) {
+      setCourses(result)
+    }
     setLoading(false)
   }
 
@@ -128,6 +141,14 @@ export default function CoursesTable({ courses, setCourses }) {
                     className="px-2 transition-all duration-200 hover:scale-110 hover:text-caribbeangreen-300"
                   >
                     <FiEdit2 size={20} />
+                  </button>
+                  <button
+                    disabled={loading}
+                    onClick={() => handleDuplicate(course._id)}
+                    title="Duplicate"
+                    className="px-2 transition-all duration-200 hover:scale-110 hover:text-caribbeangreen-300"
+                  >
+                    <HiOutlineDuplicate size={20} />
                   </button>
                   <button
                     disabled={loading}

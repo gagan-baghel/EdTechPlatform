@@ -1,3 +1,4 @@
+import axios from "axios"
 import { toast } from "react-hot-toast"
 
 import { updateCompletedLectures } from "../../slices/viewCourseSlice"
@@ -22,7 +23,110 @@ const {
   GET_FULL_COURSE_DETAILS_AUTHENTICATED,
   CREATE_RATING_API,
   LECTURE_COMPLETION_API,
+  VIDEO_UPLOAD_SIGNATURE_API,
+  UPDATE_WATCH_POSITION_API,
+  REORDER_SECTIONS_API,
+  REORDER_SUBSECTIONS_API,
+  DUPLICATE_COURSE_API,
+  ADD_ATTACHMENT_API,
+  REMOVE_ATTACHMENT_API,
 } = courseEndpoints
+
+/**
+ * Uploads a lecture video straight from the browser to Cloudinary — never
+ * through our own serverless function, which caps request bodies at 4.5MB
+ * and can't hold a real video regardless of any server-side limit. Returns
+ * the Cloudinary public_id, which the backend re-verifies by re-fetching
+ * the asset rather than trusting it (see verifyUploadedVideo in
+ * Subsection.js) before ever storing it against a course.
+ */
+/**
+ * Shared by video and attachment uploads — the signature Cloudinary needs
+ * doesn't depend on resource_type (that's only part of the upload URL, not
+ * a signed param), so one backend signing endpoint covers both.
+ */
+async function uploadToCloudinary(file, token, resourceType, onProgress) {
+  const sigResponse = await apiConnector(
+    "POST",
+    VIDEO_UPLOAD_SIGNATURE_API,
+    null,
+    { Authorization: `Bearer ${token}` }
+  )
+
+  if (!sigResponse?.data?.success) {
+    throw new Error("Could not start the upload")
+  }
+
+  const { cloudName, apiKey, timestamp, folder, signature } = sigResponse.data.data
+
+  const formData = new FormData()
+  formData.append("file", file)
+  formData.append("api_key", apiKey)
+  formData.append("timestamp", timestamp)
+  formData.append("folder", folder)
+  formData.append("signature", signature)
+
+  // Plain axios, not apiConnector's shared instance — that instance sets
+  // withCredentials:true, which is unnecessary cross-origin here and only
+  // invites CORS trouble against a host we don't control.
+  const uploadResponse = await axios.post(
+    `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
+    formData,
+    {
+      onUploadProgress: (event) => {
+        if (!onProgress || !event.total) return
+        onProgress(Math.round((event.loaded / event.total) * 100))
+      },
+    }
+  )
+
+  return { publicId: uploadResponse.data.public_id, url: uploadResponse.data.secure_url }
+}
+
+/**
+ * Uploads a lecture video straight from the browser to Cloudinary — never
+ * through our own serverless function, which caps request bodies at 4.5MB
+ * and can't hold a real video regardless of any server-side limit. Returns
+ * the Cloudinary public_id, which the backend re-verifies by re-fetching
+ * the asset rather than trusting it (see verifyUploadedVideo in
+ * Subsection.js) before ever storing it against a course.
+ */
+export async function uploadVideoToCloudinary(file, token, onProgress) {
+  const { publicId } = await uploadToCloudinary(file, token, "video", onProgress)
+  return publicId
+}
+
+// Lecture resource attachments (slides, code samples, worksheets) —
+// resource_type "raw" since these are arbitrary files, not media Cloudinary
+// needs to transcode.
+export async function uploadAttachmentToCloudinary(file, token, onProgress) {
+  return uploadToCloudinary(file, token, "raw", onProgress)
+}
+
+export async function addAttachment(data, token) {
+  try {
+    const response = await apiConnector("POST", ADD_ATTACHMENT_API, data, {
+      Authorization: `Bearer ${token}`,
+    })
+    if (!response?.data?.success) throw new Error("Could not add attachment")
+    return response.data.data
+  } catch (error) {
+    toast.error(error.message)
+    return null
+  }
+}
+
+export async function removeAttachment(data, token) {
+  try {
+    const response = await apiConnector("POST", REMOVE_ATTACHMENT_API, data, {
+      Authorization: `Bearer ${token}`,
+    })
+    return response?.data?.success ? response.data.data : null
+  } catch (error) {
+    toast.error("Could not remove attachment")
+    return null
+  }
+}
 
 export const getAllCourses = async () => {
   const toastId = toast.loading("Loading...")
@@ -199,6 +303,51 @@ export const updateSubSection = async (data, token) => {
   return result
 }
 
+// persist a new section order — silent (no toast), called after every
+// drag-drop reorder, which would be spammy with a loading toast on each drop
+export const reorderSections = async (data, token) => {
+  try {
+    const response = await apiConnector("POST", REORDER_SECTIONS_API, data, {
+      Authorization: `Bearer ${token}`,
+    })
+    return response?.data?.success ? response.data.updatedCourse : null
+  } catch (error) {
+    toast.error("Could not save the new order")
+    return null
+  }
+}
+
+export const reorderSubSections = async (data, token) => {
+  try {
+    const response = await apiConnector("POST", REORDER_SUBSECTIONS_API, data, {
+      Authorization: `Bearer ${token}`,
+    })
+    return response?.data?.success ? response.data.data : null
+  } catch (error) {
+    toast.error("Could not save the new order")
+    return null
+  }
+}
+
+export const duplicateCourse = async (data, token) => {
+  const toastId = toast.loading("Duplicating course...")
+  let result = null
+  try {
+    const response = await apiConnector("POST", DUPLICATE_COURSE_API, data, {
+      Authorization: `Bearer ${token}`,
+    })
+    if (!response?.data?.success) {
+      throw new Error("Could not duplicate course")
+    }
+    toast.success("Course duplicated")
+    result = response.data.data
+  } catch (error) {
+    toast.error(error.message)
+  }
+  toast.dismiss(toastId)
+  return result
+}
+
 // delete a section
 export const deleteSection = async (data, token) => {
   let result = null
@@ -329,6 +478,23 @@ export const markLectureAsComplete = async (data, token) => {
   }
   toast.dismiss(toastId)
   return result
+}
+
+/**
+ * Watch-position heartbeat — called periodically while a lecture plays.
+ * Deliberately silent: no toast, no loading state. A background heartbeat
+ * that pops an error toast every ~15s on a flaky connection would be far
+ * more disruptive than just skipping a beat and trying again next tick.
+ */
+export const updateWatchPosition = async (data, token) => {
+  try {
+    const response = await apiConnector("POST", UPDATE_WATCH_POSITION_API, data, {
+      Authorization: `Bearer ${token}`,
+    })
+    return response.data
+  } catch (error) {
+    return null
+  }
 }
 
 // create a rating for course

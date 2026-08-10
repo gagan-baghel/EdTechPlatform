@@ -16,6 +16,7 @@ import {
 } from "../../../../../slices/courseSlice"
 import IconBtn from "../../../../common/IconBtn"
 import NestedView from "./NestedView"
+import QuizManager from "./QuizManager"
 
 export default function CourseBuilderForm() {
   const {
@@ -140,6 +141,7 @@ export default function CourseBuilderForm() {
       {course.courseContent.length > 0 && (
         <NestedView handleChangeEditSectionName={handleChangeEditSectionName} />
       )}
+      {course._id && <QuizManager courseId={course._id} />}
       {/* Next Prev Button */}
       <div className="flex justify-end gap-x-3">
         <button

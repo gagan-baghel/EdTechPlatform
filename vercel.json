@@ -1,9 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "functions": {
-    "src/pages/api/v1/[...path].js": {
-      "maxDuration": 60
+  "crons": [
+    {
+      "path": "/api/v1/cron/publish-scheduled",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/v1/cron/transcribe-pending",
+      "schedule": "*/15 * * * *"
     }
-  }
+  ]
 }

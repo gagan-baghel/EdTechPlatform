@@ -10,6 +10,7 @@ import { fetchCategoriesCached } from "../../services/sharedData"
 import { ACCOUNT_TYPE } from "../../utils/constants"
 import ProfileDropdown from "../core/Auth/ProfileDropDown"
 import MobileNav from "./MobileNav"
+import NotificationBell from "./NotificationBell"
 import SearchBar from "./SearchBar"
 
 function Navbar() {
@@ -241,7 +242,8 @@ function Navbar() {
               </button>
             </Link>
           )}
-          {token !== null && <ProfileDropdown />} 
+          {token !== null && <NotificationBell />}
+          {token !== null && <ProfileDropdown />}
 
         </div>
         <button

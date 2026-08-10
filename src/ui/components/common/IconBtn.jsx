@@ -1,3 +1,9 @@
+import Button from "./Button"
+
+// Thin compatibility wrapper — IconBtn's actual styling now lives in
+// Button (the shared design-system primitive); this keeps all 14 existing
+// IconBtn call sites working unchanged rather than requiring them to
+// migrate to Button's prop names.
 export default function IconBtn({
   text,
   onClick,
@@ -10,23 +16,22 @@ export default function IconBtn({
   ...rest
 }) {
   return (
-    <button
+    <Button
       disabled={disabled}
       onClick={onClick}
-      className={`flex items-center ${
-        outline ? "border border-yellow-50 bg-transparent" : "bg-yellow-50"
-      } cursor-pointer gap-x-2 rounded-md py-2 px-5 font-semibold text-richblack-900 transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-offset-2 focus-visible:ring-offset-richblack-900 disabled:cursor-not-allowed disabled:opacity-60 ${customClasses}`}
+      outline={outline}
+      className={customClasses}
       type={type}
       {...rest}
     >
       {children ? (
         <>
-          <span className={`${outline && "text-yellow-50"}`}>{text}</span>
+          <span className={outline ? "text-yellow-50" : undefined}>{text}</span>
           {children}
         </>
       ) : (
         text
       )}
-    </button>
+    </Button>
   )
 }

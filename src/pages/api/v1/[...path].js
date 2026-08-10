@@ -16,4 +16,5 @@ export const config = {
     bodyParser: false,
     externalResolver: true,
   },
+  maxDuration: 60,
 }

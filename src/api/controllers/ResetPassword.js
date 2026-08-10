@@ -1,4 +1,5 @@
 const User = require('../models/User')
+const Session = require('../models/Session')
 const mailSender = require('../utils/mailSender')
 const bcrypt = require('bcryptjs')
 const crypto = require('crypto')
@@ -151,6 +152,15 @@ exports.resetPassword = async (req, res) => {
                 $unset: { token: 1, resetPasswordExpires: 1 },
             }
         )
+
+        // A password-reset link implies "I may have lost control of my
+        // account" — unlike changePassword, there is no session making
+        // this request to preserve, so every session is revoked.
+        try {
+            await Session.updateMany({ user: user._id }, { $set: { revoked: true } })
+        } catch (error) {
+            console.error("Session revocation on password reset failed", error)
+        }
 
         return res.status(200).json({
             success: true,
