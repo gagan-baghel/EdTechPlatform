@@ -1,35 +1,41 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": false,
-    "noEmit": true,
-    "esModuleInterop": true,
+    "target": "ES2022",
+    "lib": ["dom", "dom.iterable", "esnext"],
     "module": "esnext",
     "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "noEmit": true,
+    "incremental": true,
+    "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
+    "skipLibCheck": true,
+
+    /* Strictness. `strict` is the whole family; the rest are the checks
+       outside it that catch real bugs without demanding a rewrite.
+       Deliberately NOT enabling noUncheckedIndexedAccess or
+       exactOptionalPropertyTypes — both are correct in principle but would
+       force thousands of non-behavioural edits across a 27k-line migration,
+       drowning the real findings. See MIGRATION.md for the follow-up. */
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": false,
+    "useUnknownInCatchVariables": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* allowJs stays on only while .js and .ts coexist during the migration.
+       checkJs is off so un-migrated files don't emit noise that hides the
+       errors in files that HAVE been migrated. */
+    "allowJs": true,
+    "checkJs": false,
+
+    /* No `baseUrl` — deprecated in TS 6. Paths resolve relative to this file. */
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
+      "@/*": ["./src/*"]
     },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "strictNullChecks": true
+    "plugins": [{ "name": "next" }]
   },
   "include": [
     "next-env.d.ts",
@@ -37,7 +43,5 @@
     "**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules", ".next", "out"]
 }
