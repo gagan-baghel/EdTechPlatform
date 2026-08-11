@@ -37,3 +37,4 @@ migrate_part*.py
 fix_types.js
 remove_nochecks.js
 cb_files.txt
+tsconfig.tsbuildinfo
