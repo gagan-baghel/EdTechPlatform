@@ -1,7 +1,8 @@
 # TypeScript migration & modernization
 
-Status as of the current commit. The **backend migration is complete and
-verified**; the frontend is not started. See "Current state".
+Status as of the current commit: the migration is **complete** — backend and
+frontend, zero TypeScript errors, zero lint errors, zero `any`, green build,
+verified against a running server.
 
 ## Approach
 
@@ -37,11 +38,14 @@ ambiguous. It is a required follow-up, not an optional one — see "Security".
 | Controllers | 27 | Done, type-clean |
 | API entry (`pages/api/v1/[...path]`) | 1 | Done, type-clean |
 | Tests (`*.test.ts`) | 2 files, 25 tests | Passing |
-| Frontend (`src/ui`, `src/app`) | ~200 | **Not started** — still `.jsx`/`.js` |
+| Frontend (`src/ui`, `src/app`, `src/pages`) | ~200 | Done, type-clean |
 
-`tsconfig.json` runs `strict: true` with `allowJs` still on (so un-migrated
-frontend files continue to build) and `checkJs` off (so they don't emit noise
-that hides errors in migrated files). Both come off when the frontend lands.
+There are **no `.js`/`.jsx` files left in `src`** — 329 `.ts`/`.tsx` files, all
+under `strict: true`. `allowJs` can now be turned off.
+
+The repo also contains **no `any`, no `@ts-nocheck`, and no `@ts-ignore`**.
+That matters because a green typecheck means nothing if checking is switched
+off in the files that would have failed.
 
 Deliberately **not** enabled: `noUncheckedIndexedAccess` and
 `exactOptionalPropertyTypes`. Both are correct in principle and both would
@@ -52,16 +56,17 @@ the real findings. Worth a separate pass once this one is green.
 
 ```
 npm run typecheck   0 errors
-npm run lint        0 errors (warnings only, all pre-existing <img> hints)
+npm run lint        0 errors (warnings only, pre-existing <img> hints)
 npm run test        25 passed
 npm run build       compiles, all routes emitted
 ```
 
-Runtime-checked against a dev server: the home page renders with no console
-errors, and the API returns well-formed JSON envelopes. Authenticated flows
-could **not** be exercised here — the MongoDB credentials in `.env.local` are
-rejected by the server (`bad auth : authentication failed`), which predates
-this work. That is the one gap in the verification story.
+Runtime-verified against a dev server with a live database: home/about/login/
+search/catalog all render 200 with no console errors, `/api/v1/health` returns
+`{"success":true}`, category reads hit the database, input validation rejects
+short search terms, and protected routes answer a typed
+`{"success":false,"code":"UNAUTHENTICATED"}` 401.
+
 
 ### Note on Mongoose populate typing
 
@@ -126,6 +131,45 @@ stripped from mail headers.
 in `razorpayWebhook`, where no `userId` exists in scope (the fallback was
 copied from `verifyPayment`, which does have one). It never fired only because
 `Order.user` is `required: true`, so the right side never evaluated.
+
+## Regressions found in the frontend migration and fixed
+
+These were introduced while the frontend was converted, and every one was
+hidden by `any` or `@ts-nocheck`:
+
+**The build gate was switched off.** `next.config.js` had gained
+`typescript.ignoreBuildErrors: true` and `eslint.ignoreDuringBuilds: true`, so
+`next build` passing said nothing about whether the code typechecked. Removed —
+the tree is clean, so the gate stays on.
+
+**The homepage crashed.** The same commit replaced `images.remotePatterns`
+with `images.domains: ["res.cloudinary.com"]`, dropping three hosts. Every
+Unsplash/DiceBear image threw "Invalid src prop" and took the route into its
+error boundary.
+
+**22 files carried `@ts-nocheck`** — including checkout totals, the course
+form, the video player, and every Admin tab. Those files were not migrated,
+they were silenced.
+
+**The video player read a store slice that does not exist**
+(`state.player`). Destructuring `undefined` would throw on every lecture page.
+The values belong to `user.additionalDetails`.
+
+**The Navbar's i18n and theme hooks were stubbed out** — `useTranslations`,
+`useLocaleSwitcher` and `useTheme` replaced with no-ops, and the language list
+hardcoded to English, silently dropping Hindi.
+
+**Two services returned the server's error body on failure**
+(`getFullDetailsOfCourse`, `getCatalogaPageData`), so a failed request rendered
+an error payload into the page as if it were course data.
+
+**Lecture drag-reorder never updated the UI.** The client read
+`.updatedCourse` from `/reorderSubSections`, which answers `{ data: section }`;
+the value was always `undefined`, so the reordered list only appeared after a
+manual refresh. (Pre-existing, surfaced by typing the response.)
+
+**Corrupted identifiers** from a bad find/replace: `setOrgs(orgs as anyResult)`,
+`<AnyPlayer>`, and comment text left inline as JSX children.
 
 **Two catalogue indexes added** to `Course` (`status+deletedAt+category`,
 `instructor+deletedAt`). `autoIndex` is off, so **these are declarations only —

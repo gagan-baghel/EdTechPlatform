@@ -205,6 +205,8 @@ export interface Category<Id = IdLike> {
 }
 
 export interface Attachment {
+  /** Subdocument id — Mongoose assigns one unless `_id: false` is set. */
+  _id?: string
   name: string
   url: string
   publicId: string

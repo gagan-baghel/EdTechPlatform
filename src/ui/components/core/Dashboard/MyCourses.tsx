@@ -1,0 +1,43 @@
+import type { CourseListItem } from "@/ui/types"
+import { useEffect, useState } from "react"
+import { VscAdd } from "react-icons/vsc"
+import { useSelector } from "react-redux"
+import { useNavigate } from "@/ui/lib/router"
+
+import { fetchInstructorCourses } from "../../../services/operations/courseDetailsAPI"
+import IconBtn from "../../common/IconBtn"
+import CoursesTable from "./InstructorCourses/CoursesTable"
+
+import type { RootState } from "../../../store"
+
+export default function MyCourses(): JSX.Element {
+  const { token } = useSelector((state: RootState) => state.auth)
+  const navigate = useNavigate()
+  const [courses, setCourses] = useState<CourseListItem[]>([])
+
+  useEffect(() => { 
+    const fetchCourses = async () => {
+      const result = await fetchInstructorCourses<CourseListItem>(token as string)
+      if (result) {
+        setCourses(result)
+      }
+    }
+    fetchCourses()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  return (
+    <div>
+      <div className="mb-14 flex items-center justify-between">
+        <h1 className="text-3xl font-medium text-richblack-5">My Courses</h1>
+        <IconBtn
+          text="Add Course"
+          onClick={() => navigate("/dashboard/add-course")}
+        >
+          <VscAdd />
+        </IconBtn>
+      </div>
+      {courses && <CoursesTable courses={courses} setCourses={setCourses} />}
+    </div>
+  )
+}

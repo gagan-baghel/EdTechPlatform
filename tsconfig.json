@@ -25,10 +25,9 @@
     "useUnknownInCatchVariables": true,
     "forceConsistentCasingInFileNames": true,
 
-    /* allowJs stays on only while .js and .ts coexist during the migration.
-       checkJs is off so un-migrated files don't emit noise that hides the
-       errors in files that HAVE been migrated. */
-    "allowJs": true,
+    /* Migration complete — all files are TypeScript. allowJs is now off so
+       the compiler will reject any .js file accidentally added in future. */
+    "allowJs": false,
     "checkJs": false,
 
     /* No `baseUrl` — deprecated in TS 6. Paths resolve relative to this file. */

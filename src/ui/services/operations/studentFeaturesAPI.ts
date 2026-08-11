@@ -1,0 +1,138 @@
+import type { NavigateFunction } from "../../lib/router"
+import type { AppDispatch } from "../../store"
+import { toast } from "react-hot-toast"
+import { studentEndpoints } from "../apis"
+import { apiConnector } from "../apiconnector"
+import { setPaymentLoading } from "../../slices/courseSlice"
+import { resetCart } from "../../slices/cartSlice"
+import { loadRazorpayScript } from "../razorpayScript"
+
+const {
+  COURSE_PAYMENT_API,
+  COURSE_VERIFY_API,
+  SEND_PAYMENT_SUCCESS_EMAIL_API,
+  CREATE_PAYMENT_ENTRY,
+} = studentEndpoints
+
+const RAZORPAY_PUBLIC_KEY = process.env.NEXT_PUBLIC_RAZORPAY_KEY
+
+export async function buyCourse(token: string, courses: string[], userDetails: { firstName?: string; lastName?: string; email?: string }, navigate: NavigateFunction, dispatch: AppDispatch, couponCode: string | null = null) {
+  if (!RAZORPAY_PUBLIC_KEY) {
+    toast.error("Payments are not configured. Please contact support.")
+    return
+  }
+
+  if (!courses?.length) {
+    toast.error("Your cart is empty.")
+    return
+  }
+
+  const toastId = toast.loading("Starting checkout...")
+
+  try {
+    const scriptLoaded = await loadRazorpayScript()
+
+    if (!scriptLoaded) {
+      toast.error("Could not reach the payment provider. Check your connection.")
+      return
+    }
+
+    const orderResponse = await apiConnector(
+      "POST",
+      COURSE_PAYMENT_API,
+      couponCode ? { courses, couponCode } : { courses },
+      { Authorization: `Bearer ${token}` }
+    )
+
+    if (!orderResponse.data.success) {
+      throw new Error(orderResponse.data.message)
+    }
+
+    const order = orderResponse.data.message as { currency: string; amount: string | number; id: string } | undefined
+    if (!order) throw new Error("Invalid order response")
+
+    const paymentObject = new window.Razorpay!({
+      key: RAZORPAY_PUBLIC_KEY,
+      currency: order.currency,
+      amount: `${order.amount}`,
+      order_id: order.id,
+      name: "IntelleCraft",
+      description: "Course purchase",
+      image: "/logo.png",
+      prefill: {
+        name: `${userDetails?.firstName ?? ""} ${userDetails?.lastName ?? ""}`.trim(),
+        email: userDetails?.email ?? "",
+      },
+      handler: function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
+        // Enrolment is authoritative and must complete first.
+        // The server derives courses and amount from the stored order.
+        verifyPayment(response, token, navigate, dispatch)
+      },
+      modal: {
+        ondismiss: function () {
+          toast("Checkout cancelled. Your cart is saved.", { icon: "🛒" })
+        },
+      },
+    })
+
+    paymentObject.open()
+
+    paymentObject.on("payment.failed", function () {
+      toast.error("Payment failed. You have not been charged for this attempt.")
+    })
+  } catch (error) {
+    toast.error((error as Error)?.message || "Could not start checkout. Please try again.")
+  } finally {
+    toast.dismiss(toastId)
+  }
+}
+
+// Receipt email and history row are best-effort follow-ups; they never block access.
+async function recordPurchase(response: { razorpay_order_id: string; razorpay_payment_id: string }, token: string) {
+  const payload = {
+    orderId: response.razorpay_order_id,
+    paymentId: response.razorpay_payment_id,
+  }
+  const headers = { Authorization: `Bearer ${token}` }
+
+  await Promise.allSettled([
+    apiConnector("POST", CREATE_PAYMENT_ENTRY, payload, headers),
+    apiConnector("POST", SEND_PAYMENT_SUCCESS_EMAIL_API, payload, headers),
+  ])
+}
+
+async function verifyPayment(response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }, token: string, navigate: NavigateFunction, dispatch: AppDispatch) {
+  const toastId = toast.loading("Confirming your payment...")
+  dispatch(setPaymentLoading(true))
+
+  try {
+    const result = await apiConnector(
+      "POST",
+      COURSE_VERIFY_API,
+      {
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_signature: response.razorpay_signature,
+      },
+      { Authorization: `Bearer ${token}` }
+    )
+
+    if (result.data.success !== true) {
+      throw new Error(result.data.message)
+    }
+
+    await recordPurchase(response, token)
+
+    toast.success("Payment confirmed. You're enrolled!")
+    dispatch(resetCart())
+    navigate("/dashboard/enrolled-courses")
+  } catch (error) {
+    toast.error(
+      (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        "We could not confirm your payment. If you were charged, contact support with your order id."
+    )
+  } finally {
+    toast.dismiss(toastId)
+    dispatch(setPaymentLoading(false))
+  }
+}
