@@ -5,6 +5,84 @@ app mounted behind one catch-all route (`src/pages/api/v1/[...path].ts`), so
 every endpoint lives under `/api/v1/*` in the same deployment. There is no
 separate backend process.
 
+## Screenshots
+
+### Homepage
+
+![Homepage](./public/screenshots/homepage.png)
+
+### Catalog
+
+![Catalog](./public/screenshots/catalog.png)
+
+### Search
+
+![Search](./public/screenshots/search.png)
+
+### Course details
+
+![Course details](./public/screenshots/course-details.png)
+
+### Sign in
+
+![Sign in](./public/screenshots/login.png)
+
+### Sign up
+
+![Sign up](./public/screenshots/signup.png)
+
+### Student dashboard
+
+![Student dashboard](./public/screenshots/student-dashboard.png)
+
+### Enrolled courses
+
+![Enrolled courses](./public/screenshots/enrolled-courses.png)
+
+### My learning
+
+![My learning](./public/screenshots/my-learning.png)
+
+### Course player
+
+![Course player](./public/screenshots/course-player.png)
+
+### Purchase history
+
+![Purchase history](./public/screenshots/purchase-history.png)
+
+### Settings
+
+![Settings](./public/screenshots/settings.png)
+
+### Instructor dashboard
+
+![Instructor dashboard](./public/screenshots/instructor-dashboard.png)
+
+### Instructor courses
+
+![Instructor courses](./public/screenshots/instructor-courses.png)
+
+### Course builder
+
+![Course builder](./public/screenshots/add-course.png)
+
+### Admin dashboard
+
+![Admin dashboard](./public/screenshots/admin-dashboard.png)
+
+### Mobile — homepage
+
+![Mobile homepage](./public/screenshots/mobile-homepage.png)
+
+### Mobile — enrolled courses
+
+![Mobile enrolled courses](./public/screenshots/mobile-student-dashboard.png)
+
+### Mobile — instructor dashboard
+
+![Mobile instructor dashboard](./public/screenshots/mobile-instructor.png)
+
 ## Run locally
 
 ```bash
