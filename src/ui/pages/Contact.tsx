@@ -10,8 +10,10 @@ const contactImage =
 
 function Contact() {
   return (
-    // Pinned dark — see About.jsx's comment; same gradient hero pattern.
-    <div data-theme="dark" className="bg-richblack-900 text-richblack-5">
+    // Follows the site theme. The only thing that kept this pinned dark was
+    // the hero's gradient wordmark, which is now theme-aware (.brand-gradient
+    // in globals.css) rather than a ramp through white.
+    <div className="bg-richblack-900 text-richblack-5">
       <section className="relative overflow-hidden px-6 py-20 sm:px-8 lg:px-10 lg:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(195,235,250,0.18),_transparent_32%)]" />
         <div className="relative mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
@@ -21,7 +23,7 @@ function Contact() {
             </div>
             <h1 className="mt-6 text-5xl font-black leading-[1.02] tracking-tighter text-richblack-5 sm:text-6xl lg:text-7xl">
               Let&apos;s keep it{" "}
-              <span className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-transparent">
+              <span className="brand-gradient">
                 simple.
               </span>
             </h1>

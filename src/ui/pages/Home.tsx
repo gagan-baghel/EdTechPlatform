@@ -10,20 +10,20 @@ import {
   AiOutlineGlobal,
   AiOutlineLineChart,
   AiOutlinePlayCircle,
-  AiOutlineReload,
   AiOutlineRocket,
   AiOutlineSafetyCertificate,
   AiOutlineThunderbolt,
   AiOutlineUsergroupAdd,
 } from "react-icons/ai"
 import { BsChevronDown, BsPlug } from "react-icons/bs"
-import { FaGoogle, FaMicrosoft, FaSlack } from "react-icons/fa"
 
 import { useTranslations } from "next-intl"
 
 import { Link } from "@/ui/lib/router"
 
 import Footer from "../components/common/Footer"
+import IntegrationOrbit from "../components/core/HomePage/IntegrationOrbit"
+import Reveal from "../components/common/Reveal"
 import React from "react"
 
 const faqs = [
@@ -153,14 +153,20 @@ function Home() {
   const t = useTranslations("Home")
 
   return (
-    // Pinned dark regardless of the site theme — this page is a full-bleed
-    // photo/gradient marketing page, not app chrome; see globals.css's
-    // [data-theme="dark"] comment for why.
-    <div
-      data-theme="dark"
-      className="min-h-screen bg-richblack-900 selection:bg-[#c3ebfa] selection:text-ink"
-    >
-      <section className="relative flex min-h-[800px] h-screen items-center justify-center overflow-hidden bg-richblack-900">
+    // The page as a whole follows the site theme. It used to pin
+    // data-theme="dark" here, which meant the light-mode toggle did nothing at
+    // all on the homepage — the single most visible theming bug in the app.
+    // Only the sections that are genuinely locked dark (a dark photo with
+    // hardcoded #020617 overlays and white text on top) keep the pin, marked
+    // individually below.
+    <div className="min-h-screen bg-richblack-900 selection:bg-[#c3ebfa] selection:text-ink">
+      {/* Locked dark: dark photograph + hardcoded overlay gradients. Flipping
+          the text here would leave white type on a light-mode palette over an
+          unchanged dark image. */}
+      <section
+        data-theme="dark"
+        className="relative flex min-h-[800px] h-screen items-center justify-center overflow-hidden bg-richblack-900"
+      >
         <div className="absolute inset-0 h-[120%] w-full">
           <Image
             src="/hero/dark-mode-monitor.jpg"
@@ -245,7 +251,7 @@ function Home() {
       </section>
 
       <section id="platform" className="bg-richblack-900 px-6 py-32">
-        <div className="mx-auto max-w-7xl">
+        <Reveal className="mx-auto max-w-7xl">
           <div className="mb-20">
             <h2 className="mb-6 text-5xl font-bold leading-tight tracking-tight text-richblack-5 md:text-7xl">
               A unified platform. <br className="hidden md:block" />
@@ -257,7 +263,8 @@ function Home() {
           </div>
 
           <div className="grid auto-rows-[400px] grid-cols-1 gap-6 md:grid-cols-3 md:grid-rows-2">
-            <div className="group relative isolate overflow-hidden rounded-[40px] bg-gray-900 md:col-span-2 md:row-span-2">
+            {/* Locked dark: photo tile with white type over a fixed gradient. */}
+            <div data-theme="dark" className="group relative isolate overflow-hidden rounded-[40px] bg-gray-900 md:col-span-2 md:row-span-2">
               <Image
                 src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
                 alt="Dashboard Design"
@@ -312,10 +319,11 @@ function Home() {
               </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      <section className="relative overflow-hidden bg-gray-900 py-24 text-white">
+      {/* Locked dark: bg-gray-900 and a photograph, neither of which flips. */}
+      <section data-theme="dark" className="relative overflow-hidden bg-gray-900 py-24 text-white">
         <div
           className="absolute inset-0 opacity-10"
           style={{
@@ -346,7 +354,7 @@ function Home() {
       </section>
 
       <section id="solutions" className="overflow-hidden bg-richblack-900 py-32">
-        <div className="mx-auto max-w-7xl space-y-40 px-6">
+        <Reveal className="mx-auto max-w-7xl space-y-40 px-6">
           <div className="flex flex-col items-center gap-16 lg:flex-row lg:gap-24">
             <div className="lg:w-5/12">
               <h2 className="mb-8 text-5xl font-bold leading-[1.1] tracking-tight text-richblack-5 md:text-7xl">
@@ -465,11 +473,11 @@ function Home() {
               </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <section className="relative overflow-hidden border-t border-richblack-700 bg-richblack-800 py-32">
-        <div className="mx-auto max-w-7xl px-6 text-center">
+        <Reveal className="mx-auto max-w-7xl px-6 text-center">
           <h2 className="mb-6 text-5xl font-bold tracking-tight text-richblack-5 md:text-6xl">
             Plug into your ecosystem.
           </h2>
@@ -477,46 +485,12 @@ function Home() {
             The platform plays nicely with your existing stack. Two-way sync with the tools your teachers and admins already use.
           </p>
 
-          <div className="relative mx-auto flex h-[400px] w-full max-w-4xl items-center justify-center">
-            <div className="relative z-20 flex h-32 w-32 items-center justify-center rounded-3xl border border-richblack-700 bg-richblack-700 shadow-2xl shadow-black/30">
-              <AiOutlineBook className="h-16 w-16 text-richblack-5" />
-            </div>
-
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="absolute h-[300px] w-[300px] rounded-full border border-dashed border-richblack-600" />
-              <div className="absolute h-[500px] w-[500px] rounded-full border border-dashed border-richblack-700" />
-
-              <div
-                className="absolute flex h-16 w-16 items-center justify-center rounded-2xl border border-richblack-700 bg-richblack-700 shadow-lg shadow-black/20"
-                style={{ transform: "translate(-120px, -90px) rotate(-12deg)" }}
-              >
-                <FaGoogle className="h-8 w-8 text-[#4285F4]" />
-              </div>
-              <div
-                className="absolute flex h-16 w-16 items-center justify-center rounded-2xl border border-richblack-700 bg-richblack-700 shadow-lg shadow-black/20"
-                style={{ transform: "translate(90px, 120px) rotate(15deg)" }}
-              >
-                <AiOutlineReload className="h-8 w-8 text-[#7dd3fc]" />
-              </div>
-              <div
-                className="absolute flex h-16 w-16 items-center justify-center rounded-2xl border border-richblack-700 bg-richblack-700 shadow-lg shadow-black/20"
-                style={{ transform: "translate(200px, -150px) rotate(12deg)" }}
-              >
-                <FaSlack className="h-8 w-8 text-[#611f69]" />
-              </div>
-              <div
-                className="absolute flex h-16 w-16 items-center justify-center rounded-2xl border border-richblack-700 bg-richblack-700 shadow-lg shadow-black/20"
-                style={{ transform: "translate(-150px, 200px) rotate(-15deg)" }}
-              >
-                <FaMicrosoft className="h-8 w-8 text-[#00a4ef]" />
-              </div>
-            </div>
-          </div>
-        </div>
+          <IntegrationOrbit />
+        </Reveal>
       </section>
 
       <section id="showcase" className="border-y border-richblack-700 bg-richblack-900 py-32">
-        <div className="mx-auto max-w-7xl px-6">
+        <Reveal className="mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-20 max-w-4xl text-center">
             <h2 className="mb-8 text-5xl font-bold tracking-tight text-richblack-5 md:text-7xl">
               Millions of students. <br />Zero downtime.
@@ -564,11 +538,11 @@ function Home() {
               </div>
             ))}
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <section className="relative bg-richblack-900 py-32">
-        <div className="mx-auto max-w-7xl px-6">
+        <Reveal className="mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-24 max-w-3xl text-center">
             <h2 className="mb-6 text-5xl font-bold tracking-tight text-richblack-5 md:text-6xl">
               Switching is effortless.
@@ -603,11 +577,11 @@ function Home() {
               )
             })}
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <section id="faq" className="border-t border-richblack-700 bg-richblack-900 py-32">
-        <div className="mx-auto max-w-4xl px-6">
+        <Reveal className="mx-auto max-w-4xl px-6">
           <h2 className="mb-20 text-center text-5xl font-bold tracking-tight text-richblack-5 md:text-6xl">
             Questions? Answers.
           </h2>
@@ -629,10 +603,11 @@ function Home() {
               </details>
             ))}
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      <section className="relative flex flex-col items-center overflow-hidden bg-gray-900 px-6 pb-20 pt-40">
+      {/* Locked dark: fixed bg-gray-900 closing panel. */}
+      <section data-theme="dark" className="relative flex flex-col items-center overflow-hidden bg-gray-900 px-6 pb-20 pt-40">
         <div className="absolute left-1/2 top-0 h-[1px] w-full max-w-5xl -translate-x-1/2 bg-gradient-to-r from-transparent via-[#c3ebfa] to-transparent opacity-50" />
         <div className="pointer-events-none absolute left-1/2 top-[-10%] h-[400px] w-[800px] -translate-x-1/2 rounded-full bg-[#c3ebfa] opacity-20 blur-[200px]" />
 

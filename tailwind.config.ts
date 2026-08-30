@@ -39,6 +39,11 @@ const config: Config = {
       // instead of just using richblack-900/richblack-5 for this.
       ink: "rgb(var(--ink) / <alpha-value>)",
       paper: "rgb(var(--paper) / <alpha-value>)",
+      // Semantic, theme-aware surfaces. See the token block in globals.css:
+      // these express "hairline border" and "frosted panel" as intent, so the
+      // same markup works on a light ground where `white/10` is invisible.
+      hairline: "rgb(var(--hairline) / var(--hairline-alpha))",
+      glass: "rgb(var(--glass) / var(--glass-alpha))",
       richblue: {
         5: "#ECF5FF",
         25: "#C6D6E1",

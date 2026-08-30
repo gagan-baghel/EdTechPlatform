@@ -1,6 +1,12 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react"
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useSyncExternalStore,
+} from "react"
 
 export type Theme = "dark" | "light"
 
@@ -8,71 +14,138 @@ export interface ThemeContextType {
   theme: Theme
   setTheme: (theme: Theme) => void
   toggleTheme: () => void
+  /** True while the user has expressed no preference and is following the OS. */
+  followsSystem: boolean
 }
 
 const STORAGE_KEY = "theme"
-const ThemeContext = createContext<ThemeContextType>({ 
-  theme: "dark", 
-  setTheme: () => {}, 
-  toggleTheme: () => {} 
+const CHANGE_EVENT = "themechange"
+
+const ThemeContext = createContext<ThemeContextType>({
+  theme: "dark",
+  setTheme: () => {},
+  toggleTheme: () => {},
+  followsSystem: true,
 })
 
 /**
- * Context, not a bare hook — Navbar's quick toggle and Settings >
- * Appearance both need to read/set the SAME value, not each get their own
- * independent state. Applies data-theme="light"|"dark" on <html>;
- * globals.css's :root[data-theme="light"] override does the rest, since
- * every richblack-* Tailwind color already resolves through CSS variables
- * (see the comment at the top of globals.css). No component needs to
- * change for this to work.
+ * The `data-theme` attribute on <html> is the single source of truth.
  *
- * Initial state is always "dark" on both server and client's first
- * render — reading localStorage in the useState initializer (as this
- * originally did) reads it synchronously during the CLIENT's first
- * render, which runs before hydration reconciles against the server's
- * markup, and throws a real hydration error (crashed the FiMoon/FiSun
- * icon swap in Navbar.jsx during testing). The stored value is applied a
- * tick later in the effect below, after hydration is done.
+ * Three things write it — the boot script in `app/layout.tsx` (before first
+ * paint), the user toggling, and the OS preference changing — so rather than
+ * mirroring it into React state and trying to keep the two in step, React
+ * subscribes to it. `useSyncExternalStore` is exactly the primitive for that:
+ * it gives a separate server snapshot (so SSR is stable) and re-reads on
+ * notification, with no setState during an effect and no chance of the DOM and
+ * the rendered tree disagreeing.
  *
- * There is deliberately only ONE effect, and it does not depend on
- * [theme]. A second "write localStorage whenever theme changes" effect
- * (dependent on [theme]) fires on mount too, using that render's
- * "dark" closure — with reactStrictMode's dev-only double effect
- * invocation, that write-on-mount effect clobbers the stored value back
- * to "dark" between the read effect's two invocations, and the second
- * read then re-queues setTheme("dark"), permanently stomping the user's
- * stored "light" preference. Writing only from setTheme/toggleTheme
- * (imperatively, not reactively) avoids the race. Same pattern
- * LocaleProvider.jsx already uses for exactly this reason.
+ * The previous version read localStorage inside a `useState` initializer,
+ * which runs during hydration: a light-mode user hydrated a tree that said
+ * "light" against server HTML that said "dark", and the toggle icon mismatched.
  */
-export default function ThemeProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  // Lazy initializer: runs only on the client's first render (after hydration),
-  // so server and client agree on "dark" for the initial HTML, then the stored
-  // preference is applied before the browser paints. This avoids the
-  // setState-in-effect pattern, which triggers a cascading second render.
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark"
-    const stored = localStorage.getItem(STORAGE_KEY)
-    return stored === "light" || stored === "dark" ? stored : "dark"
+function subscribe(onChange: () => void): () => void {
+  window.addEventListener(CHANGE_EVENT, onChange)
+
+  // Covers the OS flipping, and any write to the attribute from outside React.
+  const observer = new MutationObserver(onChange)
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-theme"],
   })
 
-  // Apply the data-theme attribute whenever theme changes, including on first
-  // render (the lazy initializer resolved the stored value, so this fires once
-  // with the correct value rather than once with "dark" and again with the stored).
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme)
-  }, [theme])
-
-  const setTheme = (next: Theme) => {
-    setThemeState(next)
-    document.documentElement.setAttribute("data-theme", next)
-    localStorage.setItem(STORAGE_KEY, next)
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, onChange)
+    observer.disconnect()
   }
+}
 
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark")
+function getSnapshot(): Theme {
+  return document.documentElement.getAttribute("data-theme") === "light"
+    ? "light"
+    : "dark"
+}
+
+/** Matches what the server renders, and what the boot script defaults to. */
+function getServerSnapshot(): Theme {
+  return "dark"
+}
+
+function subscribeToStorage(onChange: () => void): () => void {
+  window.addEventListener(CHANGE_EVENT, onChange)
+  // Another tab choosing a theme should not silently desync this one.
+  window.addEventListener("storage", onChange)
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, onChange)
+    window.removeEventListener("storage", onChange)
+  }
+}
+
+function readFollowsSystem(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === null
+  } catch {
+    return true
+  }
+}
+
+export default function ThemeProvider({
+  children,
+}: {
+  children: React.ReactNode
+}): React.JSX.Element {
+  const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const followsSystem = useSyncExternalStore(
+    subscribeToStorage,
+    readFollowsSystem,
+    () => true
+  )
+
+  // Track the OS setting for as long as the user has not overridden it.
+  // Without this, someone whose system flips to dark at sunset keeps the light
+  // palette until they reload. Writing the attribute notifies the store above.
+  useEffect(() => {
+    if (!followsSystem) return
+
+    const query = window.matchMedia("(prefers-color-scheme: light)")
+    const apply = () => {
+      document.documentElement.setAttribute(
+        "data-theme",
+        query.matches ? "light" : "dark"
+      )
+    }
+
+    query.addEventListener("change", apply)
+    return () => query.removeEventListener("change", apply)
+  }, [followsSystem])
+
+  /**
+   * Writes go straight to the DOM and localStorage, then notify — never a
+   * `useEffect` on [theme]. A reactive write-on-change effect also fires on
+   * mount using that render's closure, and under StrictMode's double
+   * invocation it clobbers the stored preference back to the default, which
+   * permanently stomped a stored "light". LocaleProvider avoids the same trap
+   * the same way.
+   */
+  const setTheme = useCallback((next: Theme) => {
+    document.documentElement.setAttribute("data-theme", next)
+    try {
+      localStorage.setItem(STORAGE_KEY, next)
+    } catch {
+      // Private browsing or a full quota: the theme still applies to this page
+      // view, only remembering it fails. Not worth surfacing.
+    }
+    window.dispatchEvent(new Event(CHANGE_EVENT))
+  }, [])
+
+  const toggleTheme = useCallback(
+    () => setTheme(theme === "dark" ? "light" : "dark"),
+    [setTheme, theme]
+  )
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, setTheme, toggleTheme, followsSystem }}
+    >
       {children}
     </ThemeContext.Provider>
   )

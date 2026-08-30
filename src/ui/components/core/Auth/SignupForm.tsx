@@ -16,7 +16,7 @@ function SignupForm() {
   const navigate = useNavigate()
   const dispatch = useDispatch<AppDispatch>()
   const inputClass =
-    "w-full rounded-2xl border border-white/10 bg-richblack-900/80 px-4 py-4 text-base text-richblack-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition-all placeholder:text-richblack-400 focus:border-[#c3ebfa]/60 focus:ring-4 focus:ring-[#c3ebfa]/10"
+    "auth-input"
 
   const [accountType, setAccountType] = useState(ACCOUNT_TYPE.STUDENT)
 
@@ -198,7 +198,7 @@ function SignupForm() {
         </div>
         <button
           type="submit"
-          className="mt-2 rounded-full bg-white px-6 py-4 text-base font-bold text-ink shadow-[0_18px_45px_rgba(255,255,255,0.14)] transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_22px_55px_rgba(255,255,255,0.2)] active:scale-[0.99]"
+          className="auth-submit"
         >
           Create Account
         </button>

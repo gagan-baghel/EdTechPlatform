@@ -17,10 +17,10 @@ export default function Error({
   message = "The link may be out of date, or the page may have moved.",
 }: ErrorProps) {
   return (
-    // Pinned dark — see About.jsx's comment; same gradient-text pattern.
-    <div data-theme="dark" className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-richblack-900 px-6 py-16">
+    // Follows the site theme; the gradient numeral is theme-aware now.
+    <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-richblack-900 px-6 py-16">
       <div className="w-full max-w-lg text-center">
-        <p className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-7xl font-black tracking-tighter text-transparent sm:text-8xl">
+        <p className="brand-gradient text-7xl font-black tracking-tighter sm:text-8xl">
           {code}
         </p>
         <h1 className="mt-4 text-2xl font-semibold text-richblack-5 sm:text-3xl">

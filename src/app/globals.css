@@ -41,6 +41,32 @@
 
   --ink: 0 8 20;
   --paper: 241 242 255;
+
+  /*
+   * Semantic surface tokens.
+   *
+   * The richblack-* scale flips positionally, which works for page chrome but
+   * not for the "frosted glass on a dark photo" idiom the auth and marketing
+   * shells use: `border-white/10` and `bg-white/5` are invisible on a light
+   * background, so any surface built from them could only ever be pinned dark.
+   * These name the INTENT — a raised panel, a hairline, a glow — so the same
+   * markup reads correctly in both themes.
+   */
+  --hairline: 255 255 255;
+  --hairline-alpha: 0.1;
+  --glass: 255 255 255;
+  --glass-alpha: 0.05;
+  --shadow-color: 0 8 20;
+  --shadow-alpha: 0.45;
+
+  /* Accent used for inline links on a panel. The pale brand blue is legible
+     on a dark surface and washes out completely on a light one, so the light
+     theme substitutes a darker tone of the same hue. */
+  --accent-link: 195 235 250;
+  /* Active nav item. The brand yellow is legible on a dark bar and almost
+     invisible on a light one, so light mode uses a dark amber of the same
+     hue rather than a different colour. */
+  --accent-nav: 255 214 10;
 }
 
 :root[data-theme="light"] {
@@ -56,6 +82,18 @@
   --richblack-700: 197 199 212;
   --richblack-800: 219 221 234;
   --richblack-900: 241 242 255;
+
+  /* On a light ground a white hairline vanishes, so the same "subtle border"
+     intent has to be expressed as a dark line at low alpha. */
+  --hairline: 0 8 20;
+  --hairline-alpha: 0.12;
+  --glass: 0 8 20;
+  --glass-alpha: 0.04;
+  --shadow-color: 15 23 42;
+  --shadow-alpha: 0.12;
+
+  --accent-link: 3 105 161;
+  --accent-nav: 133 77 14;
 }
 
 /*
@@ -68,6 +106,15 @@
  * cascade — no JS, no per-element opt-out needed. See Home.jsx's root div.
  */
 [data-theme="dark"] {
+  --accent-nav: 255 214 10;
+  --accent-link: 195 235 250;
+  --hairline: 255 255 255;
+  --hairline-alpha: 0.1;
+  --glass: 255 255 255;
+  --glass-alpha: 0.05;
+  --shadow-color: 0 8 20;
+  --shadow-alpha: 0.45;
+
   --richblack-5: 241 242 255;
   --richblack-25: 219 221 234;
   --richblack-50: 197 199 212;
@@ -85,6 +132,52 @@
 html,
 body {
   overflow-x: hidden;
+}
+
+html {
+  /* In-page anchors (the homepage nav's #showcase, #pricing) jumped
+     instantly; this makes them travel. Overridden for anyone who asks for
+     reduced motion, further down. */
+  scroll-behavior: smooth;
+  /* Tells the browser which of the two palettes below is in play, so native
+     UI — form controls, scrollbars, the flash of background before paint —
+     matches the theme instead of always rendering light. */
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+body {
+  /* Explicit, so a theme change repaints the page ground rather than leaving
+     the browser's default white behind translucent sections. Transitioned so
+     toggling the theme is a crossfade rather than a hard flip. */
+  background-color: rgb(var(--richblack-900));
+  color: rgb(var(--richblack-5));
+  transition: background-color 320ms ease, color 320ms ease;
+}
+
+/* The theme swaps ~1000 utilities at once. Without this the toggle is a
+   jarring single-frame flip; with it the whole page crossfades. Limited to
+   colour properties — transitioning `all` here would animate layout on every
+   hover in the app. */
+[data-theme] body *,
+:root body * {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-duration: 240ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Anything that declares its own transition keeps it — the rule above is a
+   default, not an override. */
+[style*="transition"],
+.transition,
+.transition-all,
+.transition-transform,
+.transition-opacity,
+.transition-colors {
+  transition-property: revert-layer;
 }
 
 /* ===== Scrollbar CSS ===== */
@@ -325,6 +418,63 @@ details > summary::-webkit-details-marker {
      focus indicator at all for keyboard users. */
   @apply rounded-lg bg-richblack-700 p-3 text-[16px] leading-[24px] text-richblack-5 shadow-[0_1px_0_0] shadow-white/50 placeholder:text-richblack-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50;
 }
+/* The auth field and submit styles were the same ~10 utilities pasted at
+   three call sites (LoginForm twice, SignupForm once), all built from
+   `border-white/10` and `bg-white`, which are invisible on a light ground.
+   One class each, expressed in theme-aware tokens. */
+/* Inline link on a panel. A plain class rather than a Tailwind colour key so
+   it cannot silently no-op if the content scan misses it. */
+.link-accent {
+  color: rgb(var(--accent-link));
+}
+
+/* Current page in the primary nav. */
+.nav-active {
+  color: rgb(var(--accent-nav));
+}
+
+/* The brand wordmark gradient. The dark-theme ramp runs through white, which
+   is invisible on a light ground — so the light theme uses a deeper ramp of
+   the same two hues rather than dropping the gradient. */
+.brand-gradient {
+  background-image: linear-gradient(
+    to right,
+    #7cc4de,
+    #1f6f8b 45%,
+    #b28900
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+:root[data-theme="dark"] .brand-gradient,
+[data-theme="dark"] .brand-gradient,
+:root:not([data-theme="light"]) .brand-gradient {
+  background-image: linear-gradient(to right, #c3ebfa, #ffffff 45%, #fae27c);
+}
+
+.auth-input {
+  @apply w-full rounded-2xl border border-hairline bg-richblack-900/80 px-4 py-4 text-base text-richblack-5 outline-none transition-all placeholder:text-richblack-400;
+  box-shadow: inset 0 1px 0 rgb(var(--hairline) / calc(var(--hairline-alpha) * 0.5));
+}
+
+.auth-input:focus-visible {
+  border-color: rgb(var(--accent-link) / 0.6);
+  box-shadow: 0 0 0 4px rgb(var(--accent-link) / 0.15);
+}
+
+.auth-submit {
+  /* richblack-5 on richblack-900 inverts with the theme, so the button stays
+     high-contrast against the card in both — `bg-white` did not. */
+  @apply mt-2 rounded-full bg-richblack-5 px-6 py-4 text-base font-bold text-richblack-900 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99];
+  box-shadow: 0 18px 45px rgb(var(--shadow-color) / calc(var(--shadow-alpha) * 0.5));
+}
+
+.auth-submit:hover {
+  box-shadow: 0 22px 55px rgb(var(--shadow-color) / calc(var(--shadow-alpha) * 0.7));
+}
+
 .section_heading {
   @apply text-2xl font-bold text-richblack-5 lg:text-4xl;
 }
@@ -355,6 +505,150 @@ details > summary::-webkit-details-marker {
 
   to {
     transform: translateX(-50%);
+  }
+}
+
+/* The one orbit icon that is not a third-party brand mark, so unlike the
+   others it must adapt: the pale blue that reads well on a dark card is
+   almost invisible on the light one. */
+.orbit-accent {
+  color: #38bdf8;
+}
+
+:root[data-theme="light"] .orbit-accent,
+[data-theme="light"] .orbit-accent {
+  color: #0369a1;
+}
+
+/* Integration orbit (HomePage/IntegrationOrbit.tsx).
+   Two rotors turn at different speeds; each node counter-rotates at the same
+   duration so the logos stay upright instead of tumbling. Durations and
+   direction are set per-element in the component — only the motion lives
+   here. */
+.orbit-rotor,
+.orbit-node {
+  animation-name: orbit-spin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The static positions are already correct, so stopping the animation is a
+   complete, non-degraded state rather than a fallback. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .orbit-rotor,
+  .orbit-node,
+  .homepage-logo-strip__track,
+  .float-slow,
+  .pulse-ring {
+    animation: none;
+  }
+
+  [data-theme] body *,
+  :root body * {
+    transition-duration: 0.001ms;
+  }
+
+  /* Content is shown outright rather than animated quickly: someone who asks
+     for no motion should get none, not a faster version of it. */
+  .js .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Settings > Accessibility > Reduce motion, same treatment. */
+.js.a11y-reduced-motion .reveal,
+.a11y-reduced-motion .reveal {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+/* Scroll reveal (components/common/Reveal.tsx). The component only toggles
+   `is-visible`; everything about how it looks and whether it moves at all
+   lives here, so the accessibility rules below can switch it off wholesale. */
+/* Scoped to `html.js` (set by the boot script in app/layout.tsx): without
+   scripting there is nothing to reveal the content again, so it must never be
+   hidden in the first place. */
+.js .reveal {
+  opacity: 0;
+  transition:
+    opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Deliberately NO `will-change` here. These wrappers are whole page sections,
+   1500-2000px tall; promoting each to its own permanent compositor layer is
+   exactly the misuse the property warns about — it costs a large amount of
+   texture memory, and offscreen sections were failing to rasterise at all.
+   The browser promotes them for the duration of the transition on its own,
+   which is all that was needed. */
+
+.js .reveal--up {
+  transform: translate3d(0, 28px, 0);
+}
+.js .reveal--down {
+  transform: translate3d(0, -28px, 0);
+}
+.js .reveal--left {
+  transform: translate3d(28px, 0, 0);
+}
+.js .reveal--right {
+  transform: translate3d(-28px, 0, 0);
+}
+
+.js .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Slow vertical drift, for decorative elements that should feel alive
+   without asking for attention. */
+.float-slow {
+  animation: float-slow 7s ease-in-out infinite;
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* A ring that expands and fades out from the hub — the visual claim that the
+   centre is broadcasting to the things orbiting it. */
+.pulse-ring {
+  animation: pulse-ring 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.5;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
   }
 }
 

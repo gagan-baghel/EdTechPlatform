@@ -120,7 +120,7 @@ export default function Navbar() {
                       onFocus={primeCatalogMenu}
                       className={`group relative flex cursor-pointer items-center gap-1 ${
                         matchRoute("/catalog/:catalogName")
-                          ? "text-yellow-25"
+                          ? "nav-active"
                           : isHomePage
                             ? scrolled
                               ? "text-richblack-25"
@@ -164,7 +164,7 @@ export default function Navbar() {
                     <p
                       className={`${
                         matchRoute(link?.path)
-                          ? "text-yellow-25"
+                          ? "nav-active"
                           : isHomePage
                             ? scrolled
                               ? "text-richblack-25"

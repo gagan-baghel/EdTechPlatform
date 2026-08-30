@@ -37,9 +37,9 @@ const stats = [
 
 function About() {
   return (
-    // Pinned dark — the hero's gradient text/glows (#c3ebfa/#fae27c) are
-    // tuned only for a dark backdrop, same as Home.jsx.
-    <div data-theme="dark" className="bg-richblack-900 text-richblack-5">
+    // Follows the site theme. The gradient wordmark that kept this pinned is
+    // now theme-aware — see .brand-gradient in globals.css.
+    <div className="bg-richblack-900 text-richblack-5">
       <section className="relative overflow-hidden px-6 py-20 sm:px-8 lg:px-10 lg:py-24">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(195,235,250,0.18),_transparent_30%)]" />
         <div className="absolute inset-y-0 right-0 w-[40%] bg-[radial-gradient(circle_at_center,_rgba(250,226,124,0.09),_transparent_60%)]" />
@@ -50,7 +50,7 @@ function About() {
             </div>
             <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[1.02] tracking-tighter text-richblack-5 sm:text-6xl lg:text-7xl">
               Modern school operations,{" "}
-              <span className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-transparent">
+              <span className="brand-gradient">
                 kept simple.
               </span>
             </h1>

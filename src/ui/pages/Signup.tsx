@@ -8,7 +8,7 @@ function Signup() {
       title={
         <>
           Start your{" "}
-          <span className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-transparent">
+          <span className="brand-gradient">
             IntelleCraft workspace.
           </span>
         </>
