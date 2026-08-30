@@ -165,7 +165,10 @@ function Home() {
           unchanged dark image. */}
       <section
         data-theme="dark"
-        className="relative flex min-h-[800px] h-screen items-center justify-center overflow-hidden bg-richblack-900"
+        // -mt-14 cancels the shell's navbar offset: the navbar is transparent
+        // over the hero until you scroll, so this one section is meant to run
+        // full-bleed behind it.
+        className="relative -mt-14 flex h-screen min-h-[800px] items-center justify-center overflow-hidden bg-richblack-900"
       >
         <div className="absolute inset-0 h-[120%] w-full">
           <Image

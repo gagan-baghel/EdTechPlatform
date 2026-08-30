@@ -6,6 +6,9 @@ import { configureStore } from "@reduxjs/toolkit"
 import { Toaster } from "react-hot-toast"
 
 import rootReducer from "../reducer"
+import { hydrateToken, readStoredToken } from "../slices/authSlice"
+import { hydrateUser, readStoredUser } from "../slices/profileSlice"
+import { hydrateCart, readStoredCart } from "../slices/cartSlice"
 import type { RootState, AppDispatch } from "../store"
 import { useNavigate } from "../lib/router"
 import { getUserDetails } from "../services/operations/profileAPI"
@@ -48,6 +51,30 @@ function makeStore() {
 // Inferred from store
 type AppStore = ReturnType<typeof makeStore>
 // We'll export this just in case, though the prompt asked to import AppDispatch from @reduxjs/toolkit
+
+/**
+ * Applies persisted auth/profile/cart state after mount.
+ *
+ * The slices deliberately start empty so the client's hydration render matches
+ * the server's — see the note in each slice. This is where the stored values
+ * are put back, one render later. The cost is a single frame showing the
+ * signed-out navbar; the alternative was a hydration failure on every page,
+ * which made React throw away the server HTML entirely.
+ */
+function StoreHydration(): null {
+  const dispatch = useDispatch<AppDispatch>()
+  const hydrated = useRef(false)
+
+  useEffect(() => {
+    if (hydrated.current) return
+    hydrated.current = true
+    dispatch(hydrateToken(readStoredToken()))
+    dispatch(hydrateUser(readStoredUser()))
+    dispatch(hydrateCart(readStoredCart()))
+  }, [dispatch])
+
+  return null
+}
 
 function AuthBootstrap(): null {
   const dispatch = useDispatch<AppDispatch>()
@@ -95,6 +122,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
     <Provider store={store}>
       <ThemeProvider>
         <LocaleProvider>
+          <StoreHydration />
           <AuthBootstrap />
           <AccessibilityBootstrap />
           <ReferralCapture />

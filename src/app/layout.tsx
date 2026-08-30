@@ -1,5 +1,3 @@
-import Script from "next/script"
-
 import "./globals.css"
 import AppShell from "../ui/layout/AppShell"
 import AppProviders from "../ui/providers/AppProviders"
@@ -39,50 +37,22 @@ export const viewport = {
   initialScale: 1,
 }
 
-/**
- * Runs before first paint, in the document head.
- *
- * Two jobs, both of which have to happen before the browser paints anything:
- *
- *  1. Apply the stored theme. ThemeProvider can only do this in an effect,
- *     which is after hydration — so every single page load flashed the dark
- *     palette at light-mode users before snapping over. Applying it here means
- *     the first painted frame is already correct.
- *
- *  2. Mark that scripting is alive. The scroll-reveal animation hides content
- *     until it scrolls into view, which is only safe if something is
- *     guaranteed to reveal it — with JS disabled or broken, `.reveal` would
- *     leave the entire page blank. The hidden state is scoped to `html.js`, so
- *     without this line the page renders as plain, fully visible content.
- *
- * Kept as a string on purpose: it must be inline and synchronous. Anything
- * loaded as a module runs after paint, which is the whole problem.
- */
-const BOOT_SCRIPT = `(function(){try{
-var t=localStorage.getItem("theme");
-if(t!=="light"&&t!=="dark"){t=window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}
-document.documentElement.setAttribute("data-theme",t);
-}catch(e){document.documentElement.setAttribute("data-theme","dark")}
-document.documentElement.classList.add("js")})()`
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // suppressHydrationWarning: the boot script above mutates <html>'s
-    // attributes before React hydrates, which React would otherwise report as
-    // a server/client mismatch. It is the intended behaviour, and it is scoped
-    // to this element only.
+    /*
+     * suppressHydrationWarning: ThemeProvider sets `data-theme` on <html>
+     * after mount for users who chose a theme that differs from their OS.
+     * Scoped to this element's attributes only.
+     *
+     * There is deliberately NO theme boot script. React 19 refuses to execute
+     * a <script> rendered inside the component tree, and next/script's
+     * `beforeInteractive` in the App Router produced a hydration mismatch that
+     * broke the page outright — the script shipped and never ran. The default
+     * theme now comes from `prefers-color-scheme` in CSS (globals.css), which
+     * needs no JavaScript, cannot desync from the server render, and keeps
+     * every page statically prerenderable.
+     */
     <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* next/script rather than a bare <script>: React 19 warns that a
-            script rendered inside a component tree is never executed on the
-            client, and `beforeInteractive` is the documented way to get an
-            inline script into the initial HTML ahead of hydration. */}
-        <Script
-          id="theme-boot"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }}
-        />
-      </head>
       <body>
         <a
           href="#main-content"
