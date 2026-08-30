@@ -22,13 +22,15 @@ async function getCertificate(certificateNumber: string) {
 }
 
 interface CertificatePageProps {
-  params: { certificateNumber: string }
+  // Next 15+: route props are Promises, awaited once per usage.
+  params: Promise<{ certificateNumber: string }>
 }
 
 export default async function CertificateVerificationPage({
   params,
 }: CertificatePageProps) {
-  const certificate = await getCertificate(params.certificateNumber)
+  const { certificateNumber } = await params
+  const certificate = await getCertificate(certificateNumber)
 
   if (!certificate) {
     return (
@@ -36,7 +38,7 @@ export default async function CertificateVerificationPage({
         <div>
           <h1 className="text-2xl font-semibold">Certificate not found</h1>
           <p className="mt-2 text-richblack-300">
-            No certificate exists with the number &ldquo;{params.certificateNumber}&rdquo;.
+            No certificate exists with the number &ldquo;{certificateNumber}&rdquo;.
           </p>
         </div>
       </div>

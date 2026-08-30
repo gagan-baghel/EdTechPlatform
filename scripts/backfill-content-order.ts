@@ -39,7 +39,7 @@ async function main(): Promise<void> {
 
   for (const course of courses) {
     await Promise.all(
-      (course.courseContent ?? []).map((sectionId: any, index: number) =>
+      (course.courseContent ?? []).map((sectionId: mongoose.Types.ObjectId, index: number) =>
         Section.updateOne({ _id: sectionId }, { order: index })
       )
     )
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
 
   for (const section of sections) {
     await Promise.all(
-      (section.subSection ?? []).map((subSectionId: any, index: number) =>
+      (section.subSection ?? []).map((subSectionId: mongoose.Types.ObjectId, index: number) =>
         SubSection.updateOne({ _id: subSectionId }, { order: index })
       )
     )

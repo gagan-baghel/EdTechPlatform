@@ -1,5 +1,6 @@
 import type { FilterQuery, Model as MongooseModel } from "mongoose"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { z } from "zod"
 import type { Types } from "mongoose"
 import { containsId } from "../lib/ids"
 import type { Request, Response } from "express"
@@ -7,6 +8,7 @@ import { getEnv } from "../config/env"
 import { toErrorMessage, isDuplicateKeyError } from "../lib/AppError"
 import type { AuthedRequest } from "../lib/http"
 import { getRazorpay } from "../config/razorpay"
+import { verifyHmacSignature, verifyRazorpayOrderSignature } from "../lib/signature"
 import Course from "../models/Course"
 import Payment from "../models/Payment"
 import Order from "../models/Order"
@@ -29,6 +31,26 @@ const isValidId = (id: string): boolean => mongoose.Types.ObjectId.isValid(id)
 
 const log = (event: string, data: Record<string, unknown>) =>
   console.log(JSON.stringify({ event, ...data, ts: new Date().toISOString() }))
+
+const CapturePaymentSchema = z.object({
+  courses: z.array(z.unknown())
+    .min(1, "Please select at least one course.")
+    .transform((val) => [...new Set(val.map(String))])
+    .refine((val) => val.every(isValidId), { message: "One or more course ids are invalid." }),
+  couponCode: z.string().optional().nullable(),
+})
+
+const VerifyPaymentSchema = z.object({
+  razorpay_order_id: z.string().min(1, "Payment details are incomplete."),
+  razorpay_payment_id: z.string().min(1, "Payment details are incomplete."),
+  razorpay_signature: z.string().min(1, "Payment details are incomplete."),
+})
+
+const PaymentEntrySchema = z.object({
+  orderId: z.string().min(1, "Order details are incomplete."),
+  paymentId: z.string().min(1, "Order details are incomplete."),
+})
+
 
 /**
  * Atomically claims an order for settlement. The client callback and the
@@ -110,25 +132,10 @@ const upsertIdempotent = async <TSchema>(
  * the client never gets to say which courses a payment unlocks.
  */
 export const capturePayment = async (req: AuthedRequest, res: Response) => {
-  const { courses, couponCode } = req.body
   const userId = req.user.id
 
-  if (!Array.isArray(courses) || courses.length === 0) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Please select at least one course." })
-  }
-
-  // De-duplicate so a repeated id can't inflate the total or the grant.
-  const courseIds = [...new Set(courses.map(String))]
-
-  if (courseIds.some((id) => !isValidId(id))) {
-    return res
-      .status(400)
-      .json({ success: false, message: "One or more course ids are invalid." })
-  }
-
   try {
+    const { courses: courseIds, couponCode } = parseOrThrow(CapturePaymentSchema, req.body)
     const uid = new mongoose.Types.ObjectId(userId)
     let totalAmount = 0
 
@@ -220,10 +227,7 @@ export const capturePayment = async (req: AuthedRequest, res: Response) => {
       message: paymentResponse,
     })
   } catch (error) {
-    console.error("capturePayment failed", error)
-    return res
-      .status(500)
-      .json({ success: false, message: "Could not initiate the order." })
+    return fail(res, error, "capturePayment", "Could not initiate the order.")
   }
 }
 
@@ -232,37 +236,28 @@ export const capturePayment = async (req: AuthedRequest, res: Response) => {
  * Idempotent: a replayed request against an already-paid order is a no-op success.
  */
 export const verifyPayment = async (req: AuthedRequest, res: Response) => {
-  const razorpay_order_id = req.body?.razorpay_order_id
-  const razorpay_payment_id = req.body?.razorpay_payment_id
-  const razorpay_signature = req.body?.razorpay_signature
   const userId = req.user.id
 
-  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Payment details are incomplete." })
-  }
-
-  const expectedSignature = crypto
-    .createHmac("sha256", getEnv().RAZORPAY_SECRET)
-    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-    .digest("hex")
-
-  const expected = Buffer.from(expectedSignature, "utf8")
-  const received = Buffer.from(String(razorpay_signature), "utf8")
-
-  // Constant-time compare; lengths must match before timingSafeEqual is legal.
-  const signatureValid =
-    expected.length === received.length &&
-    crypto.timingSafeEqual(expected, received)
-
-  if (!signatureValid) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Payment verification failed." })
-  }
-
   try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = parseOrThrow(
+      VerifyPaymentSchema,
+      req.body,
+      "Payment details are incomplete."
+    )
+
+    const signatureValid = verifyRazorpayOrderSignature({
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      signature: razorpay_signature,
+      secret: getEnv().RAZORPAY_SECRET,
+    })
+
+    if (!signatureValid) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Payment verification failed." })
+    }
+
     const order = await Order.findOne({ orderId: razorpay_order_id })
 
     if (!order) {
@@ -310,11 +305,7 @@ export const verifyPayment = async (req: AuthedRequest, res: Response) => {
       .status(200)
       .json({ success: true, message: "Payment verified." })
   } catch (error) {
-    console.error("verifyPayment failed", error)
-    return res.status(500).json({
-      success: false,
-      message: "Payment succeeded but enrolment failed. Our team has been notified.",
-    })
+    return fail(res, error, "verifyPayment", "Payment succeeded but enrolment failed. Our team has been notified.")
   }
 }
 
@@ -393,16 +384,11 @@ export const enrollStudents = async (
 }
 
 export const sendPaymentSuccessEmail = async (req: AuthedRequest, res: Response) => {
-  const { orderId, paymentId } = req.body
   const userId = req.user.id
 
-  if (!orderId || !paymentId) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Order details are incomplete." })
-  }
-
   try {
+    const { orderId, paymentId } = parseOrThrow(PaymentEntrySchema, req.body, "Order details are incomplete.")
+
     // Amount comes from our record, never from the request body.
     const order = await Order.findOne({ orderId, user: userId })
 
@@ -435,24 +421,16 @@ export const sendPaymentSuccessEmail = async (req: AuthedRequest, res: Response)
       .status(200)
       .json({ success: true, message: "Payment receipt sent." })
   } catch (error) {
-    console.error("sendPaymentSuccessEmail failed", error)
-    return res
-      .status(500)
-      .json({ success: false, message: "Could not send the receipt email." })
+    return fail(res, error, "sendPaymentSuccessEmail", "Could not send the receipt email.")
   }
 }
 
 export const createPaymentEntry = async (req: AuthedRequest, res: Response) => {
-  const { orderId, paymentId } = req.body
   const userId = req.user.id
 
-  if (!orderId || !paymentId) {
-    return res
-      .status(400)
-      .json({ success: false, message: "Order details are incomplete." })
-  }
-
   try {
+    const { orderId, paymentId } = parseOrThrow(PaymentEntrySchema, req.body, "Order details are incomplete.")
+
     // Courses and amount are read from the stored order, not the client.
     const order = await Order.findOne({ orderId, user: userId })
 
@@ -479,10 +457,7 @@ export const createPaymentEntry = async (req: AuthedRequest, res: Response) => {
       .status(201)
       .json({ success: true, message: "Payment recorded.", data: payment })
   } catch (error) {
-    console.error("createPaymentEntry failed", error)
-    return res
-      .status(500)
-      .json({ success: false, message: "Could not record the payment." })
+    return fail(res, error, "createPaymentEntry", "Could not record the payment.")
   }
 }
 
@@ -522,13 +497,11 @@ export const razorpayWebhook = async (req: Request, res: Response) => {
   const signature = req.headers["x-razorpay-signature"]
   const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body))
 
-  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex")
-  const expectedBuf = Buffer.from(expected, "utf8")
-  const receivedBuf = Buffer.from(String(signature ?? ""), "utf8")
-
-  const valid =
-    expectedBuf.length === receivedBuf.length &&
-    crypto.timingSafeEqual(expectedBuf, receivedBuf)
+  const valid = verifyHmacSignature({
+    payload: rawBody,
+    signature: typeof signature === "string" ? signature : null,
+    secret,
+  })
 
   if (!valid) {
     return res.status(400).json({ success: false, message: "Invalid signature" })

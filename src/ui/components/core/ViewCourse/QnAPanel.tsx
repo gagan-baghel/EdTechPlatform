@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 
 import {
@@ -93,18 +93,18 @@ export default function QnAPanel({ courseId, subSectionId }: QnAPanelProps) {
   const [submitting, setSubmitting] = useState(false)
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
 
-  const load = async () => {
-    if (!token) return
-    const result = await fetchQuestionsForLecture(token, subSectionId)
-    if (result) {
-      setQuestions(result as Question[])
-    }
-  }
+  const load = useCallback(() => {
+    if (!token) return Promise.resolve()
+    return fetchQuestionsForLecture(token, subSectionId).then((result) => {
+      if (result) {
+        setQuestions(result as Question[])
+      }
+    })
+  }, [token, subSectionId])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, subSectionId, token])
+  }, [load])
 
   const handleAsk = async (e: React.FormEvent) => {
     e.preventDefault()

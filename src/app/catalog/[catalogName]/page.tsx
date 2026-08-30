@@ -1,5 +1,5 @@
 import Catalog from "../../../ui/pages/Catalog"
-import { resolveSiteUrl } from "../../../ui/utils/siteUrl"
+import { resolveSiteUrl } from "@/lib/siteUrl"
 
 export const revalidate = 3600
 const slugify = (name: string) => name.split(" ").join("-").toLowerCase()
@@ -23,8 +23,14 @@ async function getCategoryForMetadata(catalogName: string) {
   }
 }
 
-export async function generateMetadata({ params }: { params: { catalogName: string } }) {
-  const category = await getCategoryForMetadata(params.catalogName)
+export async function generateMetadata({
+  params,
+}: {
+  // Next 15+: route props are Promises, awaited once per usage.
+  params: Promise<{ catalogName: string }>
+}) {
+  const { catalogName } = await params
+  const category = await getCategoryForMetadata(catalogName)
 
   if (!category) {
     return { title: "Catalog" }
@@ -33,7 +39,7 @@ export async function generateMetadata({ params }: { params: { catalogName: stri
   const description =
     category.description?.slice(0, 155) ||
     `Browse ${category.name} courses on IntelleCraft.`
-  const canonical = `${resolveSiteUrl()}/catalog/${params.catalogName}`
+  const canonical = `${resolveSiteUrl()}/catalog/${catalogName}`
 
   return {
     title: category.name,

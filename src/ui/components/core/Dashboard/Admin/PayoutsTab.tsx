@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
 
@@ -48,19 +48,19 @@ export default function PayoutsTab() {
   const [runForm, setRunForm] = useState({ instructorId: "", periodStart: "", periodEnd: "" })
   const [payReference, setPayReference] = useState<Record<string, string>>({})
 
-  const load = async () => {
-    const [profileResult, payoutResult] = await Promise.all([
+  const load = useCallback(() => {
+    return Promise.all([
       fetchPayoutProfilesForReview<PayoutProfile>(token as string),
       fetchPayoutRuns<PayoutRun>(token as string),
-    ])
-    if (profileResult) setProfiles(profileResult.data)
-    if (payoutResult) setPayouts(payoutResult.data)
-  }
+    ]).then(([profileResult, payoutResult]) => {
+      if (profileResult) setProfiles(profileResult.data)
+      if (payoutResult) setPayouts(payoutResult.data)
+    })
+  }, [token])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleKyc = async (profileId: string, kycStatus: string) => {
     const reason = kycStatus === "rejected" ? prompt("Reason for rejection?") || "" : undefined

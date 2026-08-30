@@ -1,5 +1,7 @@
+import { z } from "zod"
 import type { Types } from "mongoose"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, rupees, text } from "../lib/schemas"
 
 /**
  * Only the fields this handler reads. Razorpay's payload is far larger; typing
@@ -21,6 +23,15 @@ import SubscriptionPlan from "../models/SubscriptionPlan"
 import UserSubscription from "../models/UserSubscription"
 import Course from "../models/Course"
 import { recordAudit } from "../utils/recordAudit"
+
+const CreatePlanSchema = z.object({
+  name: text({ max: 120, label: "Plan name" }),
+  priceRupees: rupees().refine((value) => value > 0, "Plan price must be greater than zero"),
+  interval: z.enum(["monthly", "yearly"]),
+})
+
+/** Cap on how many courses one subscription activation will enrol in a single pass. */
+const MAX_GRANT_PER_ACTIVATION = 200
 
 /**
  * v1 scope: an active subscription bulk-enrolls the student in every
@@ -44,17 +55,23 @@ import { recordAudit } from "../utils/recordAudit"
  */
 async function grantAllCourseAccess(userId: Types.ObjectId | string) {
   const { enrollStudents } = await import("./Payments")
-  const publishedCourseIds = await Course.find({ status: "Published", deletedAt: null }).distinct("_id")
+
+  // Bounded. `enrollStudents` sends an email per course, so an unbounded
+  // catalogue meant one webhook delivery doing thousands of sequential SMTP
+  // round-trips inside a 60s function — it times out, Razorpay sees a 5xx,
+  // retries, and the whole thing repeats without ever completing.
+  const publishedCourseIds = await Course.find({ status: "Published", deletedAt: null })
+    .sort({ createdAt: -1 })
+    .limit(MAX_GRANT_PER_ACTIVATION)
+    .distinct("_id")
+
   if (publishedCourseIds.length === 0) return
   await enrollStudents(publishedCourseIds.map(String), userId)
 }
 
 export const createPlan = async (req: AuthedRequest, res: Response) => {
   try {
-    const { name, priceRupees, interval } = req.body
-    if (!name || !priceRupees || !["monthly", "yearly"].includes(interval)) {
-      return res.status(400).json({ success: false, message: "name, priceRupees and interval (monthly/yearly) are required" })
-    }
+    const { name, priceRupees, interval } = parseOrThrow(CreatePlanSchema, req.body)
 
     const razorpayPlan = await getRazorpay().plans.create({
       period: interval === "monthly" ? "monthly" : "yearly",
@@ -77,8 +94,7 @@ export const createPlan = async (req: AuthedRequest, res: Response) => {
 
     return res.status(201).json({ success: true, data: plan })
   } catch (error) {
-    console.error("createPlan failed", error)
-    return res.status(500).json({ success: false, message: "Could not create plan" })
+    return fail(res, error, "createPlan", "Could not create plan")
   }
 }
 
@@ -93,7 +109,10 @@ export const listPlans = async (req: Request, res: Response) => {
 
 export const createSubscription = async (req: AuthedRequest, res: Response) => {
   try {
-    const { planId } = req.body
+    const { planId } = parseOrThrow(
+      z.object({ planId: objectId("A valid plan id is required") }),
+      req.body
+    )
     const plan = await SubscriptionPlan.findById(planId)
     if (!plan || !plan.active) {
       return res.status(404).json({ success: false, message: "Plan not found" })
@@ -129,8 +148,7 @@ export const createSubscription = async (req: AuthedRequest, res: Response) => {
       data: { subscriptionId: razorpaySub.id, dbId: subscription._id },
     })
   } catch (error) {
-    console.error("createSubscription failed", error)
-    return res.status(500).json({ success: false, message: "Could not start subscription" })
+    return fail(res, error, "createSubscription", "Could not start subscription")
   }
 }
 
@@ -159,8 +177,7 @@ export const cancelSubscription = async (req: AuthedRequest, res: Response) => {
 
     return res.status(200).json({ success: true, message: "Subscription cancelled" })
   } catch (error) {
-    console.error("cancelSubscription failed", error)
-    return res.status(500).json({ success: false, message: "Could not cancel subscription" })
+    return fail(res, error, "cancelSubscription", "Could not cancel subscription")
   }
 }
 

@@ -1,5 +1,5 @@
 import { type MetadataRoute } from 'next'
-import { resolveSiteUrl } from "../ui/utils/siteUrl"
+import { resolveSiteUrl } from "@/lib/siteUrl"
 
 // Next.js App Router convention: a default export here becomes /sitemap.xml
 // automatically — no route file, no XML building by hand.

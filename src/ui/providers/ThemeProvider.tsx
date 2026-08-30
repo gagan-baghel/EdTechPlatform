@@ -46,14 +46,22 @@ const ThemeContext = createContext<ThemeContextType>({
  * LocaleProvider.jsx already uses for exactly this reason.
  */
 export default function ThemeProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const [theme, setThemeState] = useState<Theme>("dark")
-
-  useEffect(() => {
+  // Lazy initializer: runs only on the client's first render (after hydration),
+  // so server and client agree on "dark" for the initial HTML, then the stored
+  // preference is applied before the browser paints. This avoids the
+  // setState-in-effect pattern, which triggers a cascading second render.
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "dark"
     const stored = localStorage.getItem(STORAGE_KEY)
-    const resolved = stored === "light" || stored === "dark" ? (stored as Theme) : "dark"
-    setThemeState(resolved)
-    document.documentElement.setAttribute("data-theme", resolved)
-  }, [])
+    return stored === "light" || stored === "dark" ? stored : "dark"
+  })
+
+  // Apply the data-theme attribute whenever theme changes, including on first
+  // render (the lazy initializer resolved the stored value, so this fires once
+  // with the correct value rather than once with "dark" and again with the stored).
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme)
+  }, [theme])
 
   const setTheme = (next: Theme) => {
     setThemeState(next)

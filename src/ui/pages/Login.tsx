@@ -1,7 +1,7 @@
 import React from "react"
 import Template from "../components/core/Auth/Template"
 
-function Login(): JSX.Element {
+function Login() {
   return (
     <Template
       eyebrow="Secure campus access"

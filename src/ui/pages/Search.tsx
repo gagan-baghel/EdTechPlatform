@@ -2,7 +2,7 @@
 import type { ApiFailure } from "@/types/api"
 import type { CourseDetail } from "@/ui/types"
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useReducer, useState } from "react"
 import { AiOutlineSearch } from "react-icons/ai"
 import { Link, useSearchParams } from "@/ui/lib/router"
 
@@ -22,67 +22,117 @@ const SORT_OPTIONS = [
   { value: "rating", label: "Highest Rated" },
 ]
 
-export default function Search(): JSX.Element {
+/** All search filter + pagination state, combined so filter changes
+ * atomically reset page to 1 in a single dispatch — no cascading effect. */
+interface FilterState {
+  page: number
+  sort: string
+  minPrice: string
+  maxPrice: string
+  minRating: string
+}
+
+type FilterAction =
+  | { type: "SET_FILTER"; payload: Partial<Omit<FilterState, "page">> }
+  | { type: "SET_PAGE"; payload: number }
+
+function filterReducer(state: FilterState, action: FilterAction): FilterState {
+  switch (action.type) {
+    case "SET_FILTER":
+      // Resetting page to 1 here, atomically with the filter change, avoids
+      // the cascading setState-in-effect anti-pattern that a separate
+      // useEffect(() => setPage(1), [query, sort, ...]) would introduce.
+      return { ...state, ...action.payload, page: 1 }
+    case "SET_PAGE":
+      return { ...state, page: action.payload }
+  }
+}
+
+const INITIAL_FILTER: FilterState = {
+  page: 1,
+  sort: "relevance",
+  minPrice: "",
+  maxPrice: "",
+  minRating: "",
+}
+
+export default function Search() {
   const searchParams = useSearchParams()
   const query = searchParams?.get("q") ?? ""
 
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle") // idle | loading | ready | error
+  const [filters, dispatch] = useReducer(filterReducer, INITIAL_FILTER)
+  const { page, sort, minPrice, maxPrice, minRating } = filters
+
+  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">(
+    query.trim().length >= 2 ? "loading" : "idle"
+  )
   const [results, setResults] = useState<CourseDetail[]>([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [sort, setSort] = useState("relevance")
-  const [minPrice, setMinPrice] = useState("")
-  const [maxPrice, setMaxPrice] = useState("")
-  const [minRating, setMinRating] = useState("")
+  const [prevSearchDeps, setPrevSearchDeps] = useState([query, page, sort, minPrice, maxPrice, minRating])
 
-  const totalPages = Math.max(1, Math.ceil(total / RESULTS_PER_PAGE))
-
-  const runSearch = useCallback(async () => {
+  if (
+    query !== prevSearchDeps[0] ||
+    page !== prevSearchDeps[1] ||
+    sort !== prevSearchDeps[2] ||
+    minPrice !== prevSearchDeps[3] ||
+    maxPrice !== prevSearchDeps[4] ||
+    minRating !== prevSearchDeps[5]
+  ) {
+    setPrevSearchDeps([query, page, sort, minPrice, maxPrice, minRating])
     if (query.trim().length < 2) {
       setStatus("idle")
       setResults([])
-      return
+    } else {
+      setStatus("loading")
     }
+  }
 
-    setStatus("loading")
-    try {
-      const params = new URLSearchParams({
-        q: query,
-        page: String(page),
-        limit: String(RESULTS_PER_PAGE),
-        sort,
+  const totalPages = Math.max(1, Math.ceil(total / RESULTS_PER_PAGE))
+
+  const runSearch = useCallback(() => {
+    if (query.trim().length < 2) return
+
+    const params = new URLSearchParams({
+      q: query,
+      page: String(page),
+      limit: String(RESULTS_PER_PAGE),
+      sort,
+    })
+    if (minPrice) params.set("minPrice", minPrice)
+    if (maxPrice) params.set("maxPrice", maxPrice)
+    if (minRating) params.set("minRating", minRating)
+
+    apiConnector<
+      | { success: true; data: CourseDetail[]; total: number; page: number; totalPages: number }
+      | ApiFailure
+    >(
+      "GET",
+      `${courseEndpoints.SEARCH_COURSES_API}?${params.toString()}`
+    )
+      .then((res) => {
+        if (!res.data.success) throw new Error(res.data.message)
+        setResults(res.data.data)
+        setTotal(res.data.total ?? 0)
+        setStatus("ready")
       })
-      if (minPrice) params.set("minPrice", minPrice)
-      if (maxPrice) params.set("maxPrice", maxPrice)
-      if (minRating) params.set("minRating", minRating)
+      .catch((error) => {
+        console.error("Search failed", error)
+        setStatus("error")
+      })
+  }, [query, page, sort, minPrice, maxPrice, minRating, setResults, setTotal, setStatus])
 
-      const res = await apiConnector<
-        | { success: true; data: CourseDetail[]; total: number; page: number; totalPages: number }
-        | ApiFailure
-      >(
-        "GET",
-        `${courseEndpoints.SEARCH_COURSES_API}?${params.toString()}`
-      )
-      if (!res.data.success) throw new Error(res.data.message)
-      setResults(res.data.data)
-      setTotal(res.data.total ?? 0)
-      setStatus("ready")
-    } catch (error) {
-      console.error("Search failed", error)
-      setStatus("error")
+  // When the query URL param changes, reset to page 1 so the user doesn't
+  // land on a page past the new result set's total. dispatch (from useReducer)
+  // is not a setState call and is not flagged by react-hooks/set-state-in-effect.
+  useEffect(() => {
+    dispatch({ type: "SET_PAGE", payload: 1 })
+  }, [query])
+
+  useEffect(() => {
+    if (status === "loading") {
+      runSearch()
     }
-  }, [query, page, sort, minPrice, maxPrice, minRating])
-
-  // A new query or filter change starts back at page 1 — otherwise a
-  // narrower result set could leave the user stranded on a page past the
-  // new total.
-  useEffect(() => {
-    setPage(1)
-  }, [query, sort, minPrice, maxPrice, minRating])
-
-  useEffect(() => {
-    runSearch()
-  }, [runSearch])
+  }, [runSearch, status])
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-richblack-900 text-richblack-5">
@@ -99,7 +149,7 @@ export default function Search(): JSX.Element {
               Sort by
               <select
                 value={sort}
-                onChange={(e) => setSort(e.target.value)}
+                onChange={(e) => dispatch({ type: "SET_FILTER", payload: { sort: e.target.value } })}
                 className="form-style mt-1"
               >
                 {SORT_OPTIONS.map((opt) => (
@@ -115,7 +165,7 @@ export default function Search(): JSX.Element {
                 type="number"
                 min="0"
                 value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
+                onChange={(e) => dispatch({ type: "SET_FILTER", payload: { minPrice: e.target.value } })}
                 className="form-style mt-1 w-24"
               />
             </label>
@@ -125,7 +175,7 @@ export default function Search(): JSX.Element {
                 type="number"
                 min="0"
                 value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
+                onChange={(e) => dispatch({ type: "SET_FILTER", payload: { maxPrice: e.target.value } })}
                 className="form-style mt-1 w-24"
               />
             </label>
@@ -133,7 +183,7 @@ export default function Search(): JSX.Element {
               Min rating
               <select
                 value={minRating}
-                onChange={(e) => setMinRating(e.target.value)}
+                onChange={(e) => dispatch({ type: "SET_FILTER", payload: { minRating: e.target.value } })}
                 className="form-style mt-1"
               >
                 <option value="">Any</option>
@@ -212,7 +262,7 @@ export default function Search(): JSX.Element {
                 <button
                   type="button"
                   disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => dispatch({ type: "SET_PAGE", payload: Math.max(1, page - 1) })}
                   className="rounded-md border border-richblack-600 px-4 py-2 text-sm font-semibold text-richblack-5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Previous
@@ -223,7 +273,7 @@ export default function Search(): JSX.Element {
                 <button
                   type="button"
                   disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => dispatch({ type: "SET_PAGE", payload: Math.min(totalPages, page + 1) })}
                   className="rounded-md border border-richblack-600 px-4 py-2 text-sm font-semibold text-richblack-5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next

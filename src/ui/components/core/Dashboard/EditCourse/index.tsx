@@ -12,7 +12,7 @@ import Spinner from "../../../common/Spinner"
 import type { RootState } from "../../../../store"
 import type { AppDispatch } from "../../../../store"
 
-export default function EditCourse(): JSX.Element {
+export default function EditCourse() {
   const dispatch = useDispatch<AppDispatch>()
   const { courseId } = useParams()
   const { course } = useSelector((state: RootState) => state.course)
@@ -32,8 +32,7 @@ export default function EditCourse(): JSX.Element {
       }
       setLoading(false)
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [courseId, dispatch, token])
 
   if (loading) {
     return (

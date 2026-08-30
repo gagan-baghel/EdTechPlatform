@@ -10,7 +10,7 @@ import { formatCurrency } from "../../../../utils/formatCurrency"
 import type { RootState } from "../../../../store"
 import type { AppDispatch } from "../../../../store"
 
-export default function RenderTotalAmount(): JSX.Element {
+export default function RenderTotalAmount() {
   const { total, cart } = useSelector((state: RootState) => state.cart)
   const { token } = useSelector((state: RootState) => state.auth)
   const { user } = useSelector((state: RootState) => state.profile)

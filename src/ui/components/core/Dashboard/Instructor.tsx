@@ -24,36 +24,46 @@ interface InstructorStat {
   totalAmountGenerated: number
 }
 
-export default function Instructor(): JSX.Element {
+export default function Instructor() {
   const { token } = useSelector((state: RootState) => state.auth)
   const { user } = useSelector((state: RootState) => state.profile)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(!!token)
   const [instructorData, setInstructorData] = useState<InstructorStat[] | null>(null)
   const [courses, setCourses] = useState<CourseListItem[]>([])
 
-  const loadDashboard = useCallback(async () => {
-    if (!token) {
+  const [prevToken, setPrevToken] = useState(token)
+  if (token !== prevToken) {
+    setPrevToken(token)
+    if (token) {
+      setLoading(true)
+    } else {
+      setLoading(false)
       setInstructorData(null)
       setCourses([])
-      return
     }
+  }
 
-    try {
-      setLoading(true)
-      const [instructorApiData, result] = await Promise.all([
-        getInstructorData<InstructorStat>(token),
-        fetchInstructorCourses<CourseListItem>(token),
-      ])
-      setInstructorData(Array.isArray(instructorApiData) ? instructorApiData : null)
-      setCourses(Array.isArray(result) ? result : [])
-    } finally {
-      setLoading(false)
-    }
+  const loadDashboard = useCallback(() => {
+    if (!token) return
+
+    Promise.all([
+      getInstructorData<InstructorStat>(token),
+      fetchInstructorCourses<CourseListItem>(token),
+    ])
+      .then(([instructorApiData, result]) => {
+        setInstructorData(Array.isArray(instructorApiData) ? instructorApiData : null)
+        setCourses(Array.isArray(result) ? result : [])
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, [token])
 
   useEffect(() => {
-    loadDashboard()
-  }, [loadDashboard])
+    if (token && loading) {
+      loadDashboard()
+    }
+  }, [loadDashboard, token, loading])
 
   const totalAmount = instructorData?.reduce(
     (acc, curr) => acc + curr.totalAmountGenerated,

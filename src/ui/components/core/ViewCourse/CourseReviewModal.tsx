@@ -1,7 +1,7 @@
 import React, { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { RxCross2 } from "react-icons/rx"
-import ReactStars from "react-rating-stars-component"
+import StarRating from "../../common/StarRating"
 import { useSelector } from "react-redux"
 import { createRating } from "../../../services/operations/courseDetailsAPI"
 import IconBtn from "../../common/IconBtn"
@@ -32,8 +32,7 @@ export default function CourseReviewModal({ setReviewModal }: CourseReviewModalP
   useEffect(() => {
     setValue("courseExperience", "")
     setValue("courseRating", 0)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [setValue])
 
   const ratingChanged = (newRating: number) => {
     setValue("courseRating", newRating)
@@ -81,7 +80,7 @@ export default function CourseReviewModal({ setReviewModal }: CourseReviewModalP
             onSubmit={handleSubmit(onSubmit)}
             className="mt-6 flex flex-col items-center"
           >
-            <ReactStars
+            <StarRating
               count={5}
               onChange={ratingChanged}
               size={24}

@@ -12,29 +12,39 @@ import { getUserEnrolledCourses } from "../../../services/operations/profileAPI"
 import Spinner from "../../common/Spinner"
 import type { RootState } from "../../../store"
 
-export default function EnrolledCourses(): JSX.Element {
+export default function EnrolledCourses() {
   const { token } = useSelector((state: RootState) => state.auth)
   const navigate = useNavigate()
 
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[] | null>(null)
-  
-  const getEnrolledCourses = useCallback(async () => {
+  const [prevToken, setPrevToken] = useState(token)
+
+  if (token !== prevToken) {
+    setPrevToken(token)
     if (!token) {
       setEnrolledCourses([])
-      return
+    } else {
+      setEnrolledCourses(null)
     }
+  }
+  
+  const getEnrolledCourses = useCallback(() => {
+    if (!token) return
 
-    try {
-      const res = await getUserEnrolledCourses<EnrolledCourse>(token)
-      setEnrolledCourses(Array.isArray(res) ? res : [])
-    } catch {
-      setEnrolledCourses([])
-    }
+    getUserEnrolledCourses<EnrolledCourse>(token)
+      .then((res) => {
+        setEnrolledCourses(Array.isArray(res) ? res : [])
+      })
+      .catch(() => {
+        setEnrolledCourses([])
+      })
   }, [token])
 
   useEffect(() => {
-    getEnrolledCourses()
-  }, [getEnrolledCourses])
+    if (token && enrolledCourses === null) {
+      getEnrolledCourses()
+    }
+  }, [getEnrolledCourses, token, enrolledCourses])
 
   return (
     <>

@@ -1,24 +1,21 @@
-interface CourseSummary {
-  _id: unknown
-  price?: number
-  studentsEnrolled?: unknown[]
-}
-
 import type { Request, Response } from "express"
-import { fail } from "../lib/respond"
+import { z } from "zod"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, text } from "../lib/schemas"
 import Category from "../models/Category"
+import Course from "../models/Course"
 function getRandomInt(max: number): number {
     return Math.floor(Math.random() * max)
   }
 
+const CreateCategorySchema = z.object({
+	name: text({ max: 100, label: "Category name" }),
+	description: text({ max: 1000, label: "Description" }).optional(),
+});
+
 export const createCategory = async (req: Request, res: Response) => {
 	try {
-		const { name, description } = req.body;
-		if (!name) {
-			return res
-				.status(400)
-				.json({ success: false, message: "All fields are required" });
-		}
+		const { name, description } = parseOrThrow(CreateCategorySchema, req.body);
 		await Category.create({
 			name: name,
 			description: description,
@@ -47,20 +44,63 @@ export const showAllCategories = async (req: Request, res: Response) => {
 
 //categoryPageDetails 
 
+const CategoryPageDetailsSchema = z.object({
+  categoryId: objectId("A valid category id is required"),
+});
+
+/**
+ * Top courses by enrolment, computed in the database.
+ *
+ * This used to load EVERY category, populate EVERY published course inside
+ * each one with its instructor, flatten the lot into one array in Node, sort
+ * it, and keep ten — on every single category page view. That is the entire
+ * course catalogue read into memory to answer a top-10 question the database
+ * can answer with an index-backed sort and a $limit.
+ */
+async function getMostSellingCourses(limit = 10) {
+  return Course.aggregate([
+    { $match: { status: "Published", deletedAt: null } },
+    { $addFields: { enrolledCount: { $size: { $ifNull: ["$studentsEnrolled", []] } } } },
+    { $sort: { enrolledCount: -1 } },
+    { $limit: limit },
+    {
+      $lookup: {
+        from: "users",
+        localField: "instructor",
+        foreignField: "_id",
+        as: "instructor",
+        // Projected inside the lookup: this route is unauthenticated, and an
+        // unscoped instructor populate hands out password hashes and live
+        // password-reset tokens.
+        pipeline: [{ $project: { firstName: 1, lastName: 1, userImage: 1 } }],
+      },
+    },
+    { $unwind: { path: "$instructor", preserveNullAndEmptyArrays: true } },
+    {
+      $project: {
+        courseName: 1,
+        courseDescription: 1,
+        price: 1,
+        thumbnail: 1,
+        instructor: 1,
+        ratingAndReviews: 1,
+        studentsEnrolled: 1,
+      },
+    },
+  ])
+}
+
 export const categoryPageDetails = async (req: Request, res: Response) => {
     try {
-      const { categoryId } = req.body
-      if (!categoryId) {
-        return res.status(400).json({
-          success: false,
-          message: "categoryId is required",
-        })
-      }
+      const { categoryId } = parseOrThrow(CategoryPageDetailsSchema, req.body);
       // Get courses for the specified category
       const selectedCategory = await Category.findById(categoryId)
         .populate({
           path: "courses",
           match: { status: "Published", deletedAt: null },
+          // Bounded: a popular category is otherwise an unbounded page payload
+          // that grows with every course added to it.
+          options: { limit: 60 },
           populate: "ratingAndReviews",
         })
         .exec()
@@ -86,7 +126,7 @@ export const categoryPageDetails = async (req: Request, res: Response) => {
       // Get courses for other categories
       const categoriesExceptSelected = await Category.find({
         _id: { $ne: categoryId },
-      })
+      }).select("_id")
       let differentCategory = null
       if (categoriesExceptSelected.length > 0) {
         differentCategory = await Category.findOne(
@@ -96,32 +136,12 @@ export const categoryPageDetails = async (req: Request, res: Response) => {
           .populate({
             path: "courses",
             match: { status: "Published", deletedAt: null },
+            options: { limit: 12 },
           })
           .exec()
       }
-      // Get top-selling courses across all categories. This route has no
-      // auth guard — scope the nested instructor populate or an
-      // unauthenticated caller gets every instructor's password hash and
-      // live reset token along for free.
-      const allCategories = await Category.find()
-        .populate({
-          path: "courses",
-          match: { status: "Published", deletedAt: null },
-          populate: {
-            path: "instructor",
-            select: "firstName lastName userImage",
-          },
-        })
-        .exec()
-      const allCourses = allCategories.flatMap(
-          (category: { courses: CourseSummary[] }) => category.courses
-        )
-      const mostSellingCourses = allCourses
-        .sort(
-            (a: CourseSummary, b: CourseSummary) =>
-              (b.studentsEnrolled?.length || 0) - (a.studentsEnrolled?.length || 0)
-          )
-        .slice(0, 10)
+      const mostSellingCourses = await getMostSellingCourses()
+
       res.status(200).json({
         success: true,
         data: {

@@ -14,7 +14,7 @@ interface Organization {
   courses: { course: { _id: string; courseName: string }; seatsTotal: number; seatsUsed: number }[]
 }
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { toast } from "react-hot-toast"
 import copy from "copy-to-clipboard"
@@ -33,8 +33,14 @@ import Spinner from "../../common/Spinner"
 import type { RootState } from "../../../store"
 import React from "react"
 
-export default function Organizations(): JSX.Element {
+export default function Organizations() {
   const { token } = useSelector((state: RootState) => state.auth)
+  // Provisioning seats grants free enrolment, so the API restricts it to
+  // admins (see api/controllers/Organization.ts). Rendering the form for
+  // everyone would just produce a 403 on submit.
+  const isAdmin = useSelector(
+    (state: RootState) => state.profile.user?.accountType === "Admin"
+  )
   const [orgs, setOrgs] = useState<Organization[] | null>(null)
   const [courses, setCourses] = useState<CourseOption[]>([])
   const [name, setName] = useState("")
@@ -43,20 +49,25 @@ export default function Organizations(): JSX.Element {
   const [inviteCode, setInviteCode] = useState("")
   const [creating, setCreating] = useState(false)
 
-  const load = async () => {
-    const [orgsResult, coursesResult] = await Promise.all([
+  const load = useCallback(() => {
+    // Non-admins have no organisations to list and cannot call the
+    // admin-only endpoints — nothing to load.
+    if (!isAdmin) return Promise.resolve()
+    return Promise.all([
       fetchMyOrganizations<Organization>(token as string),
-      getAllCourses<CourseOption>(),
-    ])
-    setOrgs(orgsResult)
-    setCourses(coursesResult)
-    if (coursesResult.length > 0) setSelectedCourseId(coursesResult[0]._id)
-  }
+      // Seat provisioning picks from the catalogue, so ask for the
+      // largest page the endpoint allows rather than the default.
+      getAllCourses<CourseOption>({ limit: 60 }),
+    ]).then(([orgsResult, coursesResult]) => {
+      setOrgs(orgsResult)
+      setCourses(coursesResult)
+      if (coursesResult.length > 0) setSelectedCourseId(coursesResult[0]!._id)
+    })
+  }, [token, isAdmin])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -86,7 +97,7 @@ export default function Organizations(): JSX.Element {
     toast.success("Invite code copied")
   }
 
-  if (!orgs) {
+  if (isAdmin && !orgs) {
     return (
       <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
         <Spinner />
@@ -98,7 +109,7 @@ export default function Organizations(): JSX.Element {
     <div>
       <h1 className="mb-10 text-3xl font-medium text-richblack-5">Organizations</h1>
 
-      {orgs.length > 0 && (
+      {orgs && orgs.length > 0 && (
         <div className="mb-10 flex flex-col gap-4">
           {orgs.map((org) => (
             <Card key={org._id} padding="p-5">
@@ -126,8 +137,11 @@ export default function Organizations(): JSX.Element {
       )}
 
       <div className="grid gap-6 sm:grid-cols-2">
+        {isAdmin && (
         <Card padding="p-5">
-          <h2 className="mb-4 font-semibold text-richblack-5">Buy seats for your team</h2>
+          {/* Not "buy" — this endpoint takes no payment. Seats are sold
+              out-of-band and provisioned here by an admin. */}
+          <h2 className="mb-4 font-semibold text-richblack-5">Provision team seats</h2>
           <form onSubmit={handleCreate} className="flex flex-col gap-3">
             <Input placeholder="Organization name" value={name} onChange={(e) => setName(e.target.value)} />
             <select
@@ -153,6 +167,7 @@ export default function Organizations(): JSX.Element {
             </Button>
           </form>
         </Card>
+        )}
 
         <Card padding="p-5">
           <h2 className="mb-4 font-semibold text-richblack-5">Join with an invite code</h2>

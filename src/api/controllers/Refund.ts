@@ -1,4 +1,5 @@
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, paginationQuery, text, toSkip } from "../lib/schemas"
 
 /** A CourseProgress row with its course populated, as read for eligibility. */
 interface StaleProgress {
@@ -13,6 +14,7 @@ interface StaleProgress {
     studentsEnrolled?: unknown[]
   }
 }
+import { z } from "zod"
 import type { Types } from "mongoose"
 import type { Request, Response } from "express"
 import type { AuthedRequest } from "../lib/http"
@@ -35,6 +37,18 @@ import { emitEvent, EVENT_VERBS } from "../utils/emitEvent"
 // refund pipeline.
 const REFUND_DEADLINE_DAYS = 30
 const REFUND_ELIGIBLE_COMPLETION_THRESHOLD = 0.5 // below 50% complete
+
+const REFUND_REASONS = [
+  "requested_by_customer",
+  "completion_deadline_missed",
+  "admin_discretion",
+] as const
+
+const IssueRefundSchema = z.object({
+  paymentId: objectId("A valid payment id is required"),
+  reason: z.enum(REFUND_REASONS),
+  notes: text({ max: 1000, label: "Notes" }).optional(),
+})
 
 /**
  * Reverses the enrolment side of a purchase — the counterpart to
@@ -62,25 +76,39 @@ async function unenrollFromCourses(
  */
 export const adminIssueRefund = async (req: AuthedRequest, res: Response) => {
   try {
-    const { paymentId, reason, notes } = req.body
-    if (!paymentId || !reason) {
-      return res.status(400).json({ success: false, message: "paymentId and reason are required" })
-    }
-    if (!["requested_by_customer", "completion_deadline_missed", "admin_discretion"].includes(reason)) {
-      return res.status(400).json({ success: false, message: "Invalid reason" })
-    }
+    const { paymentId, reason, notes } = parseOrThrow(IssueRefundSchema, req.body)
 
     const payment = await Payment.findById(paymentId)
     if (!payment) {
       return res.status(404).json({ success: false, message: "Payment not found" })
     }
 
-    const order = await Order.findOne({ orderId: payment.orderId })
+    /**
+     * Claim the order BEFORE calling Razorpay.
+     *
+     * The previous order was: read the order, check `status !== "refunded"`,
+     * call Razorpay, then write the status. Two admins clicking Refund at the
+     * same time — or one impatient double-click — both passed the check and
+     * both issued a real refund against the same payment. The platform paid
+     * out twice and only one Refund row recorded it.
+     *
+     * Flipping the status first makes the claim the thing that races, and a
+     * loser gets a clean 409 with no money moved. If Razorpay then rejects,
+     * the claim is released below so the refund can legitimately be retried.
+     */
+    const order = await Order.findOneAndUpdate(
+      { orderId: payment.orderId, status: { $ne: "refunded" } },
+      { $set: { status: "refunded" } },
+      { new: true }
+    )
     if (!order) {
-      return res.status(404).json({ success: false, message: "Underlying order not found" })
-    }
-    if (order.status === "refunded") {
-      return res.status(400).json({ success: false, message: "This order was already refunded" })
+      const exists = await Order.exists({ orderId: payment.orderId })
+      return res.status(exists ? 409 : 404).json({
+        success: false,
+        message: exists
+          ? "This order has already been refunded."
+          : "Underlying order not found",
+      })
     }
 
     const amountInPaise = Math.round(payment.amount * 100)
@@ -92,6 +120,10 @@ export const adminIssueRefund = async (req: AuthedRequest, res: Response) => {
         notes: { reason, orderId: payment.orderId },
       })
     } catch (razorpayError) {
+      // Nothing moved, so release the claim rather than leaving the order
+      // marked refunded with the student still enrolled and no money returned.
+      await Order.updateOne({ _id: order._id }, { $set: { status: "paid" } })
+
       await Refund.create({
         payment: payment._id,
         order: order._id,
@@ -113,8 +145,6 @@ export const adminIssueRefund = async (req: AuthedRequest, res: Response) => {
     // Razorpay accepted the refund — from here on, the money IS moving, so
     // enrolment reversal must not be skipped even if a later step throws.
     await unenrollFromCourses(payment.consumer, payment.courses)
-    order.status = "refunded"
-    await order.save()
 
     const refundRecord = await Refund.create({
       payment: payment._id,
@@ -145,19 +175,26 @@ export const adminIssueRefund = async (req: AuthedRequest, res: Response) => {
 
     return res.status(200).json({ success: true, data: refundRecord })
   } catch (error) {
-    console.error("adminIssueRefund failed", error)
-    return res.status(500).json({ success: false, message: "Could not process the refund" })
+    return fail(res, error, "adminIssueRefund", "Could not process the refund")
   }
 }
 
 export const adminListRefunds = async (req: Request, res: Response) => {
   try {
-    const refunds = await Refund.find({})
-      .populate("user", "firstName lastName email")
-      .populate("courses", "courseName")
-      .sort({ createdAt: -1 })
-      .lean()
-    return res.status(200).json({ success: true, data: refunds })
+    const { page, limit } = parseOrThrow(paginationQuery(), req.query)
+    const { skip } = toSkip({ page, limit })
+
+    const [refunds, total] = await Promise.all([
+      Refund.find({})
+        .populate("user", "firstName lastName email")
+        .populate("courses", "courseName")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Refund.countDocuments({}),
+    ])
+    return res.status(200).json({ success: true, data: refunds, page, limit, total })
   } catch (error) {
     return fail(res, error, "adminListRefunds", "Could not list refunds")
   }
@@ -173,7 +210,17 @@ export const adminListRefundEligible = async (req: Request, res: Response) => {
   try {
     const deadline = new Date(Date.now() - REFUND_DEADLINE_DAYS * 24 * 60 * 60 * 1000)
 
+    const { page, limit } = parseOrThrow(paginationQuery({ defaultLimit: 50 }), req.query)
+    const { skip } = toSkip({ page, limit })
+
+    // Bounded. This previously loaded EVERY CourseProgress older than the
+    // deadline, each with a two-level populate down to subsections, and built
+    // the whole list in memory — an admin page that gets slower every day and
+    // eventually cannot render at all.
     const staleProgress = await CourseProgress.find({ createdAt: { $lte: deadline } })
+      .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(limit)
       .populate("userId", "firstName lastName email")
       .populate({
         path: "courseID",
@@ -218,10 +265,11 @@ export const adminListRefundEligible = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       data: eligible,
+      page,
+      limit,
       policy: { deadlineDays: REFUND_DEADLINE_DAYS, completionThreshold: REFUND_ELIGIBLE_COMPLETION_THRESHOLD },
     })
   } catch (error) {
-    console.error("adminListRefundEligible failed", error)
-    return res.status(500).json({ success: false, message: "Could not compute refund eligibility" })
+    return fail(res, error, "adminListRefundEligible", "Could not compute refund eligibility")
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
 
@@ -58,19 +58,19 @@ export default function RefundsTab() {
   const [form, setForm] = useState({ paymentId: "", reason: "requested_by_customer", notes: "" })
   const [submitting, setSubmitting] = useState(false)
 
-  const load = async () => {
-    const [refundResult, eligibleResult] = await Promise.all([
+  const load = useCallback(() => {
+    return Promise.all([
       fetchRefunds<Refund>(token as string),
       fetchRefundEligible<EligibleData & { success: true }>(token as string),
-    ])
-    if (refundResult) setRefunds(refundResult.data)
-    if (eligibleResult) setEligible(eligibleResult)
-  }
+    ]).then(([refundResult, eligibleResult]) => {
+      if (refundResult) setRefunds(refundResult.data)
+      if (eligibleResult && eligibleResult.success === true) setEligible(eligibleResult)
+    })
+  }, [token])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

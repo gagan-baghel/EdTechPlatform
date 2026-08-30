@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { AiOutlineDown } from "react-icons/ai"
 import CourseSubSectionAccordion from "./CourseSubSectionAccordion"
 import type { CourseSection } from "@/ui/types"
@@ -12,18 +12,21 @@ interface CourseAccordionBarProps {
 export default function CourseAccordionBar({ course, isActive, handleActive }: CourseAccordionBarProps) {
   const contentEl = useRef<HTMLDivElement>(null)
 
-  // Accordian state
-  const [active, setActive] = useState(false)
-  
-  useEffect(() => {
-    setActive(isActive?.includes(course._id))
-  }, [course._id, isActive])
-  
+  // Derived directly from props — no effect needed. This value is stable
+  // across renders without being stored in state, which avoids the
+  // setState-in-effect cascade lint error.
+  const active = useMemo(
+    () => Boolean(isActive?.includes(course._id)),
+    [isActive, course._id]
+  )
+
   const [sectionHeight, setSectionHeight] = useState(0)
-  
+
+  // DOM measurement must happen in an effect (after the element renders)
+  // because contentEl.current.scrollHeight is only stable post-layout.
   useEffect(() => {
     setSectionHeight(active && contentEl.current ? contentEl.current.scrollHeight : 0)
-  }, [active]) 
+  }, [active])
 
   return (
     <div className="overflow-hidden border border-solid border-richblack-600 bg-richblack-700 text-richblack-5 last:mb-0">

@@ -1,5 +1,5 @@
 import express from "express"
-import { authedHandler } from "../lib/http"
+import { asyncHandler, authedHandler } from "../lib/http"
 const router = express.Router();
 
 import {
@@ -30,12 +30,12 @@ const resetLimiter = rateLimit({ name: "reset", max: 5, windowMs: 15 * MINUTE, b
 const bootstrapAdminLimiter = rateLimit({ name: "bootstrap-admin", max: 5, windowMs: 15 * MINUTE, byEmail: true })
 
 
-router.post("/signup", signupLimiter, signup)
+router.post("/signup", signupLimiter, asyncHandler(signup, "signup"))
 
-router.post("/sendotp", otpLimiter, sendOTP)
+router.post("/sendotp", otpLimiter, asyncHandler(sendOTP, "sendOTP"))
 
 
-router.post("/login", loginLimiter, login)
+router.post("/login", loginLimiter, asyncHandler(login, "login"))
 
 
 router.post("/changePassword",auth,authedHandler(changePassword, "changePassword"))
@@ -45,11 +45,11 @@ router.get("/sessions", auth, authedHandler(listMySessions, "listMySessions"))
 router.delete("/sessions/:sessionId", auth, authedHandler(revokeSession, "revokeSession"))
 router.post("/sessions/revoke-others", auth, authedHandler(revokeAllOtherSessions, "revokeAllOtherSessions"))
 
-router.post("/reset-password-token", resetLimiter, resetPasswordToken)
+router.post("/reset-password-token", resetLimiter, asyncHandler(resetPasswordToken, "resetPasswordToken"))
 
-router.post("/reset-password", resetLimiter, resetPassword)
+router.post("/reset-password", resetLimiter, asyncHandler(resetPassword, "resetPassword"))
 
 // No auth middleware — see the doc comment on bootstrapAdmin in Auth.js for
 // why. Disabled unless ADMIN_SETUP_KEY is set in the environment.
-router.post("/bootstrap-admin", bootstrapAdminLimiter, bootstrapAdmin)
+router.post("/bootstrap-admin", bootstrapAdminLimiter, asyncHandler(bootstrapAdmin, "bootstrapAdmin"))
 export default router

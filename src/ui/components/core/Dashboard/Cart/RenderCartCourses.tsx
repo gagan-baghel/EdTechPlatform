@@ -1,6 +1,5 @@
-import { FaStar } from "react-icons/fa"
 import { RiDeleteBin6Line } from "react-icons/ri"
-import ReactStars from "react-rating-stars-component"
+import StarRating from "../../../common/StarRating"
 import { useDispatch, useSelector } from "react-redux"
 
 import { removeFromCart } from "../../../../slices/cartSlice"
@@ -10,7 +9,7 @@ import Image from "next/image"
 import type { RootState } from "../../../../store"
 import type { AppDispatch } from "../../../../store"
 
-export default function RenderCartCourses(): JSX.Element {
+export default function RenderCartCourses() {
   const { cart } = useSelector((state: RootState) => state.cart)
   const dispatch = useDispatch<AppDispatch>()
   
@@ -43,14 +42,11 @@ export default function RenderCartCourses(): JSX.Element {
               </p>
               <div className="flex items-center gap-2">
                 <span className="text-yellow-5">4.5</span>
-                <ReactStars
+                <StarRating
                   count={5}
-                  value={course?.ratingAndReviews?.length}
+                  value={course?.ratingAndReviews?.length ?? 0}
                   size={20}
-                  edit={false}
                   activeColor="#ffd700"
-                  emptyIcon={<FaStar />}
-                  fullIcon={<FaStar />}
                 />
                 <span className="text-richblack-400">
                   {course?.ratingAndReviews?.length} Ratings

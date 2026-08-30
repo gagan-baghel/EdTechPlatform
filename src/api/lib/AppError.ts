@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from "@/types/api"
+import { API_ERROR_STATUS, type ApiErrorCode } from "@/types/api"
 
 /**
  * A failure that is safe to describe to the caller.
@@ -28,7 +28,7 @@ export class AppError extends Error {
     super(message)
     this.name = "AppError"
     this.code = code
-    this.status = options.status ?? DEFAULT_STATUS[code]
+    this.status = options.status ?? API_ERROR_STATUS[code]
     this.fieldErrors = options.fieldErrors
     this.cause = options.cause
     Error.captureStackTrace?.(this, AppError)
@@ -63,17 +63,6 @@ export class AppError extends Error {
   }
 }
 
-const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
-  VALIDATION_FAILED: 400,
-  UNAUTHENTICATED: 401,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  CONFLICT: 409,
-  RATE_LIMITED: 429,
-  PAYMENT_FAILED: 402,
-  UPSTREAM_UNAVAILABLE: 503,
-  INTERNAL: 500,
-}
 
 export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError

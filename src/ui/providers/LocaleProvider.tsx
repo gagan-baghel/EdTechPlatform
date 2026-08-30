@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState } from "react"
+import React, { createContext, useContext, useState } from "react"
 import { NextIntlClientProvider } from "next-intl"
 
 import en from "../../../messages/en.json"
@@ -38,12 +38,15 @@ const LocaleSwitcherContext = createContext<LocaleSwitcherContextType>({ locale:
  * to messages/*.json and calling useTranslations() in more components.
  */
 export default function LocaleProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const [locale, setLocaleState] = useState("en")
-
-  useEffect(() => {
+  // Lazy initializer — reads localStorage once on mount and avoids a
+  // separate effect that would call setState synchronously, causing a
+  // cascading second render and triggering the react-hooks/set-state-in-effect
+  // lint rule.
+  const [locale, setLocaleState] = useState(() => {
+    if (typeof window === "undefined") return "en"
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored && MESSAGES[stored as SupportedLocale]) setLocaleState(stored)
-  }, [])
+    return stored && MESSAGES[stored as SupportedLocale] ? stored : "en"
+  })
 
   const setLocale = (code: string) => {
     if (!MESSAGES[code as SupportedLocale]) return

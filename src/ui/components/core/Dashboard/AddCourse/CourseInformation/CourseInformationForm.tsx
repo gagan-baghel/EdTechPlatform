@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import type { CourseDetail } from "@/ui/types"
 import { useForm, type SubmitHandler } from "react-hook-form"
 import { toast } from "react-hot-toast"
@@ -60,8 +60,12 @@ export default function CourseInformationForm() {
       }
       setLoading(false)
     }
-    // if form is in edit mode
-    if (editCourse && course) {
+    getCategories()
+  }, [])
+
+  const isInitialized = useRef(false)
+  useEffect(() => {
+    if (editCourse && course && !isInitialized.current) {
       setValue("courseTitle", course.courseName)
       setValue("courseShortDesc", course.courseDescription)
       setValue("coursePrice", course.price)
@@ -70,11 +74,9 @@ export default function CourseInformationForm() {
       setValue("courseCategory", course.category as unknown as string)
       setValue("courseRequirements", course.instructions)
       setValue("courseImage", course.thumbnail)
+      isInitialized.current = true
     }
-    getCategories()
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [course, editCourse, setValue])
 
   const isFormUpdated = () => {
     // Only reachable in edit mode, where the wizard has a loaded course.

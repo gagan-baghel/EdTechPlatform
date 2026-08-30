@@ -1,3 +1,5 @@
+import { z } from "zod"
+import { parseOrThrow } from "../lib/respond"
 import { containsId } from "../lib/ids"
 import type { Response } from "express"
 import { getEnv } from "../config/env"
@@ -13,7 +15,15 @@ import { emitEvent, EVENT_VERBS } from "../utils/emitEvent"
 
 const TUTOR_PROMPT_VERSION = "tutor-v1"
 const COPILOT_OUTLINE_PROMPT_VERSION = "copilot-outline-v1"
-const MODEL_NAME = getEnv().ANTHROPIC_MODEL || "claude-sonnet-5"
+/**
+ * Read lazily, not at module scope.
+ *
+ * `getEnv()` at the top level runs the moment this module is imported, which
+ * on the Express app's import graph is every cold start — including Next's
+ * build-time module walk, where MONGODB_CONNECTION_URL legitimately isn't set.
+ * That turned an optional AI feature into a hard failure of the entire API.
+ */
+const modelName = () => getEnv().ANTHROPIC_MODEL || "claude-sonnet-5"
 
 /**
  * Lecture-grounded tutor (plan §6) — answers ONLY from this lecture's
@@ -24,10 +34,11 @@ const MODEL_NAME = getEnv().ANTHROPIC_MODEL || "claude-sonnet-5"
  */
 export const askTutor = async (req: AuthedRequest, res: Response) => {
   try {
-    const { subSectionId, question } = req.body
-    if (!subSectionId || !question?.trim()) {
-      return res.status(400).json({ success: false, message: "subSectionId and question are required" })
-    }
+    const AskTutorSchema = z.object({
+      subSectionId: z.string().min(1, "subSectionId is required"),
+      question: z.string().trim().min(1, "question is required"),
+    })
+    const { subSectionId, question } = parseOrThrow(AskTutorSchema, req.body)
 
     const section = await Section.findOne({ subSection: subSectionId })
     if (!section) {
@@ -89,7 +100,7 @@ ${subSection.transcript}
       await logAIInteraction({
         user: req.user.id,
         type: "tutor",
-        model: MODEL_NAME,
+        model: modelName(),
         promptVersion: TUTOR_PROMPT_VERSION,
         input: question.trim(),
         output: answer,
@@ -120,10 +131,11 @@ ${subSection.transcript}
  */
 export const generateCourseOutline = async (req: AuthedRequest, res: Response) => {
   try {
-    const { topic, targetAudience } = req.body
-    if (!topic?.trim()) {
-      return res.status(400).json({ success: false, message: "topic is required" })
-    }
+    const GenerateCourseOutlineSchema = z.object({
+      topic: z.string().trim().min(1, "topic is required"),
+      targetAudience: z.string().trim().optional(),
+    })
+    const { topic, targetAudience } = parseOrThrow(GenerateCourseOutlineSchema, req.body)
 
     if (!(await checkDailyCap(req.user.id))) {
       return res.status(429).json({ success: false, message: "You've reached today's AI copilot limit. Try again tomorrow." })
@@ -153,7 +165,7 @@ export const generateCourseOutline = async (req: AuthedRequest, res: Response) =
       await logAIInteraction({
         user: req.user.id,
         type: "copilot_outline",
-        model: MODEL_NAME,
+        model: modelName(),
         promptVersion: COPILOT_OUTLINE_PROMPT_VERSION,
         input: prompt,
         output: outline,

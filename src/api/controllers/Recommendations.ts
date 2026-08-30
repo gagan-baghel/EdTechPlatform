@@ -1,4 +1,6 @@
-import { queryNumber } from "../lib/request"
+import { z } from "zod"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId } from "../lib/schemas"
 import type { Request, Response } from "express"
 import mongoose from "mongoose"
 import Payment from "../models/Payment"
@@ -13,8 +15,16 @@ import Course from "../models/Course"
  */
 export const getCoursesBoughtTogether = async (req: Request, res: Response) => {
   try {
-    const { courseId } = req.params
-    const limit = Math.min(10, Math.max(1, queryNumber(req, "limit") ?? 4))
+    // `new mongoose.Types.ObjectId(courseId)` on an unvalidated param throws
+    // a BSONError, which surfaced as a 500 on any malformed URL.
+    const { courseId } = parseOrThrow(
+      z.object({ courseId: objectId("A valid course id is required") }),
+      req.params
+    )
+    const { limit } = parseOrThrow(
+      z.object({ limit: z.coerce.number().int().min(1).max(10).catch(4) }),
+      req.query
+    )
 
     const courseObjectId = new mongoose.Types.ObjectId(courseId)
     const results = await Payment.aggregate([
@@ -40,7 +50,6 @@ export const getCoursesBoughtTogether = async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true, data: courses })
   } catch (error) {
-    console.error("getCoursesBoughtTogether failed", error)
-    return res.status(500).json({ success: false, message: "Could not load recommendations" })
+    return fail(res, error, "getCoursesBoughtTogether", "Could not load recommendations")
   }
 }

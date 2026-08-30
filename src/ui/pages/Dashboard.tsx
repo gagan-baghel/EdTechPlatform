@@ -9,7 +9,7 @@ interface DashboardProps {
   children: React.ReactNode;
 }
 
-function Dashboard({ children }: DashboardProps): JSX.Element {
+function Dashboard({ children }: DashboardProps) {
   const { loading: profileLoading } = useSelector((state: RootState) => state.profile)
   const { loading: authLoading } = useSelector((state: RootState) => state.auth)
 

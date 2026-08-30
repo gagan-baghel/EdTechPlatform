@@ -1,5 +1,5 @@
 import express from "express"
-import { authedHandler } from "../lib/http"
+import { asyncHandler, authedHandler } from "../lib/http"
 const router = express.Router()
 
 import {
@@ -32,25 +32,25 @@ router.use(auth, isAdmin)
 const adminLimiter = rateLimit({ name: "admin", max: 120, windowMs: 15 * 60 * 1000 })
 router.use(adminLimiter)
 
-router.get("/users", listUsers)
+router.get("/users", asyncHandler(listUsers, "listUsers"))
 router.patch("/users/:userId/active", authedHandler(setUserActive, "setUserActive"))
 
-router.get("/courses", listCoursesForModeration)
+router.get("/courses", asyncHandler(listCoursesForModeration, "listCoursesForModeration"))
 router.patch("/courses/:courseId/takedown", authedHandler(setCourseTakedown, "setCourseTakedown"))
 
-router.get("/payments", lookupPayments)
-router.get("/orders", lookupOrders)
+router.get("/payments", asyncHandler(lookupPayments, "lookupPayments"))
+router.get("/orders", asyncHandler(lookupOrders, "lookupOrders"))
 
 router.post("/refunds", authedHandler(adminIssueRefund, "adminIssueRefund"))
-router.get("/refunds", adminListRefunds)
-router.get("/refunds/eligible", adminListRefundEligible)
+router.get("/refunds", asyncHandler(adminListRefunds, "adminListRefunds"))
+router.get("/refunds/eligible", asyncHandler(adminListRefundEligible, "adminListRefundEligible"))
 
-router.get("/audit-log", listAuditLog)
+router.get("/audit-log", asyncHandler(listAuditLog, "listAuditLog"))
 
-router.get("/feature-flags", listFeatureFlags)
+router.get("/feature-flags", asyncHandler(listFeatureFlags, "listFeatureFlags"))
 router.put("/feature-flags", authedHandler(upsertFeatureFlag, "upsertFeatureFlag"))
 
-router.get("/health", systemHealth)
+router.get("/health", asyncHandler(systemHealth, "systemHealth"))
 
-router.get("/analytics", analyticsOverview)
+router.get("/analytics", asyncHandler(analyticsOverview, "analyticsOverview"))
 export default router

@@ -1,7 +1,7 @@
 import React from "react"
 import Template from "../components/core/Auth/Template"
 
-function Signup(): JSX.Element {
+function Signup() {
   return (
     <Template
       eyebrow="Launch your school OS"

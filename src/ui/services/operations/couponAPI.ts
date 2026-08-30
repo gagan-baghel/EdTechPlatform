@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "@/ui/lib/apiError"
 import type { ApiFailure } from "@/types/api"
 import type { DataBody } from "../../types"
 import { toast } from "react-hot-toast"
@@ -39,7 +40,7 @@ export async function createCoupon(token: string, payload: Record<string, unknow
     toast.success("Coupon created")
     return response.data.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
     return null
   }
 }

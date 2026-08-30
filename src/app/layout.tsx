@@ -1,7 +1,7 @@
 import "./globals.css"
 import AppShell from "../ui/layout/AppShell"
 import AppProviders from "../ui/providers/AppProviders"
-import { resolveSiteUrl } from "../ui/utils/siteUrl"
+import { resolveSiteUrl } from "@/lib/siteUrl"
 
 const SITE_URL = resolveSiteUrl()
 const DESCRIPTION =

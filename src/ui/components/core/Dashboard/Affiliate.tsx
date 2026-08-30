@@ -26,7 +26,7 @@ interface AffiliateSummary {
   }[]
 }
 
-export default function Affiliate(): JSX.Element {
+export default function Affiliate() {
   const { token } = useSelector((state: RootState) => state.auth)
   const [code, setCode] = useState<string | null>(null)
   const [referrals, setReferrals] = useState<AffiliateSummary | null>(null)

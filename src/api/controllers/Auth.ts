@@ -1,5 +1,7 @@
 import { clientIp } from "../lib/http"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { email as emailSchema, objectId, text } from "../lib/schemas"
+import { z } from "zod"
 import type { Request, Response } from "express"
 import { isDuplicateKeyError } from "../lib/AppError"
 import { getEnv } from "../config/env"
@@ -16,7 +18,26 @@ import crypto from "crypto"
 import Session from "../models/Session"
 
 const MIN_PASSWORD_LENGTH = 8
+const MAX_PASSWORD_LENGTH = 200
 const MAX_OTP_ATTEMPTS = 5
+
+/**
+ * Must match the `expires` on OTP.createdAt. Checked here in code as well,
+ * because `autoIndex` is off (connectDB.ts) — if the TTL index has not been
+ * created by scripts/ensure-indexes.ts then nothing expires the document and
+ * a verification code stays valid indefinitely.
+ */
+const OTP_TTL_MS = 5 * 60 * 1000
+
+/** JWT lifetime. The login cookie is given the same expiry. */
+const TOKEN_TTL_MS = 24 * 60 * 60 * 1000
+
+/** Length-safe constant-time comparison for short secrets. */
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a, "utf8")
+  const right = Buffer.from(b, "utf8")
+  return left.length === right.length && crypto.timingSafeEqual(left, right)
+}
 
 function getotp() {
   return otpGenrater.generate(6, {
@@ -29,13 +50,10 @@ function getotp() {
 export const sendOTP = async function (req: Request, res: Response) {
   try {
 
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is required",
-      })
-    }
+    const { email } = parseOrThrow(
+      z.object({ email: emailSchema() }),
+      req.body
+    );
 
     const checkExistance = await User.findOne({ email });
 
@@ -46,13 +64,13 @@ export const sendOTP = async function (req: Request, res: Response) {
       });
     }
 
-    let otp = getotp();
-    let otpFindResult = await OTP.findOne({ otp });
-
-    while (otpFindResult) {
-      otp = getotp();
-      otpFindResult = await OTP.findOne({ otp });
-    }
+    // Codes only ever have to be unique per address — signup reads the most
+    // recent OTP for the email, never by code alone. The previous loop
+    // required global uniqueness across every pending signup and was
+    // unbounded, so it got slower as the collection grew and could in
+    // principle never terminate.
+    const otp = getotp();
+    await OTP.deleteMany({ email });
 
 
     const otpPayload = { email, otp };
@@ -66,10 +84,10 @@ export const sendOTP = async function (req: Request, res: Response) {
 
 
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: `error created white making otp ${error}`,
-    });
+    // Previously interpolated the caught error straight into the response
+    // body, handing an unauthenticated caller stack frames and driver
+    // messages. `fail` logs the real thing and answers with a safe string.
+    return fail(res, error, "sendOTP", "We could not send your verification code. Please try again.")
   }
 };
 
@@ -82,31 +100,31 @@ export const signup = async (req: Request, res: Response) => {
       email,
       contactNumber,
       password,
-      confirmPassword,
       accountType,
       otp,
-    } = req.body;
-
-    if (
-      !firstName ||
-      !lastName ||
-      !email ||
-      !confirmPassword||
-      !password ||
-      !otp
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "invalid information please provide all fields ",
-      });
-    }
-
-    if (password !== confirmPassword) {
-      return res.status(403).json({
-        success: false,
+    } = parseOrThrow(
+      z.object({
+        firstName: text({ max: 100, label: "First name" }),
+        lastName: text({ max: 100, label: "Last name" }),
+        email: emailSchema(),
+        contactNumber: z.coerce.string().max(20).optional(),
+        password: z
+          .string()
+          .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
+          // bcrypt silently truncates past 72 bytes; a cap here means a long
+          // password is rejected rather than quietly weakened.
+          .max(MAX_PASSWORD_LENGTH, `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`),
+        confirmPassword: z.string().min(1, "invalid information please provide all fields "),
+        accountType: z.enum(["Student", "Instructor"], {
+          message: "Please choose either a Student or Instructor account.",
+        }),
+        otp: z.string().min(1, "invalid information please provide all fields ")
+      }).refine((data) => data.password === data.confirmPassword, {
         message: "password is not equal to confirm password",
-      });
-    }
+        path: ["confirmPassword"],
+      }),
+      req.body
+    );
 
     const checkExistance = await User.findOne({ email });
     if (checkExistance) {
@@ -116,25 +134,21 @@ export const signup = async (req: Request, res: Response) => {
       });
     }
 
-    if (String(password).length < MIN_PASSWORD_LENGTH) {
-      return res.status(400).json({
-        success: false,
-        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
-      });
-    }
-
     // "Admin" is deliberately absent — admins are promoted in the database,
     // never self-provisioned through a public endpoint.
-    if (!accountType || !["Student", "Instructor"].includes(accountType)) {
-      return res.status(400).json({
-        success: false,
-        message: "Please choose either a Student or Instructor account.",
-      })
-    }
 
     const recentOtp = await OTP.findOne({ email }).sort({ createdAt: -1 })
 
     if (!recentOtp) {
+      return res.status(400).json({
+        success: false,
+        message: "Your verification code has expired. Please request a new one.",
+      });
+    }
+
+    // Explicit expiry check — see OTP_TTL_MS.
+    if (Date.now() - new Date(recentOtp.createdAt).getTime() > OTP_TTL_MS) {
+      await OTP.deleteMany({ email })
       return res.status(400).json({
         success: false,
         message: "Your verification code has expired. Please request a new one.",
@@ -181,9 +195,16 @@ export const signup = async (req: Request, res: Response) => {
         password:hashPassword,
         accountType,
         additionalDetails: profileDetails._id,
-        userImage: `https://api.dicebear.com/7.x/initials/svg?seed=${firstName} ${lastName}`,
+        // Encoded: a name containing & or # otherwise truncates the URL and
+        // every such user gets a broken avatar.
+        userImage: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(`${firstName} ${lastName}`)}`,
       });
     } catch (error) {
+      // The Profile was created first (User.additionalDetails is required),
+      // so a failed User.create left it behind as an unreachable orphan on
+      // every duplicate-email race.
+      await Profile.deleteOne({ _id: profileDetails._id }).catch(() => {})
+
       if (isDuplicateKeyError(error)) {
         return res.status(403).json({
           success: false,
@@ -213,14 +234,13 @@ export const login = async (req: Request, res: Response) => {
 
     try{
 
-        const {email , password } = req.body 
-
-        if(!email || !password){
-            return res.status(400).json({
-                success:false,
-                message:"Incomplete data in login request"
-            })
-        }
+        const {email , password } = parseOrThrow(
+          z.object({
+            email: emailSchema(),
+            password: z.string().min(1, "Incomplete data in login request"),
+          }),
+          req.body
+        );
 
         const user = await User.findOne({email}).select("+password").populate('additionalDetails');
 
@@ -276,8 +296,12 @@ export const login = async (req: Request, res: Response) => {
             // in Redux/localStorage for no benefit.
             user.password = undefined;
 
+            // Matches the JWT's own 24h lifetime. It was 3 days, so for two
+            // of those days the browser kept sending a cookie whose token
+            // the server had already expired — every request 401ing with a
+            // cookie present, which reads as "randomly logged out".
             const options = {
-                expires: new Date(Date.now()+3*24*60*60*1000),
+                expires: new Date(Date.now()+TOKEN_TTL_MS),
                 httpOnly:true,
                 sameSite: "lax" as const,
                 secure: process.env.NODE_ENV === "production",
@@ -314,20 +338,27 @@ export const changePassword = async (req: AuthedRequest, res: Response) => {
   try{
     
 
-    const { oldPassword, newPassword, confirmNewPassword } = req.body;
-
     // confirmNewPassword is optional: the Settings form has never sent it
     // (UpdatePassword.jsx only collects oldPassword + newPassword), so
     // requiring it made this endpoint impossible to succeed from the UI.
     // Still enforced below when a caller does send it.
-    if (!oldPassword || !newPassword) {
-
-      return res.status(403).json({
-        success: false,
-        message: "invalid information please provide all fields ",
-      });
-
-    }
+    const { oldPassword, newPassword } = parseOrThrow(
+      z.object({
+        oldPassword: z.string().min(1, "invalid information please provide all fields "),
+        newPassword: z
+          .string()
+          .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
+          .max(MAX_PASSWORD_LENGTH, `Password must be at most ${MAX_PASSWORD_LENGTH} characters.`),
+        confirmNewPassword: z.string().optional(),
+      }).refine(
+        (data) => data.confirmNewPassword === undefined || data.newPassword === data.confirmNewPassword,
+        {
+          message: "The new passwords do not match.",
+          path: ["confirmNewPassword"],
+        }
+      ),
+      req.body
+    );
   
     const user = await User.findById(req.user.id).select("+password")
     if (!user) {
@@ -350,20 +381,6 @@ export const changePassword = async (req: AuthedRequest, res: Response) => {
   
   
     } 
-  
-    if (confirmNewPassword !== undefined && newPassword !== confirmNewPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "The new passwords do not match.",
-      });
-    }
-
-    if (String(newPassword).length < MIN_PASSWORD_LENGTH) {
-      return res.status(400).json({
-        success: false,
-        message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
-      });
-    }
 
     const hashPassword = await bcrypt.hash(newPassword, 10);
 
@@ -407,13 +424,7 @@ export const changePassword = async (req: AuthedRequest, res: Response) => {
 
 
   } catch (error) {
-
-    console.error("changePassword failed", error);
-    return res.status(500).json({
-      success:false,
-      message:"We could not update your password. Please try again."
-    })
-
+    return fail(res, error, "changePassword", "We could not update your password. Please try again.")
   }
 
 
@@ -440,14 +451,17 @@ export const bootstrapAdmin = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: "Not found" })
     }
 
-    if (req.headers["x-setup-key"] !== setupKey) {
+    // Constant-time: a plain !== leaks how many leading characters of the
+    // key were right through response timing.
+    const presented = req.headers["x-setup-key"]
+    if (typeof presented !== "string" || !timingSafeStringEqual(presented, setupKey)) {
       return res.status(404).json({ success: false, message: "Not found" })
     }
 
-    const { email } = req.body
-    if (!email) {
-      return res.status(400).json({ success: false, message: "email is required" })
-    }
+    const { email } = parseOrThrow(
+      z.object({ email: emailSchema() }),
+      req.body
+    );
 
     const user = await User.findOne({ email })
     if (!user) {
@@ -463,8 +477,7 @@ export const bootstrapAdmin = async (req: Request, res: Response) => {
 
     return res.status(200).json({ success: true, message: `${email} is now an Admin` })
   } catch (error) {
-    console.error("bootstrapAdmin failed", error)
-    return res.status(500).json({ success: false, message: "Could not promote user" })
+    return fail(res, error, "bootstrapAdmin", "Could not promote user")
   }
 }
 
@@ -503,7 +516,10 @@ export const listMySessions = async (req: AuthedRequest, res: Response) => {
 
 export const revokeSession = async (req: AuthedRequest, res: Response) => {
   try {
-    const { sessionId } = req.params
+    const { sessionId } = parseOrThrow(
+      z.object({ sessionId: objectId("A valid session id is required") }),
+      req.params
+    )
     await Session.updateOne({ _id: sessionId, user: req.user.id }, { $set: { revoked: true } })
     return res.status(200).json({ success: true, message: "Session revoked" })
   } catch (error) {

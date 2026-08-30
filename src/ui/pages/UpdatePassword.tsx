@@ -9,7 +9,7 @@ import Spinner from "../components/common/Spinner"
 
 import type { RootState, AppDispatch } from "../store"
 
-function UpdatePassword(): JSX.Element {
+function UpdatePassword() {
   const navigate = useNavigate()
   const dispatch = useDispatch<AppDispatch>()
   const location = useLocation()

@@ -18,39 +18,50 @@ interface PurchaseRecord {
   courses?: { _id?: string; courseName: string }[]
 }
 
-export default function StudentPurchaes(): JSX.Element {
+export default function StudentPurchaes() {
   const { token } = useSelector((state: RootState) => state.auth)
   const [paymentHistory, setPaymentHistory] = useState<PurchaseRecord[]>([])
   const [loading, setLoading] = useState(true)
 
-  const getPaymentHistory = useCallback(async () => {
-    if (!token) {
-      setPaymentHistory([])
-      setLoading(false)
-      return
-    }
-    try {
+  const [prevToken, setPrevToken] = useState(token)
+  if (token !== prevToken) {
+    setPrevToken(token)
+    if (token) {
       setLoading(true)
-      const responsePaymentHistory = await apiConnector<
-        { success: true; paymentEntries: PurchaseRecord[] } | ApiFailure
-      >("GET", studentEndpoints.GET_PAYMENT_HISTORY, null, {
-        Authorization: `Bearer ${token}`,
-      })
-      setPaymentHistory(
-        responsePaymentHistory.data.success
-          ? responsePaymentHistory.data.paymentEntries
-          : []
-      )
-    } catch {
-      setPaymentHistory([])
-    } finally {
+    } else {
       setLoading(false)
+      setPaymentHistory([])
     }
+  }
+
+  const getPaymentHistory = useCallback(() => {
+    if (!token) return
+
+    apiConnector<
+      { success: true; paymentEntries: PurchaseRecord[] } | ApiFailure
+    >("GET", studentEndpoints.GET_PAYMENT_HISTORY, null, {
+      Authorization: `Bearer ${token}`,
+    })
+      .then((responsePaymentHistory) => {
+        setPaymentHistory(
+          responsePaymentHistory.data.success
+            ? responsePaymentHistory.data.paymentEntries
+            : []
+        )
+      })
+      .catch(() => {
+        setPaymentHistory([])
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, [token])
 
   useEffect(() => {
-    getPaymentHistory()
-  }, [getPaymentHistory])
+    if (token && loading) {
+      getPaymentHistory()
+    }
+  }, [getPaymentHistory, token, loading])
 
   return (
     <>

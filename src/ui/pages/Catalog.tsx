@@ -36,7 +36,7 @@ interface CatalogPageData {
   mostSellingCourses?: CourseDetail[]
 }
 
-function Catalog(): JSX.Element {
+function Catalog() {
   const { loading } = useSelector((state: RootState) => state.profile)
   const { catalogName } = useParams()
   const [active, setActive] = useState(1)

@@ -35,7 +35,7 @@ const stats = [
   { value: "99.99%", label: "Uptime SLA" },
 ]
 
-function About(): JSX.Element {
+function About() {
   return (
     // Pinned dark — the hero's gradient text/glows (#c3ebfa/#fae27c) are
     // tuned only for a dark backdrop, same as Home.jsx.

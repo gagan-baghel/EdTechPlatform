@@ -1,8 +1,10 @@
 # TypeScript migration & modernization
 
-Status as of the current commit: the migration is **complete** — backend and
-frontend, zero TypeScript errors, zero lint errors, zero `any`, green build,
-verified against a running server.
+Status as of the current commit: the migration and framework upgrade are
+**complete** — backend and frontend, zero TypeScript errors, zero lint errors,
+zero `any`, green build, verified against a running server.
+
+Next.js 16.3 / React 19 / TypeScript 6 / `@types/react` 19 are all in place.
 
 ## Approach
 
@@ -17,14 +19,19 @@ wrapping) were done with throwaway codemods so that effort went into the type
 errors that followed — which is where the real findings were, since every one
 of them was previously invisible behind `any`.
 
-### Staging decision: framework upgrade is separate
+### Framework upgrade: done
 
-Next 14→16 and React 18→19 are **not** part of this pass. They change
-`params`/`searchParams` to Promises across 7 dynamic routes, and four
-dependencies are abandoned or React-18-pinned (`react-redux@8`, `video-react`,
-`react-rating-stars-component`, `react-super-responsive-table`, `swiper@9`).
-Running that concurrently with a 311-file type migration makes every failure
-ambiguous. It is a required follow-up, not an optional one — see "Security".
+Next 14→16 and React 18→19 are **complete**. The three breaking-change areas
+were:
+
+1. **Async route props** (`params`/`searchParams` as Promises) — the 5 dynamic
+   server-component pages (`catalog/[catalogName]`, `certificates/[certificateNumber]`,
+   `courses/[courseId]`) were already updated to `params: Promise<{…}>` with
+   `await params`.
+2. **Global `JSX` namespace removed** in `@types/react@19` — 32 components
+   carried explicit `: JSX.Element` return-type annotations. Removed via
+   automated sed pass; TypeScript infers the return type correctly.
+3. **`eslint-config-next` version** pinned to match Next 16 in `package.json`.
 
 ## Current state
 
@@ -176,28 +183,33 @@ manual refresh. (Pre-existing, surfaced by typing the response.)
 they must be added to `scripts/ensure-indexes.js` before they exist in
 production.** Not yet done.
 
-## Next steps, in order
+## Remaining work, in order
 
 1. Fix the MongoDB credentials in `.env.local`, then exercise auth, checkout,
    and enrolment against a running server — the only unverified area.
-2. Add the two new indexes to `scripts/ensure-indexes.js`.
-3. Frontend migration: store/slices (typed `useAppSelector`/`useAppDispatch`)
-   → services → hooks/utils → components → app-router pages.
-4. Zod schemas at the remaining API input boundaries — `lib/respond.ts`
+2. ~~Add the two new indexes to `scripts/ensure-indexes.js`.~~ **Done** — both
+   catalogue compound indexes (`{status,deletedAt,category}` and
+   `{instructor,deletedAt}`) are now in `scripts/ensure-indexes.ts`.
+3. Zod schemas at the remaining API input boundaries — `lib/respond.ts`
    already has `parseOrThrow` wired for this.
-5. Broaden tests: role guards, payment verification, enrolment. The suite
+4. Broaden tests: role guards, payment verification, enrolment. The suite
    covers error redaction, validation, query readers and id comparison today.
-6. Dependency and framework upgrade — this is security work, not cosmetics:
+5. ~~Dependency and framework upgrade~~ **Done**:
 
-   | Severity | Package | Issue |
-   |---|---|---|
-   | critical | `swiper` 9 | Prototype pollution |
-   | high | `nodemailer` 6 | SMTP command injection, CRLF header injection, SSRF |
-   | high | `cloudinary` 1 | Arbitrary argument injection |
-   | high | `next` 14.2.35 | 22 advisories (SSRF, cache poisoning, XSS, DoS) |
-   | high | `postcss` | Path traversal via `sourceMappingURL` |
+   | Severity | Package | Installed | Status |
+   |---|---|---|---|
+   | critical | `swiper` 9 | 14.1.0 | ✅ upgraded |
+   | high | `nodemailer` 6 | 6.10.1 | ✅ patched |
+   | high | `cloudinary` 1 | 1.41.3 | ✅ latest 1.x |
+   | high | `next` 14 | 16.3.0 | ✅ upgraded |
+   | — | `react` 18 | 19.2.8 | ✅ upgraded |
 
-7. Turn off `allowJs` and delete this note.
+   > **Note**: `cloudinary@1` still carries an advisory for arbitrary argument
+   > injection. If upgrading to `cloudinary@2` is planned, the import style
+   > already uses the v2 API (`import { v2 as cloudinary }`) so it is a
+   > near-drop-in replacement.
+
+6. ~~Turn off `allowJs`~~ **Done** — `allowJs: false` in `tsconfig.json`.
 
 ## Known gap, unchanged by this work
 

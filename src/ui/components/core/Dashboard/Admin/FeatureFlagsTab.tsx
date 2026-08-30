@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 
 import { fetchFeatureFlags, upsertFeatureFlag } from "../../../../services/operations/adminAPI"
@@ -19,15 +19,16 @@ export default function FeatureFlagsTab() {
   const [flags, setFlags] = useState<FeatureFlag[] | null>(null)
   const [newKey, setNewKey] = useState("")
 
-  const load = async () => {
-    const result = await fetchFeatureFlags<FeatureFlag>(token as string)
-    if (result) setFlags(result.data)
-  }
+  const load = useCallback(() => {
+    return fetchFeatureFlags<FeatureFlag>(token as string)
+      .then((result) => {
+        if (result) setFlags(result.data)
+      })
+  }, [token])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleToggle = async (flag: FeatureFlag) => {
     await upsertFeatureFlag(token as string, { key: flag.key, enabled: !flag.enabled, description: flag.description, roles: flag.roles })

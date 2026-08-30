@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import ReactStars from "react-rating-stars-component"
+import StarRating from "./StarRating"
 import { Swiper, SwiperSlide } from "swiper/react"
 
 import "swiper/css"
 import "swiper/css/free-mode"
 import "swiper/css/pagination"
 
-import { FaStar } from "react-icons/fa"
 import { Autoplay, FreeMode, Pagination } from "swiper/modules"
 
 import { fetchReviewsCached } from "../../services/sharedData"
@@ -60,7 +59,7 @@ function normalizeReview(review: RawReview): NormalizedReview {
   }
 }
 
-function ReviewSlider(): JSX.Element {
+function ReviewSlider() {
   const [reviews, setReviews] = useState<RawReview[]>([])
   const truncateWords = 15
 
@@ -136,14 +135,11 @@ function ReviewSlider(): JSX.Element {
                   </p>
                   <div className="flex items-center gap-2 ">
                     <h3 className="font-semibold text-[#0d6770]">{review.rating.toFixed(1)}</h3>
-                    <ReactStars
+                    <StarRating
                       count={5}
                       value={review.rating}
                       size={20}
-                      edit={false}
                       activeColor="#ffd700"
-                      emptyIcon={<FaStar />}
-                      fullIcon={<FaStar />}
                     />
                   </div>
                 </div>

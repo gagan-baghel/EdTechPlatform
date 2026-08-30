@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from "@/ui/lib/apiError"
 import type { ApiFailure } from "@/types/api"
 import type { DataBody } from "../../types"
 import axios from "axios"
@@ -126,7 +127,7 @@ export async function addAttachment<TResult = Record<string, unknown>>(data: Rec
     if (!response?.data?.success) throw new Error("Could not add attachment")
     return response.data.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
     return null
   }
 }
@@ -143,17 +144,30 @@ export async function removeAttachment<TResult = Record<string, unknown>>(data: 
   }
 }
 
-export const getAllCourses = async <TCourse = Record<string, unknown>>() => {
+/**
+ * The published catalogue. Paginated server-side (the endpoint used to return
+ * every course in one unbounded response), so callers that need more than the
+ * default page say so explicitly.
+ */
+export const getAllCourses = async <TCourse = Record<string, unknown>>(
+  { page = 1, limit }: { page?: number; limit?: number } = {}
+) => {
   const toastId = toast.loading("Loading...")
   let result: TCourse[] = []
   try {
-    const response = await apiConnector<DataBody<TCourse[]> | ApiFailure>("GET", GET_ALL_COURSE_API)
+    const response = await apiConnector<DataBody<TCourse[]> | ApiFailure>(
+      "GET",
+      GET_ALL_COURSE_API,
+      undefined,
+      undefined,
+      limit ? { page, limit } : { page }
+    )
     if (!response.data.success) {
       throw new Error("Could Not Fetch Course Categories")
     }
     result = response.data.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -196,7 +210,7 @@ export const fetchCourseCategories = async <TCategory = Record<string, unknown>>
     }
     result = response.data.success ? response.data.data : []
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   return result
 }
@@ -216,7 +230,7 @@ export const addCourseDetails = async <TResult = Record<string, unknown>>(data: 
     toast.success("Course Details Added Successfully")
     result = response?.data?.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -237,7 +251,7 @@ export const editCourseDetails = async <TResult = Record<string, unknown>>(data:
     toast.success("Course Details Updated Successfully")
     result = response?.data?.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -257,7 +271,7 @@ export const createSection = async <TResult = Record<string, unknown>>(data: Rec
     toast.success("Course Section Created")
     result = (response?.data as { updatedCourse?: unknown })?.updatedCourse ?? null
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -277,7 +291,7 @@ export const createSubSection = async <TResult = Record<string, unknown>>(data: 
     toast.success("Lecture Added")
     result = response?.data?.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -297,7 +311,7 @@ export const updateSection = async <TResult = Record<string, unknown>>(data: Rec
     toast.success("Course Section Updated")
     result = response?.data?.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -317,7 +331,7 @@ export const updateSubSection = async <TResult = Record<string, unknown>>(data: 
     toast.success("Lecture Updated")
     result = response?.data?.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -369,7 +383,7 @@ export const duplicateCourse = async <TResult = Record<string, unknown>>(data: R
     toast.success("Course duplicated")
     result = response.data.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -389,7 +403,7 @@ export const deleteSection = async <TResult = Record<string, unknown>>(data: Rec
     toast.success("Course Section Deleted")
     result = response?.data?.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -408,7 +422,7 @@ export const deleteSubSection = async <TResult = Record<string, unknown>>(data: 
     toast.success("Lecture Deleted")
     result = response?.data?.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -434,7 +448,7 @@ export const fetchInstructorCourses = async <TCourse = Record<string, unknown>>(
     }
     result = response.data.data
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return result
@@ -452,7 +466,7 @@ export const deleteCourse = async (data: Record<string, unknown>, token: string)
     }
     toast.success("Course Deleted")
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
 }
@@ -505,7 +519,7 @@ export const markLectureAsComplete = async (data: Record<string, unknown>, token
     toast.success("Lecture Completed")
     result = true
   } catch (error) {
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
     result = false
   }
   toast.dismiss(toastId)
@@ -544,7 +558,7 @@ export const createRating = async (data: Record<string, unknown>, token: string)
     success = true
   } catch (error) {
     success = false
-    toast.error((error as Error).message)
+    toast.error(getApiErrorMessage(error, "Something went wrong. Please try again."))
   }
   toast.dismiss(toastId)
   return success

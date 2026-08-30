@@ -1,5 +1,6 @@
+import { z } from "zod"
 import type { Types } from "mongoose"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
 import type { Response } from "express"
 import { toErrorMessage, isDuplicateKeyError } from "../lib/AppError"
 import type { AuthedRequest } from "../lib/http"
@@ -9,9 +10,20 @@ import Referral from "../models/Referral"
 
 const COMMISSION_RATE = 0.1 // flat 10% — a real program would tier this; kept simple for v1
 
+const SetReferrerSchema = z.object({
+  referralCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-F0-9]{8}$/, "That referral code is not valid"),
+})
+
 export const getMyReferralCode = async (req: AuthedRequest, res: Response) => {
   try {
     const user = await User.findById(req.user.id)
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" })
+    }
     if (!user.referralCode) {
       user.referralCode = crypto.randomBytes(4).toString("hex").toUpperCase()
       await user.save()
@@ -30,23 +42,23 @@ export const getMyReferralCode = async (req: AuthedRequest, res: Response) => {
  */
 export const setReferrer = async (req: AuthedRequest, res: Response) => {
   try {
-    const { referralCode } = req.body
-    if (!referralCode) {
-      return res.status(400).json({ success: false, message: "referralCode is required" })
-    }
+    const { referralCode } = parseOrThrow(SetReferrerSchema, req.body)
 
-    const referrer = await User.findOne({ referralCode: referralCode.trim().toUpperCase() })
+    const referrer = await User.findOne({ referralCode })
     if (!referrer || referrer._id.toString() === req.user.id) {
       return res.status(400).json({ success: false, message: "Invalid referral code" })
     }
 
-    const user = await User.findById(req.user.id)
-    if (user.referredBy) {
-      return res.status(400).json({ success: false, message: "Referrer already set" })
+    // Conditional on referredBy being unset, so two concurrent calls (or a
+    // retried request) cannot re-attribute an account to a second referrer —
+    // attribution decides who gets paid, so it has to be write-once.
+    const claimed = await User.findOneAndUpdate(
+      { _id: req.user.id, referredBy: null },
+      { $set: { referredBy: referrer._id } }
+    )
+    if (!claimed) {
+      return res.status(409).json({ success: false, message: "Referrer already set" })
     }
-
-    user.referredBy = referrer._id
-    await user.save()
 
     return res.status(200).json({ success: true, message: "Referral attributed" })
   } catch (error) {
@@ -59,6 +71,7 @@ export const listMyReferrals = async (req: AuthedRequest, res: Response) => {
     const referrals = await Referral.find({ referrer: req.user.id })
       .populate("referredUser", "firstName lastName")
       .sort({ createdAt: -1 })
+      .limit(500)
       .lean()
     const totalEarnedRupees = referrals.reduce(
       (sum: number, r: { commissionAmountRupees: number }) =>

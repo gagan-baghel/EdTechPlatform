@@ -1,23 +1,37 @@
+import { z } from "zod"
 import { containsId } from "../lib/ids"
 import type { Response } from "express"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, text } from "../lib/schemas"
 import type { AuthedRequest } from "../lib/http"
 import Section from "../models/Section"
 import Course from "../models/Course"
 import SubSection from "../models/SubSection"
+
+const CreateSectionSchema = z.object({
+	sectionName: text({ max: 200, label: "Section name" }),
+	courseId: objectId("A valid course id is required"),
+})
+
+const UpdateSectionSchema = CreateSectionSchema.extend({
+	sectionId: objectId("A valid section id is required"),
+})
+
+const ReorderSectionsSchema = z.object({
+	courseId: objectId("A valid course id is required"),
+	orderedSectionIds: z.array(objectId()).min(1, "Missing required properties"),
+})
+
+const DeleteSectionSchema = z.object({
+	sectionId: objectId("A valid section id is required"),
+	courseId: objectId("A valid course id is required"),
+})
+
 // CREATE a new section
 export const createSection = async (req: AuthedRequest, res: Response) => {
 	try {
 		// Extract the required properties from the request body
-		const { sectionName, courseId } = req.body;
-
-		// Validate the input
-		if (!sectionName || !courseId) {
-			return res.status(400).json({
-				success: false,
-				message: "Missing required properties",
-			});
-		}
+		const { sectionName, courseId } = parseOrThrow(CreateSectionSchema, req.body);
 
 		// Verify course ownership
 		const course = await Course.findOne({
@@ -75,13 +89,7 @@ export const createSection = async (req: AuthedRequest, res: Response) => {
 // UPDATE a section
 export const updateSection = async (req: AuthedRequest, res: Response) => {
 	try {
-		const { sectionName, sectionId,courseId } = req.body;
-		if (!sectionName || !sectionId || !courseId) {
-			return res.status(400).json({
-				success: false,
-				message: "Missing required properties",
-			})
-		}
+		const { sectionName, sectionId, courseId } = parseOrThrow(UpdateSectionSchema, req.body);
 		const courseOwner = await Course.findOne({
 			_id: courseId,
 			instructor: req.user.id,
@@ -112,8 +120,8 @@ export const updateSection = async (req: AuthedRequest, res: Response) => {
 
 		res.status(200).json({
 			success: true,
-			message: section,
-			data:course,
+			message: section ? "Section updated" : "Section not found",
+			data: course,
 		});
 	} catch (error) {
     return fail(res, error, "updateSection", "Internal server error")
@@ -127,13 +135,7 @@ export const updateSection = async (req: AuthedRequest, res: Response) => {
 // list of ids) and avoids the client having to compute order numbers itself.
 export const reorderSections = async (req: AuthedRequest, res: Response) => {
 	try {
-		const { courseId, orderedSectionIds } = req.body;
-		if (!courseId || !Array.isArray(orderedSectionIds) || orderedSectionIds.length === 0) {
-			return res.status(400).json({
-				success: false,
-				message: "Missing required properties",
-			})
-		}
+		const { courseId, orderedSectionIds } = parseOrThrow(ReorderSectionsSchema, req.body);
 
 		const course = await Course.findOne({
 			_id: courseId,
@@ -189,13 +191,7 @@ export const reorderSections = async (req: AuthedRequest, res: Response) => {
 export const deleteSection = async (req: AuthedRequest, res: Response) => {
 	try {
 
-		const { sectionId, courseId }  = req.body;
-		if (!sectionId || !courseId) {
-			return res.status(400).json({
-				success: false,
-				message: "Missing required properties",
-			})
-		}
+		const { sectionId, courseId } = parseOrThrow(DeleteSectionSchema, req.body);
 		const courseOwner = await Course.findOne({
 			_id: courseId,
 			instructor: req.user.id,

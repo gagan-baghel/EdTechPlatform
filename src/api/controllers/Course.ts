@@ -5,11 +5,12 @@ import { getEnv } from "../config/env"
 import mongoose, { type FilterQuery, type PipelineStage } from "mongoose"
 
 import type { CourseLevel } from "@/types/domain"
-import { COURSE_LEVEL_VALUES } from "@/types/domain"
-import { toErrorMessage } from "../lib/AppError"
-import { fail } from "../lib/respond"
+import { COURSE_LEVEL_VALUES, COURSE_STATUS_VALUES } from "@/types/domain"
+import { fail, parseOrThrow } from "../lib/respond"
+import { z } from "zod"
 import type { AuthedRequest } from "../lib/http"
-import { queryNumber, queryString, requireFile, singleFile } from "../lib/request"
+import { requireFile, singleFile } from "../lib/request"
+import { objectId, paginationQuery, toSkip } from "../lib/schemas"
 import Course from "../models/Course"
 import Category from "../models/Category"
 import Section from "../models/Section"
@@ -43,45 +44,54 @@ export const createCourse = async (req: AuthedRequest, res: Response) => {
       courseDescription,
       whatYouWillLearn,
       price,
-      tag: _tag,
+      tag,
       category,
-      instructions: _instructions,
-    } = req.body
-    // `status` alone is reassigned (defaults to Draft), so it stays a `let`
-    // rather than forcing the whole destructure to be mutable.
-    let { status } = req.body
+      instructions,
+    } = parseOrThrow(
+      z.object({
+        courseName: z.string().min(1, "All Fields are Mandatory"),
+        courseDescription: z.string().min(1, "All Fields are Mandatory"),
+        whatYouWillLearn: z.string().min(1, "All Fields are Mandatory"),
+        price: z.coerce.number().min(0, "All Fields are Mandatory"),
+        category: objectId("A valid category is required"),
+        tag: z.string().transform((val, ctx) => {
+          try {
+            const parsed = JSON.parse(val)
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "All Fields are Mandatory" })
+              return z.NEVER
+            }
+            return parsed
+          } catch {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid tag or instructions format" })
+            return z.NEVER
+          }
+        }),
+        instructions: z.string().transform((val, ctx) => {
+          try {
+            const parsed = JSON.parse(val)
+            if (!Array.isArray(parsed) || parsed.length === 0) {
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "All Fields are Mandatory" })
+              return z.NEVER
+            }
+            return parsed
+          } catch {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid tag or instructions format" })
+            return z.NEVER
+          }
+        }),
+      }),
+      req.body
+    )
+
     // Get thumbnail image from request files
     const thumbnail = singleFile(req, "thumbnailImage")
 
-    // Convert the tag and instructions from stringified Array to Array
-    let tag = []
-    let instructions = []
-    try {
-      tag = _tag ? JSON.parse(_tag) : []
-      instructions = _instructions ? JSON.parse(_instructions) : []
-    } catch (error) {
-    return fail(res, error, "createCourse", "Invalid tag or instructions format")
-  }
-
-
-    // Check if any of the required fields are missing
-    if (
-      !courseName ||
-      !courseDescription ||
-      !whatYouWillLearn ||
-      !price ||
-      !tag.length ||
-      !thumbnail ||
-      !category ||
-      !instructions.length
-    ) {
+    if (!thumbnail) {
       return res.status(400).json({
         success: false,
         message: "All Fields are Mandatory",
       })
-    }
-    if (!status || status === undefined) {
-      status = "Draft"
     }
     // Check if the user is an instructor
     const instructorDetails = await User.findOne({
@@ -119,7 +129,12 @@ export const createCourse = async (req: AuthedRequest, res: Response) => {
       tag,
       category: categoryDetails._id,
       thumbnail: thumbnailImage.secure_url,
-      status: status,
+      // Always Draft. `status` used to be read from the request body, which
+      // let an instructor POST status:"Published" and skip the readiness
+      // checks in editCourse entirely — publishing a course with no lessons,
+      // no thumbnail and no price straight into the public catalogue.
+      // Publishing goes through editCourse, which enforces those checks.
+      status: "Draft",
       instructions,
     })
 
@@ -158,8 +173,36 @@ export const createCourse = async (req: AuthedRequest, res: Response) => {
 // Edit Course Details
 export const editCourse = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.body
-    const updates = req.body
+    const EditCourseSchema = z.object({
+      courseId: objectId("A valid course id is required"),
+      courseName: z.string().optional(),
+      courseDescription: z.string().optional(),
+      price: z.coerce.number().optional(),
+      whatYouWillLearn: z.string().optional(),
+      category: objectId().optional(),
+      // Enums, not free strings: an unlisted value used to reach
+      // `course.save()` and fail Mongoose validation as an opaque 500,
+      // and a value like "Published " (trailing space) would have made the
+      // course invisible to every catalogue query that filters on it.
+      status: z.enum(COURSE_STATUS_VALUES).optional(),
+      tag: z.string().transform((val, ctx) => {
+        try { return JSON.parse(val) } catch {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid tag format" })
+          return z.NEVER
+        }
+      }).optional(),
+      instructions: z.string().transform((val, ctx) => {
+        try { return JSON.parse(val) } catch {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid instructions format" })
+          return z.NEVER
+        }
+      }).optional(),
+      level: z.enum(COURSE_LEVEL_VALUES).optional(),
+      language: z.string().optional(),
+      scheduledPublishAt: z.union([z.string(), z.null()]).transform(v => v ? new Date(v) : null).optional(),
+    })
+
+    const { courseId, ...updates } = parseOrThrow(EditCourseSchema, req.body)
     const course = await Course.findById(courseId)
 
     if (!course) {
@@ -209,44 +252,9 @@ export const editCourse = async (req: AuthedRequest, res: Response) => {
       course.thumbnail = thumbnailImage.secure_url
     }
 
-    // Update only the fields an instructor may legitimately edit — an
-    // unrestricted copy of req.body onto the document let a caller set
-    // studentsEnrolled (free enrolment) or reassign instructor (course
-    // takeover). This is the complete set the client ever sends
-    // (CourseInformationForm.jsx, PublishCourse/index.jsx).
-    const EDITABLE_FIELDS = [
-      "courseName",
-      "courseDescription",
-      "price",
-      "whatYouWillLearn",
-      "category",
-      "status",
-      "tag",
-      "instructions",
-      "level",
-      "language",
-      "scheduledPublishAt",
-    ]
-
-    for (const key of EDITABLE_FIELDS) {
-      if (!updates.hasOwnProperty(key)) continue
-
-      if (key === "tag" || key === "instructions") {
-        try {
-          course[key] = JSON.parse(updates[key])
-        } catch {
-          return res.status(400).json({
-            success: false,
-            message: `Invalid ${key} format`,
-          })
-        }
-      } else if (key === "scheduledPublishAt") {
-        // "" means "clear the schedule" (unschedule/publish-now/save-as-
-        // draft-with-no-schedule) — Mongoose would otherwise cast an empty
-        // string to an Invalid Date and fail validation on save.
-        course.scheduledPublishAt = updates.scheduledPublishAt ? new Date(updates.scheduledPublishAt) : null
-      } else {
-        course[key] = updates[key]
+    for (const key in updates) {
+      if (updates.hasOwnProperty(key)) {
+        (course as Record<string, unknown>)[key] = (updates as Record<string, unknown>)[key]
       }
     }
 
@@ -282,10 +290,21 @@ export const editCourse = async (req: AuthedRequest, res: Response) => {
     fail(res, error, "editCourse", "Internal server error")}
 }
 // Get Course List
+/**
+ * The public catalogue.
+ *
+ * Paginated. It previously returned every published course in one unbounded
+ * query — fine at 20 courses, a growing full-collection read and an ever-
+ * larger JSON payload on the homepage at 20,000.
+ */
 export const getAllCourses = async (req: Request, res: Response) => {
   try {
+    const { page, limit } = parseOrThrow(paginationQuery({ defaultLimit: 24, maxLimit: 60 }), req.query)
+    const { skip } = toSkip({ page, limit })
+
+    const filter = { status: "Published", deletedAt: null }
     const allCourses = await Course.find(
-      { status: "Published", deletedAt: null },
+      filter,
       {
         courseName: true,
         price: true,
@@ -299,27 +318,32 @@ export const getAllCourses = async (req: Request, res: Response) => {
       // catalog actually renders, or an unauthenticated caller gets every
       // instructor's password hash and live reset token along for free.
       .populate("instructor", "firstName lastName userImage")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
       .exec()
+
+    const total = await Course.countDocuments(filter)
 
     return res.status(200).json({
       success: true,
       data: allCourses,
+      page,
+      limit,
+      total,
     })
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: `Can't Fetch Course Data`,
-      error: toErrorMessage(error),
-    })
+    // `error: toErrorMessage(error)` used to be returned here, handing an
+    // unauthenticated caller the driver's own message.
+    return fail(res, error, "getAllCourses", "Could not load the course catalogue.")
   }
 }
 
+const CourseIdSchema = z.object({ courseId: z.string() })
+
 export const getCourseDetails = async (req: Request, res: Response) => {
   try {
-    const { courseId } = req.body
-    if (!courseId) {
-      return res.status(400).json({ success: false, message: "courseId is required" })
-    }
+    const { courseId } = parseOrThrow(CourseIdSchema, req.body)
     const courseDetails = await Course.findOne({
       _id: courseId,
       deletedAt: null,
@@ -401,10 +425,7 @@ export const getCourseDetails = async (req: Request, res: Response) => {
 
 export const getFullCourseDetails = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.body
-    if (!courseId) {
-      return res.status(400).json({ success: false, message: "courseId is required" })
-    }
+    const { courseId } = parseOrThrow(CourseIdSchema, req.body)
     const userId = req.user.id
     const courseDetails = await Course.findOne({
       _id: courseId,
@@ -516,7 +537,7 @@ export const getInstructorCourses = async (req: AuthedRequest, res: Response) =>
 // Delete the Course
 export const deleteCourse = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.body
+    const { courseId } = parseOrThrow(CourseIdSchema, req.body)
 
     // Find the course
     const course = await Course.findById(courseId)
@@ -595,17 +616,30 @@ export const deleteCourse = async (req: AuthedRequest, res: Response) => {
 // database, or before scripts/ensure-indexes.js has been run at all.
 export const searchCourses = async (req: Request, res: Response) => {
   try {
-    const rawQuery = (req.query.q ?? req.body?.q ?? "").toString().trim()
+    const SearchCoursesSchema = z.object({
+      q: z.string().optional().default("").transform(v => v.trim()).refine(v => v.length >= 2, "Please enter at least 2 characters to search."),
+      page: z.coerce.number().min(1).default(1),
+      limit: z.coerce.number().min(1).max(50).default(12),
+      minPrice: z.coerce.number().optional(),
+      maxPrice: z.coerce.number().optional(),
+      level: z.enum(COURSE_LEVEL_VALUES as unknown as [string, ...string[]]).optional(),
+      category: z.string().refine(isValidId, "Invalid category ID").optional(),
+      minRating: z.coerce.number().optional(),
+      sort: z.string().default("relevance"),
+    })
 
-    if (rawQuery.length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: "Please enter at least 2 characters to search.",
-      })
-    }
+    const {
+      q: rawQuery,
+      page,
+      limit,
+      minPrice,
+      maxPrice,
+      level,
+      category,
+      minRating,
+      sort,
+    } = parseOrThrow(SearchCoursesSchema, { ...req.body, ...req.query })
 
-    const page = Math.max(1, queryNumber(req, "page") ?? 1)
-    const limit = Math.min(50, Math.max(1, queryNumber(req, "limit") ?? 12))
     const skip = (page - 1) * limit
 
     // Typed explicitly rather than inferred from the initialiser: inference
@@ -616,30 +650,21 @@ export const searchCourses = async (req: Request, res: Response) => {
       deletedAt: null,
     }
 
-    const minPrice = queryNumber(req, "minPrice")
-    const maxPrice = queryNumber(req, "maxPrice")
     if (minPrice !== undefined || maxPrice !== undefined) {
       baseFilter.price = {}
       if (minPrice !== undefined) baseFilter.price.$gte = minPrice
       if (maxPrice !== undefined) baseFilter.price.$lte = maxPrice
     }
 
-    // Comparing against the shared const array keeps this in step with the
-    // schema enum instead of being a third hand-written copy of the levels.
-    const level = queryString(req, "level")
-    if (level && (COURSE_LEVEL_VALUES as readonly string[]).includes(level)) {
+    if (level) {
       baseFilter.level = level as CourseLevel
     }
 
-    const category = queryString(req, "category")
-    if (category && isValidId(category)) {
+    if (category) {
       baseFilter.category = category
     }
 
-    const minRating = queryNumber(req, "minRating") ?? Number.NaN
-    const wantsRatingFilter = Number.isFinite(minRating) && minRating > 0
-
-    const sort = queryString(req, "sort") ?? "relevance"
+    const wantsRatingFilter = minRating !== undefined && minRating > 0
 
     // $text requires the index above to exist — if it hasn't been created
     // yet (fresh DB, ensure-indexes.js not run), Mongo throws rather than
@@ -649,12 +674,12 @@ export const searchCourses = async (req: Request, res: Response) => {
     let usedTextIndex = true
 
     try {
-      courses = await runSearch({ mode: "text", rawQuery, baseFilter, sort, wantsRatingFilter, minRating, skip, limit })
-      total = await countSearch({ mode: "text", rawQuery, baseFilter, wantsRatingFilter, minRating })
+      courses = await runSearch({ mode: "text", rawQuery, baseFilter, sort, wantsRatingFilter, minRating: minRating ?? Number.NaN, skip, limit })
+      total = await countSearch({ mode: "text", rawQuery, baseFilter, wantsRatingFilter, minRating: minRating ?? Number.NaN })
     } catch {
       usedTextIndex = false
-      courses = await runSearch({ mode: "regex", rawQuery, baseFilter, sort, wantsRatingFilter, minRating, skip, limit })
-      total = await countSearch({ mode: "regex", rawQuery, baseFilter, wantsRatingFilter, minRating })
+      courses = await runSearch({ mode: "regex", rawQuery, baseFilter, sort, wantsRatingFilter, minRating: minRating ?? Number.NaN, skip, limit })
+      total = await countSearch({ mode: "regex", rawQuery, baseFilter, wantsRatingFilter, minRating: minRating ?? Number.NaN })
     }
 
     await emitEvent(EVENT_VERBS.SEARCH_PERFORMED, {
@@ -820,7 +845,7 @@ async function countSearch(args: PipelineOptions) {
  */
 export const duplicateCourse = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.body
+    const { courseId } = parseOrThrow(CourseIdSchema, req.body)
     const course = await Course.findOne({ _id: courseId, instructor: req.user.id }).populate({
       path: "courseContent",
       populate: { path: "subSection" },

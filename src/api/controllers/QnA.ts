@@ -1,12 +1,23 @@
+import { z } from "zod"
 import type { Types } from "mongoose"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, paginationQuery, text, toSkip } from "../lib/schemas"
 import { containsId } from "../lib/ids"
-import type { Request, Response } from "express"
+import type { Response } from "express"
 import type { AuthedRequest } from "../lib/http"
 import Question from "../models/Question"
 import Course from "../models/Course"
 import User from "../models/User"
+import Section from "../models/Section"
 import { notify } from "../utils/notify"
+
+const AskQuestionSchema = z.object({
+  courseId: objectId("A valid course id is required"),
+  subSectionId: objectId("A valid lecture id is required"),
+  text: text({ max: 2000, label: "Question" }),
+})
+
+const AnswerSchema = z.object({ text: text({ max: 5000, label: "Answer" }) })
 
 /**
  * A caller may participate (ask/answer) if they're enrolled in the course
@@ -27,10 +38,7 @@ async function assertCanParticipate(
 
 export const askQuestion = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId, subSectionId, text } = req.body
-    if (!courseId || !subSectionId || !text?.trim()) {
-      return res.status(400).json({ success: false, message: "courseId, subSectionId and text are required" })
-    }
+    const { courseId, subSectionId, text: body } = parseOrThrow(AskQuestionSchema, req.body)
 
     if (!(await assertCanParticipate(courseId, req.user.id))) {
       return res.status(403).json({ success: false, message: "You must be enrolled in this course to ask a question" })
@@ -40,7 +48,7 @@ export const askQuestion = async (req: AuthedRequest, res: Response) => {
       course: courseId,
       subSection: subSectionId,
       askedBy: req.user.id,
-      text: text.trim(),
+      text: body,
     })
 
     return res.status(201).json({ success: true, data: question })
@@ -51,11 +59,11 @@ export const askQuestion = async (req: AuthedRequest, res: Response) => {
 
 export const answerQuestion = async (req: AuthedRequest, res: Response) => {
   try {
-    const { questionId } = req.params
-    const { text } = req.body
-    if (!text?.trim()) {
-      return res.status(400).json({ success: false, message: "text is required" })
-    }
+    const { questionId } = parseOrThrow(
+      z.object({ questionId: objectId("A valid question id is required") }),
+      req.params
+    )
+    const { text: body } = parseOrThrow(AnswerSchema, req.body)
 
     const question = await Question.findById(questionId)
     if (!question) {
@@ -66,7 +74,7 @@ export const answerQuestion = async (req: AuthedRequest, res: Response) => {
       return res.status(403).json({ success: false, message: "You must be enrolled in this course to answer" })
     }
 
-    question.answers.push({ answeredBy: req.user.id, text: text.trim() })
+    question.answers.push({ answeredBy: req.user.id, text: body })
     await question.save()
 
     // Don't notify a user replying to their own question.
@@ -74,7 +82,7 @@ export const answerQuestion = async (req: AuthedRequest, res: Response) => {
       await notify(question.askedBy, {
         type: "qna_reply",
         title: "Someone answered your question",
-        body: text.trim(),
+        body,
         link: `/view-course/${question.course}`,
       })
     }
@@ -85,15 +93,46 @@ export const answerQuestion = async (req: AuthedRequest, res: Response) => {
   }
 }
 
-export const listQuestionsForLecture = async (req: Request, res: Response) => {
+/**
+ * Q&A for one lecture.
+ *
+ * Requires the same enrolment as posting. It previously required only that
+ * the caller be logged in as *somebody*, so any account could read the
+ * discussion inside any paid course by iterating lecture ids — course content
+ * that students pay for, plus their names and questions. It was also
+ * unbounded; a busy lecture returned every question ever asked.
+ */
+export const listQuestionsForLecture = async (req: AuthedRequest, res: Response) => {
   try {
-    const { subSectionId } = req.params
-    const questions = await Question.find({ subSection: subSectionId })
-      .populate("askedBy", "firstName lastName userImage")
-      .populate("answers.answeredBy", "firstName lastName userImage")
-      .sort({ createdAt: -1 })
-      .lean()
-    return res.status(200).json({ success: true, data: questions })
+    const { subSectionId } = parseOrThrow(
+      z.object({ subSectionId: objectId("A valid lecture id is required") }),
+      req.params
+    )
+    const { page, limit } = parseOrThrow(paginationQuery({ defaultLimit: 20, maxLimit: 50 }), req.query)
+    const { skip } = toSkip({ page, limit })
+
+    const section = await Section.findOne({ subSection: subSectionId }).select("_id")
+    if (!section) {
+      return res.status(404).json({ success: false, message: "Lecture not found" })
+    }
+    const course = await Course.findOne({ courseContent: section._id }).select("_id")
+    if (!course || !(await assertCanParticipate(course._id.toString(), req.user.id))) {
+      return res
+        .status(403)
+        .json({ success: false, message: "You must be enrolled in this course to view its Q&A" })
+    }
+
+    const [questions, total] = await Promise.all([
+      Question.find({ subSection: subSectionId })
+        .populate("askedBy", "firstName lastName userImage")
+        .populate("answers.answeredBy", "firstName lastName userImage")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Question.countDocuments({ subSection: subSectionId }),
+    ])
+    return res.status(200).json({ success: true, data: questions, page, limit, total })
   } catch (error) {
     return fail(res, error, "listQuestionsForLecture", "Could not load questions")
   }
@@ -101,7 +140,10 @@ export const listQuestionsForLecture = async (req: Request, res: Response) => {
 
 export const deleteQuestion = async (req: AuthedRequest, res: Response) => {
   try {
-    const { questionId } = req.params
+    const { questionId } = parseOrThrow(
+      z.object({ questionId: objectId("A valid question id is required") }),
+      req.params
+    )
     const question = await Question.findById(questionId)
     if (!question) {
       return res.status(404).json({ success: false, message: "Question not found" })

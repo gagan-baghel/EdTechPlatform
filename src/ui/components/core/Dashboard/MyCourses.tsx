@@ -10,7 +10,7 @@ import CoursesTable from "./InstructorCourses/CoursesTable"
 
 import type { RootState } from "../../../store"
 
-export default function MyCourses(): JSX.Element {
+export default function MyCourses() {
   const { token } = useSelector((state: RootState) => state.auth)
   const navigate = useNavigate()
   const [courses, setCourses] = useState<CourseListItem[]>([])
@@ -23,8 +23,7 @@ export default function MyCourses(): JSX.Element {
       }
     }
     fetchCourses()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [token])
 
   return (
     <div>

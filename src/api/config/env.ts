@@ -12,8 +12,8 @@ import { z } from "zod"
  * SERVER ONLY. Nothing here is `NEXT_PUBLIC_`, so none of it is inlined into
  * the client bundle; a client component that imported this would see every
  * value as undefined and throw on the spot, which is the failure mode we
- * want — loud, not silent. Client-side public config lives in
- * `src/ui/config/publicEnv.ts`.
+ * want — loud, not silent. The only client-visible configuration is
+ * `NEXT_PUBLIC_RAZORPAY_KEY`, read directly where it is used.
  */
 
 const nonEmpty = (name: string) =>
@@ -83,6 +83,15 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default("claude-sonnet-5"),
+
+  /* --- Field-level encryption ---------------------------------------- */
+  /**
+   * Encrypts instructor bank details at rest (see lib/crypto.ts). Required
+   * in production: the previous fallback to a literal key committed to this
+   * repository meant a deployment that forgot it stored real account numbers
+   * under a publicly known key while the UI masked them as if protected.
+   */
+  FIELD_ENCRYPTION_KEY: requiredInProduction("FIELD_ENCRYPTION_KEY"),
 })
 
 export type ServerEnv = z.infer<typeof envSchema>

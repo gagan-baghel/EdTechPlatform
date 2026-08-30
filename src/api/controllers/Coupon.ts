@@ -1,25 +1,51 @@
-import type { Request, Response } from "express"
-import { fail } from "../lib/respond"
+import { z } from "zod"
+import type { Response } from "express"
+
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, rupees } from "../lib/schemas"
 import { isDuplicateKeyError } from "../lib/AppError"
 import type { AuthedRequest } from "../lib/http"
 import Coupon from "../models/Coupon"
 import { recordAudit } from "../utils/recordAudit"
 
+const CreateCouponSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .min(3, "A coupon code must be at least 3 characters")
+      .max(40, "A coupon code must be at most 40 characters")
+      .regex(/^[A-Z0-9_-]+$/, "A coupon code may only contain letters, digits, - and _"),
+    type: z.enum(["percent", "flat"]),
+    value: z.coerce.number().positive("Discount value must be greater than zero"),
+    courseId: objectId().nullish(),
+    maxUses: z.coerce.number().int().positive().nullish(),
+    expiresAt: z.coerce.date().nullish(),
+  })
+  .refine((data) => data.type !== "percent" || data.value <= 100, {
+    message: "Percent value must be between 1 and 100",
+    path: ["value"],
+  })
+
+const CheckCouponSchema = z.object({
+  code: z.string().trim().min(1, "A coupon code is required").max(40),
+  courseIds: z.array(objectId()).min(1, "courseIds is required"),
+  totalAmountRupees: rupees(),
+})
+
 export const createCoupon = async (req: AuthedRequest, res: Response) => {
   try {
-    const { code, type, value, courseId, maxUses, expiresAt } = req.body
-    if (!code || !type || value === undefined) {
-      return res.status(400).json({ success: false, message: "code, type and value are required" })
-    }
-    if (!["percent", "flat"].includes(type)) {
-      return res.status(400).json({ success: false, message: "type must be percent or flat" })
-    }
-    if (type === "percent" && (value <= 0 || value > 100)) {
-      return res.status(400).json({ success: false, message: "Percent value must be between 1 and 100" })
-    }
+    // `value` was previously unbounded below zero for flat coupons. A
+    // negative flat discount inverts the arithmetic in validateCouponForCart
+    // (`total - (-x)`) and CHARGES the customer more than the listed price.
+    const { code, type, value, courseId, maxUses, expiresAt } = parseOrThrow(
+      CreateCouponSchema,
+      req.body
+    )
 
     const coupon = await Coupon.create({
-      code: code.trim().toUpperCase(),
+      code,
       type,
       value,
       course: courseId || null,
@@ -41,7 +67,7 @@ export const createCoupon = async (req: AuthedRequest, res: Response) => {
     if (isDuplicateKeyError(error)) {
       return res.status(409).json({ success: false, message: "A coupon with that code already exists" })
     }
-    return res.status(500).json({ success: false, message: "Could not create coupon" })
+    return fail(res, error, "createCoupon", "Could not create coupon")
   }
 }
 
@@ -59,7 +85,10 @@ export const listCoupons = async (req: AuthedRequest, res: Response) => {
 
 export const deactivateCoupon = async (req: AuthedRequest, res: Response) => {
   try {
-    const { couponId } = req.params
+    const { couponId } = parseOrThrow(
+      z.object({ couponId: objectId("A valid coupon id is required") }),
+      req.params
+    )
     // Non-admins may only deactivate coupons they created — the ownership
     // check is part of the query, not a separate read.
     const filter: Record<string, unknown> = { _id: couponId }
@@ -110,13 +139,14 @@ export const validateCouponForCart = async (
   return { valid: true, coupon, discountAmountRupees: Math.round(discountAmountRupees * 100) / 100 }
 }
 
-export const checkCoupon = async (req: Request, res: Response) => {
+export const checkCoupon = async (req: AuthedRequest, res: Response) => {
   try {
-    const { code, courseIds, totalAmountRupees } = req.body
-    if (!code || !Array.isArray(courseIds) || totalAmountRupees === undefined) {
-      return res.status(400).json({ success: false, message: "code, courseIds and totalAmountRupees are required" })
-    }
-    const result = await exports.validateCouponForCart(code, courseIds, Number(totalAmountRupees))
+    const { code, courseIds, totalAmountRupees } = parseOrThrow(CheckCouponSchema, req.body)
+    // Was `exports.validateCouponForCart(...)`, a CommonJS leftover from the
+    // JS-to-TS migration. `exports` does not exist in an ES module, so this
+    // endpoint threw a ReferenceError on every call — the coupon field in
+    // checkout has never worked.
+    const result = await validateCouponForCart(code, courseIds, totalAmountRupees)
     return res.status(200).json(result)
   } catch (error) {
     return fail(res, error, "checkCoupon", "Could not check coupon")

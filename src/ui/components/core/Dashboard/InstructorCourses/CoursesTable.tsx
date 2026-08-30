@@ -30,7 +30,7 @@ interface CoursesTableProps {
   setCourses: (courses: CourseListItem[]) => void
 }
 
-export default function CoursesTable({ courses, setCourses }: CoursesTableProps): JSX.Element {
+export default function CoursesTable({ courses, setCourses }: CoursesTableProps) {
   const navigate = useNavigate()
   const { token } = useSelector((state: RootState) => state.auth)
   const [loading, setLoading] = useState(false)
@@ -80,9 +80,9 @@ export default function CoursesTable({ courses, setCourses }: CoursesTableProps)
         <Tbody>
           {courses?.length === 0 ? (
             <Tr>
-              <Td className="py-10 text-center text-2xl font-medium text-richblack-100">
-                No courses found
-                {/* TODO: Need to change this state */}
+              <Td className="py-20 text-center flex flex-col items-center justify-center gap-2">
+                <p className="text-2xl font-medium text-richblack-100">No courses found</p>
+                <p className="text-richblack-300">You haven&apos;t created any courses yet.</p>
               </Td>
             </Tr>
           ) : (

@@ -7,8 +7,6 @@ import ProgressBar from "@ramonak/react-progress-bar"
 import { type FieldValues, type Path, type PathValue } from "react-hook-form"
 import { type UseFormRegister, type UseFormSetValue, type FieldErrors } from "react-hook-form"
 
-import { Player } from "video-react"
-
 import { uploadVideoToCloudinary } from "../../../../services/operations/courseDetailsAPI"
 import type { RootState } from "../../../../store"
 
@@ -134,8 +132,7 @@ export default function Upload<TFieldValues extends FieldValues = FieldValues>({
 
   useEffect(() => {
     register(name, { required: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [register])
+  }, [register, name])
 
   return (
     <div className="flex flex-col space-y-2">
@@ -156,7 +153,12 @@ export default function Upload<TFieldValues extends FieldValues = FieldValues>({
                 className="h-full w-full rounded-md object-cover"
               />
             ) : (
-              <Player aspectRatio="16:9" playsInline src={previewSource} />
+              <video
+                className="aspect-video w-full rounded-md bg-black"
+                playsInline
+                controls
+                src={previewSource}
+              />
             )}
             {uploading && (
               <div className="mt-3 flex flex-col gap-1">

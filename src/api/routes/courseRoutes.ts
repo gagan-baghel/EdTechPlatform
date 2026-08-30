@@ -1,4 +1,4 @@
-import { authedHandler } from "../lib/http"
+import { asyncHandler, authedHandler } from "../lib/http"
 // Import the required modules
 import express from "express"
 const router = express.Router()
@@ -75,18 +75,18 @@ router.post("/deleteSubSection", auth, isInstructor, authedHandler(deleteSubSect
 // Add a Sub Section to a Section
 router.post("/addSubSection", auth, isInstructor, authedHandler(createSubSection, "createSubSection"))
 // Signed params for a direct browser-to-Cloudinary video upload
-router.post("/videoUploadSignature", auth, isInstructor, getVideoUploadSignature)
+router.post("/videoUploadSignature", auth, isInstructor, asyncHandler(getVideoUploadSignature, "getVideoUploadSignature"))
 // Lecture resource attachments
 router.post("/addAttachment", auth, isInstructor, authedHandler(addAttachment, "addAttachment"))
 router.post("/removeAttachment", auth, isInstructor, authedHandler(removeAttachment, "removeAttachment"))
 // Get all Courses Under a Specific Instructor
 router.get("/getInstructorCourses", auth, isInstructor, authedHandler(getInstructorCourses, "getInstructorCourses"))
 // Get all Registered Courses
-router.get("/getAllCourses", getAllCourses)
+router.get("/getAllCourses", asyncHandler(getAllCourses, "getAllCourses"))
 // Full-text style search across published courses
-router.get("/searchCourses", searchCourses)
+router.get("/searchCourses", asyncHandler(searchCourses, "searchCourses"))
 // Get Details for a Specific Courses
-router.post("/getCourseDetails", getCourseDetails)
+router.post("/getCourseDetails", asyncHandler(getCourseDetails, "getCourseDetails"))
 // Get Details for a Specific Courses
 router.post("/getFullCourseDetails", auth, authedHandler(getFullCourseDetails, "getFullCourseDetails"))
 // To Update Course Progress
@@ -104,14 +104,13 @@ router.post("/duplicateCourse", auth, isInstructor, authedHandler(duplicateCours
 //                                      Category routes (Only by Admin)
 // ********************************************************************************************************
 // Category can Only be Created by Admin
-// TODO: Put IsAdmin Middleware here
-router.post("/createCategory", auth, isAdmin, createCategory)
-router.get("/showAllCategories", showAllCategories)
-router.post("/getCategoryPageDetails", categoryPageDetails)
+router.post("/createCategory", auth, isAdmin, asyncHandler(createCategory, "createCategory"))
+router.get("/showAllCategories", asyncHandler(showAllCategories, "showAllCategories"))
+router.post("/getCategoryPageDetails", asyncHandler(categoryPageDetails, "categoryPageDetails"))
 
 // ********************************************************************************************************
 //                                      Rating and Review
 // ********************************************************************************************************
 router.post("/createRating", auth, isStudent, authedHandler(createRating, "createRating"))
-router.get("/getReviews", getAllRatingReview)
+router.get("/getReviews", asyncHandler(getAllRatingReview, "getAllRatingReview"))
 export default router

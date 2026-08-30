@@ -218,6 +218,14 @@ export interface SubSection<Id = IdLike> {
   timeDuration: string
   description: string
   videoUrl: string
+  /**
+   * Cloudinary public_id for `videoUrl`. Stored so the asset can actually be
+   * removed when the lecture is deleted — without it, every deleted lecture
+   * left its video behind, billed forever and reachable by anyone who had the
+   * URL. Optional because lectures created before this field existed have no
+   * recorded id; those are skipped rather than derived from the URL.
+   */
+  videoPublicId?: string
   order: number
   freePreview: boolean
   attachments: Attachment[]
@@ -433,9 +441,9 @@ export interface InstructorPayoutProfile<Id = IdLike> extends Timestamped {
   instructor: Id
   bankAccountHolderName: string
   /**
-   * Stored in plaintext today; every read path masks it to the last 4 digits.
-   * See the model's security note — this needs field-level encryption before
-   * it holds real bank details.
+   * Encrypted at rest (AES-256-GCM, see api/lib/crypto.ts) and masked to the
+   * last 4 digits on every read path. Note that the schema getter that
+   * decrypts it does not run under `.lean()`.
    */
   bankAccountNumber: string
   ifscCode: string

@@ -1,4 +1,6 @@
-import { fail } from "../lib/respond"
+import { z } from "zod"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, text } from "../lib/schemas"
 
 /** A CourseProgress row with `courseID` populated to a course summary. */
 interface ProgressWithCourse {
@@ -19,12 +21,28 @@ import Event from "../models/Event"
 
 const STREAK_WINDOW_DAYS = 30
 
+const CourseIdBodySchema = z.object({
+  courseId: objectId("A valid course id is required"),
+})
+
+const CreateNoteSchema = z.object({
+  courseId: objectId("A valid course id is required"),
+  subSectionId: objectId("A valid lecture id is required"),
+  timestampSeconds: z.coerce.number().finite().min(0),
+  text: text({ min: 0, max: 5000, label: "Note" }).optional().default(""),
+})
+
 export const saveCourse = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.body
-    if (!courseId) {
-      return res.status(400).json({ success: false, message: "courseId is required" })
+    const { courseId } = parseOrThrow(CourseIdBodySchema, req.body)
+
+    // A saved course must exist and be visible — otherwise the wishlist fills
+    // with ids that render as blanks and can never be cleaned up from the UI.
+    const exists = await Course.exists({ _id: courseId, deletedAt: null })
+    if (!exists) {
+      return res.status(404).json({ success: false, message: "Course not found" })
     }
+
     await User.findByIdAndUpdate(req.user.id, { $addToSet: { savedCourses: courseId } })
     return res.status(200).json({ success: true, message: "Course saved" })
   } catch (error) {
@@ -34,7 +52,7 @@ export const saveCourse = async (req: AuthedRequest, res: Response) => {
 
 export const unsaveCourse = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.body
+    const { courseId } = parseOrThrow(CourseIdBodySchema, req.body)
     await User.findByIdAndUpdate(req.user.id, { $pull: { savedCourses: courseId } })
     return res.status(200).json({ success: true, message: "Course removed from saved" })
   } catch (error) {
@@ -44,12 +62,10 @@ export const unsaveCourse = async (req: AuthedRequest, res: Response) => {
 
 export const createNote = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId, subSectionId, timestampSeconds, text } = req.body
-    if (!courseId || !subSectionId || timestampSeconds === undefined) {
-      return res
-        .status(400)
-        .json({ success: false, message: "courseId, subSectionId and timestampSeconds are required" })
-    }
+    const { courseId, subSectionId, timestampSeconds, text: body } = parseOrThrow(
+      CreateNoteSchema,
+      req.body
+    )
 
     const user = await User.findById(req.user.id).select("courses")
     if (!containsId(user?.courses, courseId)) {
@@ -60,8 +76,8 @@ export const createNote = async (req: AuthedRequest, res: Response) => {
       user: req.user.id,
       course: courseId,
       subSection: subSectionId,
-      timestampSeconds: Number(timestampSeconds),
-      text: text || "",
+      timestampSeconds,
+      text: body,
     })
 
     return res.status(201).json({ success: true, data: note })
@@ -72,7 +88,10 @@ export const createNote = async (req: AuthedRequest, res: Response) => {
 
 export const deleteNote = async (req: AuthedRequest, res: Response) => {
   try {
-    const { noteId } = req.params
+    const { noteId } = parseOrThrow(
+      z.object({ noteId: objectId("A valid note id is required") }),
+      req.params
+    )
     const result = await Note.findOneAndDelete({ _id: noteId, user: req.user.id })
     if (!result) {
       return res.status(404).json({ success: false, message: "Note not found" })
@@ -85,9 +104,13 @@ export const deleteNote = async (req: AuthedRequest, res: Response) => {
 
 export const getNotesForCourse = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.params
+    const { courseId } = parseOrThrow(
+      z.object({ courseId: objectId("A valid course id is required") }),
+      req.params
+    )
     const notes = await Note.find({ user: req.user.id, course: courseId })
       .sort({ subSection: 1, timestampSeconds: 1 })
+      .limit(500)
       .lean()
     return res.status(200).json({ success: true, data: notes })
   } catch (error) {
@@ -115,13 +138,15 @@ async function computeStreak(userId: Types.ObjectId | string) {
     events.map((e: { timestamp: Date }) => e.timestamp.toISOString().slice(0, 10))
   )
 
+  // Days are keyed by UTC date (`toISOString`), so the cursor has to step in
+  // UTC too. `setDate` moves the LOCAL date, which in any non-UTC timezone
+  // drifts off by a day partway down the streak and silently truncates it.
   let streak = 0
-  const cursor = new Date()
-  while (true) {
-    const key = cursor.toISOString().slice(0, 10)
-    if (!activeDays.has(key)) break
+  let cursor = Date.now()
+  const DAY_MS = 24 * 60 * 60 * 1000
+  while (activeDays.has(new Date(cursor).toISOString().slice(0, 10))) {
     streak += 1
-    cursor.setDate(cursor.getDate() - 1)
+    cursor -= DAY_MS
   }
   return streak
 }
@@ -130,21 +155,33 @@ export const getWorkspace = async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.user.id
 
-    const user = await User.findById(userId)
-      .populate("savedCourses", "courseName thumbnail price")
-      .select("courses savedCourses")
-      .lean()
+    // Independent reads, so they run together rather than in a six-deep
+    // sequential chain — this endpoint backs the dashboard's first paint.
+    const [user, progresses, viewEvents, certificates, activityEvents] = await Promise.all([
+      User.findById(userId)
+        .populate("savedCourses", "courseName thumbnail price")
+        .select("courses savedCourses")
+        .lean(),
+      CourseProgress.find({ userId })
+        .sort({ updatedAt: -1 })
+        .limit(10)
+        .populate("courseID", "courseName thumbnail")
+        .lean(),
+      Event.find({ actor: userId, verb: "course_viewed" })
+        .sort({ timestamp: -1 })
+        .limit(50)
+        .lean(),
+      Certificate.find({ user: userId })
+        .populate("course", "courseName")
+        .sort({ issuedAt: -1 })
+        .limit(100)
+        .lean(),
+      Event.find({ actor: userId }).sort({ timestamp: -1 }).limit(30).lean(),
+    ])
 
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" })
     }
-
-    // Continue learning: enrolled courses ordered by most recent activity.
-    const progresses = await CourseProgress.find({ userId })
-      .sort({ updatedAt: -1 })
-      .limit(10)
-      .populate("courseID", "courseName thumbnail")
-      .lean()
 
     const continueLearning = progresses
       .filter((p: ProgressWithCourse) => p.courseID)
@@ -155,11 +192,6 @@ export const getWorkspace = async (req: AuthedRequest, res: Response) => {
       }))
 
     // Recently viewed: dedupe course_viewed events by course, most recent first.
-    const viewEvents = await Event.find({ actor: userId, verb: "course_viewed" })
-      .sort({ timestamp: -1 })
-      .limit(50)
-      .lean()
-
     const seen = new Set()
     const recentCourseIds: string[] = []
     for (const event of viewEvents) {
@@ -179,17 +211,7 @@ export const getWorkspace = async (req: AuthedRequest, res: Response) => {
         recentCourseIds.indexOf(String(a._id)) - recentCourseIds.indexOf(String(b._id))
     )
 
-    const certificates = await Certificate.find({ user: userId })
-      .populate("course", "courseName")
-      .sort({ issuedAt: -1 })
-      .lean()
-
     const streak = await computeStreak(userId)
-
-    const activityEvents = await Event.find({ actor: userId })
-      .sort({ timestamp: -1 })
-      .limit(30)
-      .lean()
 
     return res.status(200).json({
       success: true,
@@ -203,7 +225,6 @@ export const getWorkspace = async (req: AuthedRequest, res: Response) => {
       },
     })
   } catch (error) {
-    console.error("getWorkspace failed", error)
-    return res.status(500).json({ success: false, message: "Could not load your workspace" })
+    return fail(res, error, "getWorkspace", "Could not load your workspace")
   }
 }

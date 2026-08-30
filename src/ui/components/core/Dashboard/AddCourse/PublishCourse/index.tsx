@@ -1,5 +1,5 @@
 import { toast } from "react-hot-toast"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type { CourseDetail } from "@/ui/types"
 import { useForm, type SubmitHandler } from "react-hook-form"
 import { useDispatch, useSelector } from "react-redux"
@@ -17,25 +17,24 @@ interface PublishCourseFormData {
 }
 
 export default function PublishCourse() {
-  const { register, handleSubmit, setValue, watch } = useForm<PublishCourseFormData>()
-
   const dispatch = useDispatch<AppDispatch>()
   const navigate = useNavigate()
   const { token } = useSelector((state: RootState) => state.auth)
   const { course } = useSelector((state: RootState) => state.course)
   const [loading, setLoading] = useState(false)
 
-  const isPublic = watch("public")
+  const { register, handleSubmit, watch } = useForm<PublishCourseFormData>({
+    defaultValues: {
+      // Initialized from Redux at mount — avoids a useEffect that calls setValue
+      // (a RHF side effect) inside a React effect, which the compiler flags.
+      public: course?.status === COURSE_STATUS.PUBLISHED,
+      scheduledPublishAt: course?.scheduledPublishAt
+        ? new Date(course.scheduledPublishAt).toISOString().slice(0, 16)
+        : "",
+    },
+  })
 
-  useEffect(() => {
-    if (course?.status === COURSE_STATUS.PUBLISHED) {
-      setValue("public", true)
-    }
-    if (course?.scheduledPublishAt) {
-      // datetime-local wants "YYYY-MM-DDTHH:mm", not an ISO string
-      setValue("scheduledPublishAt", new Date(course.scheduledPublishAt).toISOString().slice(0, 16))
-    }
-  }, [course?.status, course?.scheduledPublishAt, setValue])
+  const isPublic = watch("public")
 
   const goBack = () => {
     dispatch(setStep(2))

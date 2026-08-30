@@ -3,7 +3,7 @@
 import type { ApiFailure } from "@/types/api"
 import type { DataBody } from "@/ui/types"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { toast } from "react-hot-toast"
 
@@ -25,21 +25,21 @@ export default function SessionsPanel() {
   const { token } = useSelector((state: RootState) => state.auth)
   const [sessions, setSessions] = useState<Session[] | null>(null)
 
-  const load = async () => {
-    try {
-      const response = await apiConnector<DataBody<Session[]> | ApiFailure>("GET", endpoints.SESSIONS_API, null, {
-        Authorization: `Bearer ${token}`,
+  const load = useCallback(() => {
+    return apiConnector<DataBody<Session[]> | ApiFailure>("GET", endpoints.SESSIONS_API, null, {
+      Authorization: `Bearer ${token}`,
+    })
+      .then((response) => {
+        setSessions(response.data.success ? response.data.data : [])
       })
-      setSessions(response.data.success ? response.data.data : [])
-    } catch {
-      setSessions([])
-    }
-  }
+      .catch(() => {
+        setSessions([])
+      })
+  }, [token])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleRevoke = async (sessionId: string) => {
     try {

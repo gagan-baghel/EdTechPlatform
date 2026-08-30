@@ -6,28 +6,11 @@
  * it here means there is exactly one place that ever needs the brand again.
  */
 
-function getEmailBaseUrl() {
-  const configured =
-    process.env.APP_BASE_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "")
-
-  if (configured) {
-    const withProtocol = /^https?:\/\//i.test(configured)
-      ? configured
-      : `https://${configured}`
-    return withProtocol.replace(/\/+$/, "")
-  }
-
-  if (process.env.NODE_ENV === "production") {
-    console.error("APP_BASE_URL is not configured — email links will be wrong")
-  }
-
-  return "http://localhost:3000"
-}
+import { getEnv } from "../../config/env"
+import { resolveSiteUrl } from "@/lib/siteUrl"
 
 function getSupportEmail() {
-  return process.env.SUPPORT_EMAIL || "support@intellecraft.com"
+  return getEnv().SUPPORT_EMAIL
 }
 
 function escapeHtml(value: unknown): string {
@@ -111,7 +94,7 @@ export interface EmailLayoutOptions {
 }
 
 function emailLayout({ title, heading, bodyHtml, cta }: EmailLayoutOptions): string {
-  const baseUrl = getEmailBaseUrl()
+  const baseUrl = resolveSiteUrl()
   const supportEmail = getSupportEmail()
 
   return `<!DOCTYPE html>
@@ -137,4 +120,4 @@ function emailLayout({ title, heading, bodyHtml, cta }: EmailLayoutOptions): str
 
 </html>`
 }
-export { emailLayout, getEmailBaseUrl, getSupportEmail, escapeHtml }
+export { emailLayout, getSupportEmail, escapeHtml }

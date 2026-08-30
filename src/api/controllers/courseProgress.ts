@@ -1,4 +1,6 @@
-import { fail } from "../lib/respond"
+import { z } from "zod"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId } from "../lib/schemas"
 import type { Types } from "mongoose"
 import type { PopulatedSection } from "../lib/populated"
 import { containsId } from "../lib/ids"
@@ -18,6 +20,20 @@ import { checkAndIssueCertificate } from "./Certificate"
 // last fraction of a second shouldn't be the difference between done and
 // not done.
 const AUTO_COMPLETE_THRESHOLD = 0.9
+
+const ProgressSchema = z.object({
+  courseId: objectId("A valid course id is required"),
+  subsectionId: objectId("A valid lecture id is required"),
+})
+
+const WatchPositionSchema = ProgressSchema.extend({
+  positionSeconds: z.coerce.number().finite().min(0, "Invalid positionSeconds"),
+  durationSeconds: z.coerce.number().finite().min(0).optional(),
+})
+
+const CourseIdSchema = z.object({
+  courseId: objectId("A valid course id is required"),
+})
 
 /**
  * Shared by updateCourseProgress and updateWatchPosition — both need to
@@ -53,34 +69,42 @@ async function verifyEnrollmentAndSubsection(
 }
 
 export const updateCourseProgress = async (req: AuthedRequest, res: Response) => {
-  const { courseId, subsectionId } = req.body
   const userId = req.user.id
 
   try {
-    if (!courseId || !subsectionId) {
-      return res.status(400).json({ error: "courseId and subsectionId are required" })
-    }
+    const { courseId, subsectionId } = parseOrThrow(ProgressSchema, req.body)
 
     const { error } = await verifyEnrollmentAndSubsection(userId, courseId, subsectionId)
     if (error) {
-      return res.status(403).json({ error })
+      return res.status(403).json({ success: false, error })
     }
 
-    // upsert rather than 404 — a user enrolled before CourseProgress was
-    // guaranteed to be created at enrolment time would otherwise be
-    // permanently unable to record progress on that course.
-    const courseProgress = await CourseProgress.findOneAndUpdate(
+    /**
+     * One atomic `$addToSet`, upserting.
+     *
+     * The previous version read the document, checked `completedVideos
+     * .includes(...)`, pushed, and saved — a check-then-act that two tabs (or
+     * the player's auto-complete racing the manual button) both pass, so the
+     * same lecture ends up in the array twice and progress reads over 100%.
+     * `$addToSet` makes the duplicate impossible in the database rather than
+     * hoping the read and the write are close enough together.
+     *
+     * Upsert rather than 404: a user enrolled before CourseProgress was
+     * guaranteed at enrolment time would otherwise never be able to record
+     * progress on that course.
+     */
+    const result = await CourseProgress.updateOne(
       { courseID: courseId, userId },
-      { $setOnInsert: { completedVideos: [] } },
-      { new: true, upsert: true }
+      { $addToSet: { completedVideos: subsectionId } },
+      { upsert: true }
     )
 
-    if (courseProgress.completedVideos.includes(subsectionId)) {
-      return res.status(400).json({ error: "Subsection already completed" })
+    // Nothing changed => it was already complete. Reported as success, not a
+    // 400: re-marking a finished lecture is a no-op, not a client error, and
+    // the old 400 surfaced as an error toast on a perfectly normal double-click.
+    if (result.modifiedCount === 0 && result.upsertedCount === 0) {
+      return res.status(200).json({ success: true, message: "Course progress updated" })
     }
-
-    courseProgress.completedVideos.push(subsectionId)
-    await courseProgress.save()
 
     await emitEvent(EVENT_VERBS.LECTURE_COMPLETED, {
       actor: userId,
@@ -90,7 +114,7 @@ export const updateCourseProgress = async (req: AuthedRequest, res: Response) =>
 
     await checkAndIssueCertificate(userId, courseId)
 
-    return res.status(200).json({ message: "Course progress updated" })
+    return res.status(200).json({ success: true, message: "Course progress updated" })
   } catch (error) {
     return fail(res, error, "updateCourseProgress")
   }
@@ -102,21 +126,15 @@ export const updateCourseProgress = async (req: AuthedRequest, res: Response) =>
  * actually is, not just whether they clicked a button at the end.
  */
 export const updateWatchPosition = async (req: AuthedRequest, res: Response) => {
-  const { courseId, subsectionId, positionSeconds, durationSeconds } = req.body
   const userId = req.user.id
 
   try {
-    if (!courseId || !subsectionId || positionSeconds === undefined) {
-      return res.status(400).json({
-        success: false,
-        error: "courseId, subsectionId and positionSeconds are required",
-      })
-    }
-
-    const position = Number(positionSeconds)
-    if (!Number.isFinite(position) || position < 0) {
-      return res.status(400).json({ success: false, error: "Invalid positionSeconds" })
-    }
+    const {
+      courseId,
+      subsectionId,
+      positionSeconds: position,
+      durationSeconds: duration,
+    } = parseOrThrow(WatchPositionSchema, req.body)
 
     const { error } = await verifyEnrollmentAndSubsection(userId, courseId, subsectionId)
     if (error) {
@@ -142,17 +160,25 @@ export const updateWatchPosition = async (req: AuthedRequest, res: Response) => 
     }
     courseProgress.lastWatchedSubSection = subsectionId
 
-    const duration = Number(durationSeconds)
     const watchedEnough =
-      Number.isFinite(duration) && duration > 0 && position / duration >= AUTO_COMPLETE_THRESHOLD
+      duration !== undefined && duration > 0 && position / duration >= AUTO_COMPLETE_THRESHOLD
 
-    let justCompleted = false
-    if (watchedEnough && !courseProgress.completedVideos.includes(subsectionId)) {
-      courseProgress.completedVideos.push(subsectionId)
-      justCompleted = true
-    }
+    const alreadyComplete = courseProgress.completedVideos.some(
+      (id: unknown) => String(id) === subsectionId
+    )
 
     await courseProgress.save()
+
+    // Completion is a separate atomic write for the same reason as
+    // updateCourseProgress: two concurrent heartbeats must not both push.
+    let justCompleted = false
+    if (watchedEnough && !alreadyComplete) {
+      const completion = await CourseProgress.updateOne(
+        { _id: courseProgress._id },
+        { $addToSet: { completedVideos: subsectionId } }
+      )
+      justCompleted = completion.modifiedCount > 0
+    }
 
     if (isFirstHeartbeatForThisLecture) {
       await emitEvent(EVENT_VERBS.LECTURE_STARTED, {
@@ -184,14 +210,11 @@ export const updateWatchPosition = async (req: AuthedRequest, res: Response) => 
 }
 
 export const getProgressPercentage = async (req: AuthedRequest, res: Response) => {
-  const { courseId } = req.body
   const userId = req.user.id
 
-  if (!courseId) {
-    return res.status(400).json({ error: "Course ID not provided." })
-  }
-
   try {
+    const { courseId } = parseOrThrow(CourseIdSchema, req.body)
+
     const courseProgress = await CourseProgress.findOne({
       courseID: courseId,
       userId: userId,
@@ -204,10 +227,11 @@ export const getProgressPercentage = async (req: AuthedRequest, res: Response) =
       })
       .exec()
 
+    // No progress document yet simply means nothing has been watched. This
+    // used to answer 400, so a freshly enrolled student's course page showed
+    // an error instead of 0%.
     if (!courseProgress) {
-      return res
-        .status(400)
-        .json({ error: "Can not find Course Progress with these IDs." })
+      return res.status(200).json({ success: true, data: 0 })
     }
     let lectures = 0
     courseProgress.courseID.courseContent?.forEach((sec: PopulatedSection) => {
@@ -221,11 +245,11 @@ export const getProgressPercentage = async (req: AuthedRequest, res: Response) =
     progressPercentage = Math.round(progressPercentage * multiplier) / multiplier
 
     return res.status(200).json({
+      success: true,
       data: progressPercentage,
       message: "Succesfully fetched Course progress",
     })
   } catch (error) {
-    console.error(error)
-    return res.status(500).json({ error: "Internal server error" })
+    return fail(res, error, "getProgressPercentage", "Could not load your progress.")
   }
 }

@@ -1,5 +1,12 @@
 import type { Types } from "mongoose"
 
+/** The fields getEnrolledCourses reads off a CourseProgress row. */
+interface EnrolledCourseProgress {
+  courseID: unknown
+  completedVideos?: unknown[]
+  lastWatchedSubSection?: unknown
+}
+
 /** An instructor's course as read for the dashboard revenue table. */
 interface CourseWithContent {
   _id: Types.ObjectId
@@ -10,7 +17,9 @@ interface CourseWithContent {
 import type { Response } from "express"
 import { requireFile } from "../lib/request"
 import { getEnv } from "../config/env"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { text } from "../lib/schemas"
+import { z } from "zod"
 import type { AuthedRequest } from "../lib/http"
 import Certificate from "../models/Certificate"
 import Course from "../models/Course"
@@ -18,13 +27,36 @@ import CourseProgress from "../models/CourseProgress"
 import Note from "../models/Note"
 import Payment from "../models/Payment"
 import Profile from "../models/Profile"
+import Session from "../models/Session"
 import User from "../models/User"
 import { uploadImageToCloudinary } from "../utils/imageUploader"
 import { convertSecondsToDuration } from "../utils/secToDuration"
+/**
+ * Every field optional AND absent-means-unchanged.
+ *
+ * `dateOfBirth` and `about` previously had `.default("")`, so any caller that
+ * did not send them — the Settings form updating only a name, for instance —
+ * silently wiped whatever the user had already written there.
+ */
+const UpdateProfileSchema = z.object({
+	dateOfBirth: z
+		.string()
+		.trim()
+		.refine((value) => value === "" || !Number.isNaN(Date.parse(value)), {
+			message: "Date of birth is not a valid date",
+		})
+		.optional(),
+	about: z.string().trim().max(2000, "About must be at most 2000 characters").optional(),
+	contactNumber: z.string().trim().max(20).optional(),
+	gender: z.string().trim().max(50).optional(),
+	firstName: text({ max: 100, label: "First name" }).optional(),
+	lastName: text({ max: 100, label: "Last name" }).optional(),
+})
+
 // Method for updating a profile
 export const updateProfile = async (req: AuthedRequest, res: Response) => {
 	try {
-		const { dateOfBirth = "", about = "", contactNumber, gender, firstName, lastName } = req.body;
+		const { dateOfBirth, about, contactNumber, gender, firstName, lastName } = parseOrThrow(UpdateProfileSchema, req.body);
 		const id = req.user.id;
 
 		// Find the profile by id
@@ -43,12 +75,11 @@ export const updateProfile = async (req: AuthedRequest, res: Response) => {
 			});
 		}
 
-		// Update the profile fields. gender was previously destructured
-		// nowhere above — the form has always collected it and the
-		// response always reported success, but it was silently discarded.
-		profile.dateOfBirth = dateOfBirth;
-		profile.about = about;
-		profile.contactNumber = contactNumber;
+		// Only what was actually sent. Assigning unconditionally is what made
+		// a partial update destructive.
+		if (dateOfBirth !== undefined) profile.dateOfBirth = dateOfBirth;
+		if (about !== undefined) profile.about = about;
+		if (contactNumber !== undefined) profile.contactNumber = contactNumber;
 		if (gender !== undefined) profile.gender = gender;
 
 		// Save the updated profile
@@ -82,9 +113,18 @@ export const updateProfile = async (req: AuthedRequest, res: Response) => {
  * and its own required-field semantics (dateOfBirth/about). A settings
  * toggle shouldn't have to round-trip those.
  */
+const UpdatePreferencesSchema = z.object({
+	weeklyGoalMinutes: z.coerce.number().optional(),
+	defaultPlaybackSpeed: z.coerce.number().optional(),
+	autoplayNext: z.boolean().optional(),
+	theme: z.enum(["dark", "light"]).optional(),
+	locale: z.enum(["en", "hi"]).optional(),
+	timezone: z.string().optional(),
+})
+
 export const updatePreferences = async (req: AuthedRequest, res: Response) => {
 	try {
-		const { weeklyGoalMinutes, defaultPlaybackSpeed, autoplayNext, theme, locale, timezone } = req.body
+		const { weeklyGoalMinutes, defaultPlaybackSpeed, autoplayNext, theme, locale, timezone } = parseOrThrow(UpdatePreferencesSchema, req.body)
 
 		const userDetails = await User.findById(req.user.id)
 		if (!userDetails) {
@@ -92,11 +132,11 @@ export const updatePreferences = async (req: AuthedRequest, res: Response) => {
 		}
 
 		const update: Record<string, unknown> = {}
-		if (weeklyGoalMinutes !== undefined) update.weeklyGoalMinutes = Number(weeklyGoalMinutes)
-		if (defaultPlaybackSpeed !== undefined) update.defaultPlaybackSpeed = Number(defaultPlaybackSpeed)
-		if (autoplayNext !== undefined) update.autoplayNext = Boolean(autoplayNext)
-		if (theme !== undefined && ["dark", "light"].includes(theme)) update.theme = theme
-		if (locale !== undefined && ["en", "hi"].includes(locale)) update.locale = locale
+		if (weeklyGoalMinutes !== undefined) update.weeklyGoalMinutes = weeklyGoalMinutes
+		if (defaultPlaybackSpeed !== undefined) update.defaultPlaybackSpeed = defaultPlaybackSpeed
+		if (autoplayNext !== undefined) update.autoplayNext = autoplayNext
+		if (theme !== undefined) update.theme = theme
+		if (locale !== undefined) update.locale = locale
 		if (timezone !== undefined) update.timezone = timezone || null
 
 		const profile = await Profile.findByIdAndUpdate(userDetails.additionalDetails, update, { new: true })
@@ -137,31 +177,63 @@ export const exportMyData = async (req: AuthedRequest, res: Response) => {
 
 export const deleteAccount = async (req: AuthedRequest, res: Response) => {
 	try {
-		// TODO: Find More on Job Schedule
-		// const job = schedule.scheduleJob("10 * * * * *", function () {
-		// });
 		const id = req.user.id;
-		
-		const user = await User.findById({ _id: id });
+
+		const user = await User.findById(id);
 		if (!user) {
 			return res.status(404).json({
 				success: false,
 				message: "User not found",
 			});
 		}
-		// Delete Assosiated Profile with the User
-		await Profile.findByIdAndDelete({ _id: user.additionalDetails });
-			// Unenroll User From All the Enrolled Courses
-			if (user.courses?.length) {
-				await Course.updateMany(
-					{ _id: { $in: user.courses } },
-					{ $pull: { studentsEnrolled: user._id } }
-				)
-			}
-			// Remove course progress entries for the user
-			await CourseProgress.deleteMany({ userId: user._id })
-			// Now Delete User
-		await User.findByIdAndDelete({ _id: id });
+
+		/**
+		 * An instructor with live courses cannot be deleted.
+		 *
+		 * Deleting them left every one of their courses with a dangling
+		 * `instructor` ref: the catalogue populate resolved to null and the
+		 * course detail page crashed, students who had PAID kept an enrolment
+		 * in a course with no author, and there was no way to undo it. The
+		 * courses have to be transferred or taken down first — which is an
+		 * admin decision, not something to silently pick on their behalf.
+		 */
+		const liveCourses = await Course.countDocuments({
+			instructor: user._id,
+			deletedAt: null,
+		})
+		if (liveCourses > 0) {
+			return res.status(409).json({
+				success: false,
+				message:
+					"This account still owns published courses. Contact support to transfer or remove them before deleting your account.",
+			})
+		}
+
+		await Profile.findByIdAndDelete(user.additionalDetails);
+
+		// Unenroll from every course they were enrolled in.
+		if (user.courses?.length) {
+			await Course.updateMany(
+				{ _id: { $in: user.courses } },
+				{ $pull: { studentsEnrolled: user._id } }
+			)
+		}
+		await CourseProgress.deleteMany({ userId: user._id })
+
+		/**
+		 * Revoke sessions BEFORE the user row goes away.
+		 *
+		 * A JWT stays signature-valid for its full 24h, and the auth middleware
+		 * only rejects it if the matching Session is revoked. Without this, a
+		 * just-deleted account kept a working token whose `req.user.id` pointed
+		 * at nothing — every controller that does `User.findById(...)` and then
+		 * reads a property off the result answered 500 for the next day.
+		 */
+		await Session.updateMany({ user: user._id }, { $set: { revoked: true } })
+
+		await User.findByIdAndDelete(id);
+		res.clearCookie("token")
+
 		res.status(200).json({
 			success: true,
 			message: "User deleted successfully",
@@ -244,6 +316,18 @@ export const getEnrolledCourses = async (req: AuthedRequest, res: Response) => {
 		  }
 
 		  userDetails = userDetails.toObject()
+
+	  // One query for every enrolled course's progress instead of one query
+	  // per course inside the loop below — the classic N+1, and this endpoint
+	  // is what the "My Courses" page loads on every visit.
+	  const progressRows = await CourseProgress.find({
+		userId,
+		courseID: { $in: userDetails.courses.map((course: { _id: unknown }) => course._id) },
+	  }).lean()
+	  const progressByCourseId = new Map<string, EnrolledCourseProgress>(
+		progressRows.map((row: EnrolledCourseProgress) => [String(row.courseID), row])
+	  )
+
 	  let SubsectionLength = 0
 	  for (let i = 0; i < userDetails.courses.length; i++) {
 		let totalDurationInSeconds = 0
@@ -262,11 +346,10 @@ export const getEnrolledCourses = async (req: AuthedRequest, res: Response) => {
 		  SubsectionLength +=
 			userDetails.courses[i].courseContent[j].subSection.length
 		}
-		const courseProgress = await CourseProgress.findOne({
-		  courseID: userDetails.courses[i]._id,
-		  userId: userId,
-		})
-		const courseProgressCount = courseProgress?.completedVideos.length
+		const courseProgress = progressByCourseId.get(
+		  String(userDetails.courses[i]._id)
+		)
+		const courseProgressCount = courseProgress?.completedVideos?.length ?? 0
 		// "Continue learning" reads this instead of always opening
 		// courseContent[0].subSection[0] — see EnrolledCourses.jsx.
 		userDetails.courses[i].lastWatchedSubSection =
@@ -293,7 +376,7 @@ export const getEnrolledCourses = async (req: AuthedRequest, res: Response) => {
 
 export const instructorDashboard = async(req: AuthedRequest, res: Response) => {
 	try{
-		const courseDetails = await Course.find({instructor:req.user.id});
+		const courseDetails = await Course.find({ instructor: req.user.id, deletedAt: null });
 		const courseIds = courseDetails.map((course: { _id: unknown }) =>
 			String(course._id)
 		)
@@ -306,7 +389,11 @@ export const instructorDashboard = async(req: AuthedRequest, res: Response) => {
 		// order total, not a per-course breakdown, so each course's share is
 		// approximated by its current price relative to the other courses in
 		// that same payment).
+		// Bounded: this scans Payment for every course the instructor owns, and
+		// without a ceiling it grows without limit as the platform sells more.
 		const relevantPayments = await Payment.find({ courses: { $in: courseIds } })
+			.sort({ date: -1 })
+			.limit(5000)
 			.populate({ path: "courses", select: "price" })
 			.lean()
 
@@ -348,8 +435,8 @@ export const instructorDashboard = async(req: AuthedRequest, res: Response) => {
 		res.status(200).json({courses:courseData});
 
 	}
-	catch {
-		res.status(500).json({message:"Internal Server Error"});
+	catch (error) {
+		return fail(res, error, "instructorDashboard", "Could not load your dashboard")
 	}
 }
 
@@ -359,15 +446,21 @@ export const instructorDashboard = async(req: AuthedRequest, res: Response) => {
  * whether the student picks a goal or hits "Skip"; either way it should
  * never show again for this account.
  */
+const CompleteOnboardingSchema = z.object({
+	learningGoal: z.string().optional(),
+})
+
 export const completeOnboarding = async (req: AuthedRequest, res: Response) => {
 	try {
-		const { learningGoal } = req.body
+		const { learningGoal } = parseOrThrow(CompleteOnboardingSchema, req.body)
 
 		await User.findByIdAndUpdate(req.user.id, { onboarded: true })
 
 		if (learningGoal) {
 			const user = await User.findById(req.user.id).select("additionalDetails")
-			await Profile.findByIdAndUpdate(user.additionalDetails, { learningGoal })
+			if (user) {
+				await Profile.findByIdAndUpdate(user.additionalDetails, { learningGoal })
+			}
 		}
 
 		return res.status(200).json({ success: true, message: "Onboarding complete" })

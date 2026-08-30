@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
 
@@ -47,7 +47,7 @@ interface PayoutRun {
   transactionReference?: string
 }
 
-export default function Payouts(): JSX.Element {
+export default function Payouts() {
   const { token } = useSelector((state: RootState) => state.auth)
   const [profile, setProfile] = useState<PayoutProfile | null | undefined>(undefined) // undefined = loading, null = none yet
   const [payouts, setPayouts] = useState<PayoutRun[] | null>(null)
@@ -59,19 +59,19 @@ export default function Payouts(): JSX.Element {
   })
   const [saving, setSaving] = useState(false)
 
-  const load = async () => {
-    const [profileResult, payoutsResult] = await Promise.all([
+  const load = useCallback(() => {
+    return Promise.all([
       fetchMyPayoutProfile<PayoutProfile>(token as string),
       fetchMyPayouts<PayoutRun>(token as string),
-    ])
-    setProfile(profileResult?.data ?? null)
-    setPayouts(payoutsResult?.data ?? [])
-  }
+    ]).then(([profileResult, payoutsResult]) => {
+      setProfile(profileResult?.data ?? null)
+      setPayouts(payoutsResult?.data ?? [])
+    })
+  }, [token])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

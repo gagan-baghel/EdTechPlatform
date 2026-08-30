@@ -2,7 +2,7 @@
 import type { ModalData } from "@/ui/components/common/ConfirmationModal"
 import type { CourseDetail, CourseSection } from "@/ui/types"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import dynamic from "next/dynamic"
 import { BiInfoCircle } from "react-icons/bi"
 import { HiOutlineGlobeAlt } from "react-icons/hi"
@@ -40,7 +40,7 @@ interface CourseDetailsPayload {
   totalDuration?: string
 }
 
-function CourseDetails(): JSX.Element {
+function CourseDetails() {
   const { user } = useSelector((state: RootState) => state.profile)
   const { token } = useSelector((state: RootState) => state.auth)
   const { loading } = useSelector((state: RootState) => state.profile)
@@ -66,15 +66,13 @@ function CourseDetails(): JSX.Element {
   }, [courseId])
 
 
-  // Calculating Avg Review count
-  const [avgReviewCount, setAvgReviewCount] = useState(0)
-  useEffect(() => {
-    const count = GetAvgRating(response?.courseDetails.ratingAndReviews)
-    setAvgReviewCount(count)
-  }, [response])
+  // Derived from response — useMemo avoids storing derived values in state
+  // with a separate effect (which would trigger the setState-in-effect rule).
+  const avgReviewCount = useMemo(
+    () => GetAvgRating(response?.courseDetails.ratingAndReviews),
+    [response]
+  )
 
-  // // Collapse all
-  // const [collapse, setCollapse] = useState("")
   const [isActive, setIsActive] = useState<string[]>([])
   const handleActive = (id: string) => {
     setIsActive(
@@ -84,14 +82,12 @@ function CourseDetails(): JSX.Element {
     )
   }
 
-  // Total number of lectures
-  const [totalNoOfLectures, setTotalNoOfLectures] = useState(0)
-  useEffect(() => {
+  const totalNoOfLectures = useMemo(() => {
     let lectures = 0
     response?.courseDetails?.courseContent?.forEach((sec: CourseSection) => {
       lectures += sec.subSection.length || 0
     })
-    setTotalNoOfLectures(lectures)
+    return lectures
   }, [response])
 
   if (loading || !response) {

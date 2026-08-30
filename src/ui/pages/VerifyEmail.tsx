@@ -10,7 +10,7 @@ import Spinner from "../components/common/Spinner"
 
 import type { RootState, AppDispatch } from "../store"
 
-function VerifyEmail(): JSX.Element {
+function VerifyEmail() {
   const [otp, setOtp] = useState("");
   const { signupData, loading } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
@@ -21,8 +21,7 @@ function VerifyEmail(): JSX.Element {
     if (!signupData) {
       navigate("/signup");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [navigate, signupData]);
 
   const handleVerifyAndSignup = (e: React.FormEvent) => {
     e.preventDefault();

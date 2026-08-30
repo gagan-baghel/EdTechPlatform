@@ -23,6 +23,11 @@ export default function DeleteAccount() {
   const expected = user?.email ?? ""
   const canDelete = typed.trim().toLowerCase() === expected.toLowerCase() && !deleting
 
+  const closeDialog = () => {
+    setConfirming(false)
+    setTyped("")
+  }
+
   useEffect(() => {
     if (!confirming) return
 
@@ -39,11 +44,6 @@ export default function DeleteAccount() {
       document.body.style.overflow = overflow
     }
   }, [confirming, deleting])
-
-  const closeDialog = () => {
-    setConfirming(false)
-    setTyped("")
-  }
 
   async function handleDeleteAccount() {
     if (!canDelete) return

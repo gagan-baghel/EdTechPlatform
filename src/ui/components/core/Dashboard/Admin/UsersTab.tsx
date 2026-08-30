@@ -1,7 +1,7 @@
 "use client"
 import type { ModalData } from "@/ui/components/common/ConfirmationModal"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
 
@@ -25,15 +25,16 @@ export default function UsersTab() {
   const [q, setQ] = useState("")
   const [confirmationModal, setConfirmationModal] = useState<ModalData | null>(null)
 
-  const load = async (query = "") => {
-    const result = await fetchUsers<UserRecord>(token as string, query ? { q: query } : {})
-    if (result) setUsers(result.data)
-  }
+  const load = useCallback((query = "") => {
+    return fetchUsers<UserRecord>(token as string, query ? { q: query } : {})
+      .then((result) => {
+        if (result) setUsers(result.data)
+      })
+  }, [token])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleToggleActive = async (user: UserRecord) => {
     const nextActive = user.active === false

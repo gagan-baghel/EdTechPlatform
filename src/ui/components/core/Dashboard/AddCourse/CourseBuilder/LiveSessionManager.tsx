@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { toast } from "react-hot-toast"
 import { FiUploadCloud } from "react-icons/fi"
@@ -47,15 +47,15 @@ export default function LiveSessionManager({ courseId }: LiveSessionManagerProps
   const fileInputRef = useRef<HTMLInputElement>(null)
   const pendingSessionId = useRef<string | null>(null)
 
-  const load = async () => {
-    const result = await fetchSessionsForCourse<LiveSession>(token as string, courseId)
-    setSessions(result ?? [])
-  }
+  const load = useCallback(() => {
+    return fetchSessionsForCourse<LiveSession>(token as string, courseId).then((result) => {
+      setSessions(result ?? [])
+    })
+  }, [token, courseId])
 
   useEffect(() => {
     if (courseId) load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId])
+  }, [courseId, load])
 
   const handleSchedule = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,7 +72,7 @@ export default function LiveSessionManager({ courseId }: LiveSessionManagerProps
 
   const handleCancel = async (sessionId: string) => {
     await cancelSession(token as string, sessionId)
-    load()
+    void load()
   }
 
   const triggerRecordingUpload = (sessionId: string) => {

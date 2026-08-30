@@ -1,5 +1,5 @@
 import CourseDetails from "../../../ui/pages/CourseDetails"
-import { resolveSiteUrl } from "../../../ui/utils/siteUrl"
+import { resolveSiteUrl } from "@/lib/siteUrl"
 
 // Revalidate hourly — course name/description/price change rarely enough
 // that per-request DB hits for metadata alone aren't worth it, but a
@@ -37,11 +37,13 @@ async function getCourseForMetadata(courseId: string) {
 }
 
 interface CoursePageProps {
-  params: { courseId: string }
+  // Next 15+: route props are Promises, awaited once per usage.
+  params: Promise<{ courseId: string }>
 }
 
 export async function generateMetadata({ params }: CoursePageProps) {
-  const course = await getCourseForMetadata(params.courseId)
+  const { courseId } = await params
+  const course = await getCourseForMetadata(courseId)
 
   if (!course) {
     return { title: "Course" }
@@ -49,7 +51,7 @@ export async function generateMetadata({ params }: CoursePageProps) {
 
   const description = course.courseDescription?.slice(0, 155) || "View this course on IntelleCraft."
   const siteUrl = resolveSiteUrl()
-  const canonical = `${siteUrl}/courses/${params.courseId}`
+  const canonical = `${siteUrl}/courses/${courseId}`
 
   return {
     title: course.courseName,
@@ -72,7 +74,8 @@ export async function generateMetadata({ params }: CoursePageProps) {
 }
 
 export default async function CourseDetailsPage({ params }: CoursePageProps) {
-  const course = await getCourseForMetadata(params.courseId)
+  const { courseId } = await params
+  const course = await getCourseForMetadata(courseId)
 
   // JSON-LD Course structured data — https://schema.org/Course. Only
   // rendered when the metadata fetch actually succeeded; a null course
@@ -116,7 +119,6 @@ export default async function CourseDetailsPage({ params }: CoursePageProps) {
           // escaping "<", a description containing "</script><script>..."
           // would break out of this tag and execute — the standard
           // JSON-LD XSS vector.
-          // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
       )}

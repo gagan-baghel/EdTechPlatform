@@ -28,7 +28,7 @@ interface ViewCourseProps {
   children: React.ReactNode;
 }
 
-export default function ViewCourse({ children }: ViewCourseProps): JSX.Element {
+export default function ViewCourse({ children }: ViewCourseProps) {
   const { courseId, subSectionId } = useParams()
   const { token } = useSelector((state: RootState) => state.auth)
   const dispatch = useDispatch<AppDispatch>()
@@ -37,43 +37,50 @@ export default function ViewCourse({ children }: ViewCourseProps): JSX.Element {
   const [status, setStatus] = useState<"loading" | "ready" | "empty" | "error">("loading") // loading | ready | empty | error
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const loadCourse = useCallback(async () => {
+  const [prevCourseId, setPrevCourseId] = useState(courseId)
+  if (courseId !== prevCourseId) {
+    setPrevCourseId(courseId)
     setStatus("loading")
+  }
 
-    try {
-      const courseData = await getFullDetailsOfCourse<{ courseDetails: CourseDetail; completedVideos?: string[]; watchState?: WatchStateEntry[] }>(
-        courseId as string,
-        token as string
-      )
-      const details = courseData?.courseDetails
+  const loadCourse = useCallback(() => {
+    getFullDetailsOfCourse<{ courseDetails: CourseDetail; completedVideos?: string[]; watchState?: WatchStateEntry[] }>(
+      courseId as string,
+      token as string
+    )
+      .then((courseData) => {
+        const details = courseData?.courseDetails
 
-      if (!details) {
+        if (!details) {
+          setStatus("error")
+          return
+        }
+
+        const content = details.courseContent ?? []
+        dispatch(setCourseSectionData(content))
+        dispatch(setEntireCourseData(details))
+        dispatch(setCompletedLectures(courseData.completedVideos ?? []))
+        dispatch(setWatchState(courseData.watchState ?? []))
+
+        const lectures = content.reduce(
+          (total: number, section: CourseSection) => total + (section?.subSection?.length ?? 0),
+          0
+        )
+        dispatch(setTotalNoOfLectures(lectures))
+
+        setStatus(lectures === 0 ? "empty" : "ready")
+      })
+      .catch((error) => {
+        console.error("Failed to load course", error)
         setStatus("error")
-        return
-      }
-
-      const content = details.courseContent ?? []
-      dispatch(setCourseSectionData(content))
-      dispatch(setEntireCourseData(details))
-      dispatch(setCompletedLectures(courseData.completedVideos ?? []))
-      dispatch(setWatchState(courseData.watchState ?? []))
-
-      const lectures = content.reduce(
-        (total: number, section: CourseSection) => total + (section?.subSection?.length ?? 0),
-        0
-      )
-      dispatch(setTotalNoOfLectures(lectures))
-
-      setStatus(lectures === 0 ? "empty" : "ready")
-    } catch (error) {
-      console.error("Failed to load course", error)
-      setStatus("error")
-    }
+      })
   }, [courseId, token, dispatch])
 
   useEffect(() => {
-    loadCourse()
-  }, [loadCourse])
+    if (status === "loading") {
+      loadCourse()
+    }
+  }, [loadCourse, status])
 
   if (status === "loading") {
     return (

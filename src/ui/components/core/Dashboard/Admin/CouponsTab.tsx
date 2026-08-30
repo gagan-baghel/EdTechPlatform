@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 
 import { createCoupon, deactivateCoupon, listCoupons } from "../../../../services/operations/couponAPI"
@@ -25,14 +25,13 @@ export default function CouponsTab() {
   const [coupons, setCoupons] = useState<Coupon[] | null>(null)
   const [form, setForm] = useState({ code: "", type: "percent", value: "", maxUses: "" })
 
-  const load = async () => {
-    setCoupons(await listCoupons(token as string))
-  }
+  const load = useCallback(() => {
+    listCoupons(token as string).then((res) => setCoupons(res as unknown as Coupon[]))
+  }, [token])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,7 +50,7 @@ export default function CouponsTab() {
 
   const handleDeactivate = async (couponId: string) => {
     await deactivateCoupon(token as string, couponId)
-    load()
+    listCoupons(token as string).then((res) => setCoupons(res as unknown as Coupon[]))
   }
 
   return (

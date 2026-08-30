@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useMemo } from "react"
 import {
   TiStarFullOutline,
   TiStarHalfOutline,
@@ -11,21 +11,16 @@ export interface RatingStarsProps {
 }
 
 function RatingStars({ Review_Count, Star_Size }: RatingStarsProps): React.JSX.Element {
-  const [starCount, SetStarCount] = useState({
-    full: 0,
-    half: 0,
-    empty: 0,
-  })
-
-  useEffect(() => {
+  // Derived entirely from the prop — no state or effect needed.
+  const starCount = useMemo(() => {
     const wholeStars = Math.floor(Review_Count) || 0
-    SetStarCount({
+    return {
       full: wholeStars,
       half: Number.isInteger(Review_Count) ? 0 : 1,
       empty: Number.isInteger(Review_Count) ? 5 - wholeStars : 4 - wholeStars,
-    })
+    }
   }, [Review_Count])
-  
+
   return (
     <div className="flex gap-1 text-yellow-100">
       {[...new Array(starCount.full)].map((_, i) => {

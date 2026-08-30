@@ -22,12 +22,19 @@ const mailSender = async (
     throw AppError.upstream("Email is not configured on this deployment.")
   }
 
+  // Timeouts are the point here. Without them a wedged SMTP server holds the
+  // socket open until the serverless function's own 60s ceiling kills it, and
+  // because several flows (enrolment, password change) send mail inline, one
+  // slow mail host stalls unrelated user-facing requests.
   const transporter = nodeMailer.createTransport({
     host: MAIL_HOST,
     auth: {
       user: MAIL_USER,
       pass: MAIL_PASS,
     },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
   })
 
   return transporter.sendMail({

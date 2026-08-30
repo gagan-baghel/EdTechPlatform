@@ -1,28 +1,24 @@
+import { z } from "zod"
 import type { Request, Response } from "express"
 import { isDuplicateKeyError } from "../lib/AppError"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, paginationQuery, text, toSkip } from "../lib/schemas"
 import type { AuthedRequest } from "../lib/http"
 import RatingAndReview from "../models/RatingAndReview"
 import Course from "../models/Course"
 import { notify } from "../utils/notify"
 
+const CreateRatingSchema = z.object({
+  courseId: objectId("A valid course id is required"),
+  rating: z.coerce.number().int().min(1, "Rating must be between 1 and 5").max(5, "Rating must be between 1 and 5"),
+  review: text({ max: 5000, label: "Review" }),
+})
+
 // Create a new rating and review
 export const createRating = async (req: AuthedRequest, res: Response) => {
   try {
     const userId = req.user.id
-    const { rating, review, courseId } = req.body
-    if (!courseId || rating === undefined || rating === null || !review) {
-      return res.status(400).json({
-        success: false,
-        message: "courseId, rating, and review are required",
-      })
-    }
-    if (Number(rating) < 1 || Number(rating) > 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5",
-      })
-    }
+    const { rating, review, courseId } = parseOrThrow(CreateRatingSchema, req.body)
 
     // Check if the user is enrolled in the course
 
@@ -96,23 +92,39 @@ export const createRating = async (req: AuthedRequest, res: Response) => {
 }
 
 // Get all rating and reviews
+/**
+ * Public review feed (the homepage carousel).
+ *
+ * Two problems, both from the same projection: it selected the reviewer's
+ * `email` — publishing the email address of every reviewing student to any
+ * anonymous visitor — and it was unbounded, returning the entire reviews
+ * collection on every homepage render.
+ */
 export const getAllRatingReview = async (req: Request, res: Response) => {
   try {
-    const allReviews = await RatingAndReview.find({})
-      .sort({ rating: "desc" })
-      .populate({
-        path: "user",
-        select: "firstName lastName email userImage", // Specify the fields you want to populate from the "Profile" model
-      })
-      .populate({
-        path: "course",
-        select: "courseName", //Specify the fields you want to populate from the "Course" model
-      })
-      .exec()
+    const { page, limit } = parseOrThrow(
+      paginationQuery({ defaultLimit: 20, maxLimit: 50 }),
+      req.query
+    )
+    const { skip } = toSkip({ page, limit })
+
+    const [allReviews, total] = await Promise.all([
+      RatingAndReview.find({})
+        .sort({ rating: "desc", _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({ path: "user", select: "firstName lastName userImage" })
+        .populate({ path: "course", select: "courseName" })
+        .lean(),
+      RatingAndReview.countDocuments({}),
+    ])
 
     res.status(200).json({
       success: true,
       data: allReviews,
+      page,
+      limit,
+      total,
     })
   } catch (error) {
     return fail(res, error, "getAllRatingReview", "Failed to retrieve the rating and review for the course")}

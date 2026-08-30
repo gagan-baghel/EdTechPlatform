@@ -1,7 +1,7 @@
 "use client"
 import type { ModalData } from "@/ui/components/common/ConfirmationModal"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 
 import {
@@ -43,15 +43,15 @@ export default function QuizManager({ courseId }: QuizManagerProps) {
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQuestion()])
   const [confirmationModal, setConfirmationModal] = useState<ModalData | null>(null)
 
-  const load = async () => {
-    const result = await fetchQuizzesForCourseInstructor<Quiz>(token as string, courseId)
-    if (result) setQuizzes(result.data)
-  }
+  const load = useCallback(() => {
+    return fetchQuizzesForCourseInstructor<Quiz>(token as string, courseId).then((result) => {
+      if (result) setQuizzes(result.data)
+    })
+  }, [token, courseId])
 
   useEffect(() => {
     if (courseId) load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId])
+  }, [courseId, load])
 
   const addQuestion = () => setQuestions((qs) => [...qs, emptyQuestion()])
   const updateQuestion = (index: number, patch: Partial<QuizQuestion>) =>

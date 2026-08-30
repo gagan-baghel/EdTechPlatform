@@ -6,7 +6,7 @@ import RenderCartCourses from "./RenderCartCourses"
 import RenderTotalAmount from "./RenderTotalAmount"
 import type { RootState } from "../../../../store"
 
-export default function Cart(): JSX.Element {
+export default function Cart() {
   const { total, totalItems } = useSelector((state: RootState) => state.cart)
 
   return (

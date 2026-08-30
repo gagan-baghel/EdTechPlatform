@@ -1,5 +1,5 @@
 import express from "express"
-import { authedHandler } from "../lib/http"
+import { asyncHandler, authedHandler } from "../lib/http"
 const router = express.Router()
 
 import {
@@ -20,9 +20,9 @@ router.get("/profile", auth, isInstructor, authedHandler(getMyPayoutProfile, "ge
 router.get("/my-payouts", auth, isInstructor, authedHandler(getMyPayouts, "getMyPayouts"))
 
 // Admin-facing
-router.get("/admin/profiles", auth, isAdmin, adminListPayoutProfiles)
+router.get("/admin/profiles", auth, isAdmin, asyncHandler(adminListPayoutProfiles, "adminListPayoutProfiles"))
 router.patch("/admin/profiles/:profileId/kyc", auth, isAdmin, authedHandler(adminSetKycStatus, "adminSetKycStatus"))
 router.post("/admin/generate", auth, isAdmin, authedHandler(adminGeneratePayoutRun, "adminGeneratePayoutRun"))
-router.get("/admin/payouts", auth, isAdmin, adminListPayouts)
+router.get("/admin/payouts", auth, isAdmin, asyncHandler(adminListPayouts, "adminListPayouts"))
 router.patch("/admin/payouts/:payoutId/mark-paid", auth, isAdmin, authedHandler(adminMarkPayoutPaid, "adminMarkPayoutPaid"))
 export default router

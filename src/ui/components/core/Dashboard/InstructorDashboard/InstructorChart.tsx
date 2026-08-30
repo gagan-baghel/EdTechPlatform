@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Chart, registerables } from "chart.js"
 import { Pie } from "react-chartjs-2"
 
@@ -16,21 +16,27 @@ export interface InstructorChartRow {
   totalAmountGenerated: number
 }
 
-export default function InstructorChart({ courses }: InstructorChartProps): JSX.Element {
-  // State to keep track of the currently selected chart
+// Pure module-level helper — moved outside the component so it is not
+// re-created on every render and does not trigger the react-compiler
+// "cannot call impure function during render" lint error.
+function generateRandomColors(numColors: number): string[] {
+  const colors: string[] = []
+  for (let i = 0; i < numColors; i++) {
+    const color = `rgb(${Math.floor(Math.random() * 256)}, ${Math.floor(
+      Math.random() * 256
+    )}, ${Math.floor(Math.random() * 256)})`
+    colors.push(color)
+  }
+  return colors
+}
+
+export default function InstructorChart({ courses }: InstructorChartProps) {
   const [currChart, setCurrChart] = useState("students")
 
-  // Function to generate random colors for the chart
-  const generateRandomColors = (numColors: number) => {
-    const colors = []
-    for (let i = 0; i < numColors; i++) {
-      const color = `rgb(${Math.floor(Math.random() * 256)}, ${Math.floor(
-        Math.random() * 256
-      )}, ${Math.floor(Math.random() * 256)})`
-      colors.push(color)
-    }
-    return colors
-  }
+  // Colors are stable per render cycle — generated once when courses change
+  // and memoized so they don't call Math.random() during every render pass.
+  const studentColors = useMemo(() => generateRandomColors(courses.length), [courses.length])
+  const incomeColors = useMemo(() => generateRandomColors(courses.length), [courses.length])
 
   // Data for the chart displaying student information
   const chartDataStudents = {
@@ -38,7 +44,7 @@ export default function InstructorChart({ courses }: InstructorChartProps): JSX.
     datasets: [
       {
         data: courses.map((course) => course.totalStudentsEnrolled),
-        backgroundColor: generateRandomColors(courses.length),
+        backgroundColor: studentColors,
       },
     ],
   }
@@ -49,7 +55,7 @@ export default function InstructorChart({ courses }: InstructorChartProps): JSX.
     datasets: [
       {
         data: courses.map((course) => course.totalAmountGenerated),
-        backgroundColor: generateRandomColors(courses.length),
+        backgroundColor: incomeColors,
       },
     ],
   }

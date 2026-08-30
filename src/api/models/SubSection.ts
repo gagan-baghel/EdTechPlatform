@@ -17,6 +17,10 @@ const subSectionSchema = new Schema<SchemaOf<SubSectionEntity<ObjectId>>>({
     videoUrl:{
         type:String
     },
+    // Needed to delete the asset from Cloudinary when the lecture goes away.
+    videoPublicId:{
+        type:String
+    },
     order: {
         type: Number,
         default: 0,

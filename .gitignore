@@ -5,8 +5,9 @@ node_modules/
 .next/
 out/
 dist/
+*.tsbuildinfo
 
-# logs
+# logs and scratch output from tooling
 logs
 *.log
 npm-debug.log*
@@ -14,27 +15,19 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# env
+# env — .env.example is the documented template and IS tracked
 .env
 .env.*
 !.env.example
 
-# editor/system
+# editor / OS
 .DS_Store
+**/.DS_Store
 .vscode/*
 !.vscode/extensions.json
 .idea
 .agent
 .agents
 
-
-.DS_Store
+# deployment
 .vercel
-.env*
-
-# one-shot migration scratch
-migrate_part*.py
-fix_types.js
-remove_nochecks.js
-cb_files.txt
-tsconfig.tsbuildinfo

@@ -1,7 +1,7 @@
 "use client"
 import type { NotificationItem } from "../../services/operations/notificationAPI"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useRef, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { FiBell } from "react-icons/fi"
 import { useNavigate } from "@/ui/lib/router"
@@ -21,22 +21,22 @@ export default function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const load = async () => {
+  const load = useCallback(() => {
     if (!token) return
-    const result = await fetchMyNotifications(token)
-    if (result) {
-      setNotifications(result.notifications)
-      setUnreadCount(result.unreadCount)
-    }
-  }
+    fetchMyNotifications(token).then((result) => {
+      if (result) {
+        setNotifications(result.notifications)
+        setUnreadCount(result.unreadCount)
+      }
+    })
+  }, [token])
 
   useEffect(() => {
     if (!token) return
     load()
     const interval = setInterval(load, 60000)
     return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token])
+  }, [token, load])
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

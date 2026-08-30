@@ -1,7 +1,7 @@
 "use client"
 import type { ModalData } from "@/ui/components/common/ConfirmationModal"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import { Table, Tbody, Td, Th, Thead, Tr } from "react-super-responsive-table"
 
@@ -30,15 +30,16 @@ export default function CoursesTab() {
   const [includeDeleted, setIncludeDeleted] = useState(false)
   const [confirmationModal, setConfirmationModal] = useState<ModalData | null>(null)
 
-  const load = async () => {
-    const result = await fetchCoursesForModeration<CourseForModeration>(token as string, { includeDeleted: String(includeDeleted) })
-    if (result) setCourses(result.data)
-  }
+  const load = useCallback(() => {
+    fetchCoursesForModeration<CourseForModeration>(token as string, { includeDeleted: String(includeDeleted) })
+      .then((result) => {
+        if (result) setCourses(result.data)
+      })
+  }, [token, includeDeleted])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includeDeleted])
+  }, [load])
 
   const handleTakedown = async (course: CourseForModeration) => {
     const takedown = !course.deletedAt

@@ -1,9 +1,10 @@
-import { queryNumber, queryString } from "../lib/request"
-import { fail } from "../lib/respond"
+import { z } from "zod"
+import { fail, parseOrThrow } from "../lib/respond"
 import type { Request, Response } from "express"
 import { getEnv } from "../config/env"
 import type { AuthedRequest } from "../lib/http"
 import User from "../models/User"
+import Session from "../models/Session"
 import Course from "../models/Course"
 import Payment from "../models/Payment"
 import Order from "../models/Order"
@@ -14,8 +15,13 @@ import Certificate from "../models/Certificate"
 import { recordAudit } from "../utils/recordAudit"
 
 const parsePagination = (req: Request) => {
-  const page = Math.max(1, queryNumber(req, "page") ?? 1)
-  const limit = Math.min(100, Math.max(1, queryNumber(req, "limit") ?? 25))
+  const { page, limit } = parseOrThrow(
+    z.object({
+      page: z.coerce.number().int().min(1).catch(1),
+      limit: z.coerce.number().int().min(1).max(100).catch(25),
+    }),
+    req.query
+  )
   return { page, limit, skip: (page - 1) * limit }
 }
 
@@ -26,12 +32,16 @@ const parsePagination = (req: Request) => {
 export const listUsers = async (req: Request, res: Response) => {
   try {
     const { page, limit, skip } = parsePagination(req)
-    // Read through queryString rather than destructuring req.query: a caller
+    // Validating req.query via Zod prevents NoSQL injection: a caller
     // can send ?accountType[$ne]=Admin, which Express parses into an OBJECT.
-    // Assigning that straight into a Mongo filter injects an operator and
-    // turns an equality check into "every account type except Admin".
-    const q = queryString(req, "q")
-    const accountType = queryString(req, "accountType")
+    // Zod enforces it is a string, so an operator cannot bypass the schema.
+    const { q, accountType } = parseOrThrow(
+      z.object({
+        q: z.string().optional(),
+        accountType: z.string().optional(),
+      }),
+      req.query
+    )
 
     const filter: Record<string, unknown> = {}
     if (accountType) filter.accountType = accountType
@@ -41,7 +51,12 @@ export const listUsers = async (req: Request, res: Response) => {
     }
 
     const [users, total] = await Promise.all([
-      User.find(filter).sort({ _id: -1 }).skip(skip).limit(limit).lean(),
+      User.find(filter)
+        .select("-password -token")
+        .sort({ _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
       User.countDocuments(filter),
     ])
 
@@ -56,15 +71,40 @@ export const listUsers = async (req: Request, res: Response) => {
 // instead of a dead field. Suspension is enforced at login (see Auth.js).
 export const setUserActive = async (req: AuthedRequest, res: Response) => {
   try {
-    const { userId } = req.params
-    const { active } = req.body
-    if (typeof active !== "boolean") {
-      return res.status(400).json({ success: false, message: "active must be a boolean" })
+    const { userId } = parseOrThrow(
+      z.object({ userId: z.string() }),
+      req.params
+    )
+    const { active } = parseOrThrow(
+      z.object({
+        active: z.boolean({ message: "active must be a boolean" }),
+      }),
+      req.body
+    )
+
+    // An admin must not be able to lock themselves — or the last admin — out.
+    if (!active && userId === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot suspend your own account.",
+      })
     }
 
     const user = await User.findByIdAndUpdate(userId, { active }, { new: true })
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" })
+    }
+
+    /**
+     * Suspension has to end the sessions too.
+     *
+     * `active` is only checked at login, so suspending a signed-in user left
+     * every token they already held working for its full 24h — they kept
+     * browsing, kept buying, kept posting, for a day after being suspended.
+     * Revoking their sessions is what makes the suspension take effect now.
+     */
+    if (!active) {
+      await Session.updateMany({ user: userId }, { $set: { revoked: true } })
     }
 
     await recordAudit({
@@ -90,9 +130,13 @@ export const setUserActive = async (req: AuthedRequest, res: Response) => {
 export const listCoursesForModeration = async (req: Request, res: Response) => {
   try {
     const { page, limit, skip } = parsePagination(req)
-    const status = queryString(req, "status")
-
-    const includeDeleted = queryString(req, "includeDeleted")
+    const { status, includeDeleted } = parseOrThrow(
+      z.object({
+        status: z.string().optional(),
+        includeDeleted: z.string().optional(),
+      }),
+      req.query
+    )
 
     const filter: Record<string, unknown> = {}
     if (status) filter.status = status
@@ -120,11 +164,17 @@ export const listCoursesForModeration = async (req: Request, res: Response) => {
 // enrolled students' access, same reasoning as that path.
 export const setCourseTakedown = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.params
-    const { takedown, reason } = req.body
-    if (typeof takedown !== "boolean") {
-      return res.status(400).json({ success: false, message: "takedown must be a boolean" })
-    }
+    const { courseId } = parseOrThrow(
+      z.object({ courseId: z.string() }),
+      req.params
+    )
+    const { takedown, reason } = parseOrThrow(
+      z.object({
+        takedown: z.boolean({ message: "takedown must be a boolean" }),
+        reason: z.string().optional(),
+      }),
+      req.body
+    )
 
     const course = await Course.findByIdAndUpdate(
       courseId,
@@ -156,9 +206,15 @@ export const setCourseTakedown = async (req: AuthedRequest, res: Response) => {
 export const lookupPayments = async (req: Request, res: Response) => {
   try {
     const { page, limit, skip } = parsePagination(req)
-    const orderId = queryString(req, "orderId")
-
-    const email = queryString(req, "email")
+    const { orderId, email } = parseOrThrow(
+      z.object({
+        orderId: z.string().max(100).optional(),
+        // Lowercased to match how addresses are stored — an admin typing
+        // "A@x.com" otherwise silently found nothing.
+        email: z.string().trim().toLowerCase().max(200).optional(),
+      }),
+      req.query
+    )
 
     const filter: Record<string, unknown> = {}
     if (orderId) filter.orderId = orderId
@@ -187,9 +243,13 @@ export const lookupPayments = async (req: Request, res: Response) => {
 export const lookupOrders = async (req: Request, res: Response) => {
   try {
     const { page, limit, skip } = parsePagination(req)
-    const orderId = queryString(req, "orderId")
-
-    const status = queryString(req, "status")
+    const { orderId, status } = parseOrThrow(
+      z.object({
+        orderId: z.string().optional(),
+        status: z.string().optional(),
+      }),
+      req.query
+    )
 
     const filter: Record<string, unknown> = {}
     if (orderId) filter.orderId = orderId
@@ -219,9 +279,13 @@ export const lookupOrders = async (req: Request, res: Response) => {
 export const listAuditLog = async (req: Request, res: Response) => {
   try {
     const { page, limit, skip } = parsePagination(req)
-    const action = queryString(req, "action")
-
-    const targetType = queryString(req, "targetType")
+    const { action, targetType } = parseOrThrow(
+      z.object({
+        action: z.string().optional(),
+        targetType: z.string().optional(),
+      }),
+      req.query
+    )
 
     const filter: Record<string, unknown> = {}
     if (action) filter.action = action
@@ -249,7 +313,7 @@ export const listAuditLog = async (req: Request, res: Response) => {
 
 export const listFeatureFlags = async (req: Request, res: Response) => {
   try {
-    const flags = await FeatureFlag.find({}).sort({ key: 1 }).lean()
+    const flags = await FeatureFlag.find({}).sort({ key: 1 }).limit(500).lean()
     return res.status(200).json({ success: true, data: flags })
   } catch (error) {
     return fail(res, error, "listFeatureFlags", "Could not list feature flags")
@@ -258,18 +322,23 @@ export const listFeatureFlags = async (req: Request, res: Response) => {
 
 export const upsertFeatureFlag = async (req: AuthedRequest, res: Response) => {
   try {
-    const { key, enabled, description, roles } = req.body
-    if (!key) {
-      return res.status(400).json({ success: false, message: "key is required" })
-    }
+    const { key, enabled, description, roles } = parseOrThrow(
+      z.object({
+        key: z.string().min(1, "key is required"),
+        enabled: z.boolean().optional(),
+        description: z.string().optional(),
+        roles: z.array(z.string()).optional(),
+      }),
+      req.body
+    )
 
     const flag = await FeatureFlag.findOneAndUpdate(
       { key },
       {
         $set: {
-          enabled: Boolean(enabled),
+          enabled: enabled ?? false,
           description,
-          roles: Array.isArray(roles) ? roles : [],
+          roles: roles ?? [],
           updatedAt: new Date(),
         },
       },
@@ -394,7 +463,6 @@ export const analyticsOverview = async (req: Request, res: Response) => {
       },
     })
   } catch (error) {
-    console.error("analyticsOverview failed", error)
-    return res.status(500).json({ success: false, message: "Could not load analytics" })
+    return fail(res, error, "analyticsOverview", "Could not load analytics")
   }
 }

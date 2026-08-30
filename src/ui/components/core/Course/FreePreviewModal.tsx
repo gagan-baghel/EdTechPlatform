@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useEffect } from "react"
-import { Player } from "video-react"
 import { RxCross2 } from "react-icons/rx"
 import type { CourseSubSection } from "@/ui/types"
 
@@ -45,7 +44,15 @@ export default function FreePreviewModal({ subSection, onClose }: FreePreviewMod
             <RxCross2 size={20} />
           </button>
         </div>
-        <Player aspectRatio="16:9" playsInline autoPlay src={subSection.videoUrl} />
+        {/* video-react (abandoned since 2023, blocks a React 19 install) wrapped
+            exactly this: a 16:9 <video> with default browser controls. */}
+        <video
+          className="aspect-video w-full rounded-md bg-black"
+          playsInline
+          autoPlay
+          controls
+          src={subSection.videoUrl}
+        />
       </div>
     </div>
   )

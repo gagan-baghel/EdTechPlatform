@@ -1,20 +1,25 @@
 /**
- * One-shot index migration. Run manually, NOT from application code:
+ * Index and data migration. Run manually, NOT from application code:
  *
- *   npx tsx scripts/ensure-indexes.ts
+ *   npm run migrate:indexes
  *
- * autoIndex is off (see src/api/config/connectDB.js) specifically so a cold
+ * autoIndex is off (see src/api/config/connectDB.ts) specifically so a cold
  * start never attempts to build these indexes against unresolved duplicate
  * data and crash the function. This script is the sole index authority: it
- * dedupes each collection, THEN creates the unique index, in that order.
+ * cleans each collection, THEN creates the index, in that order.
  *
- * Idempotent — safe to re-run. A clean run reports 0 duplicates found and
- * "already exists" for every index.
+ * Idempotent — safe to re-run any number of times. A clean run reports
+ * 0 duplicates found and "index ready" for every index.
  *
  * Deploy ordering (hard constraint): run this against production BEFORE
  * deploying the commit that added unique:true to the User/Payment/
  * CourseProgress/RatingAndReview models. Running it after does nothing to
  * prevent the crash the ordering is meant to avoid.
+ *
+ * It also owns the TTL indexes. Those were previously declared in schemas and
+ * never created anywhere, which is what made the rate limiter a permanent
+ * account lockout and stopped OTPs from ever expiring — see the TTL block in
+ * `main()`.
  */
 
 import mongoose from "mongoose"
@@ -30,6 +35,10 @@ import CourseProgress from "../src/api/models/CourseProgress"
 import RatingAndReview from "../src/api/models/RatingAndReview"
 import Course from "../src/api/models/Course"
 import Order from "../src/api/models/Order"
+import OTP from "../src/api/models/OTP"
+import Session from "../src/api/models/Session"
+import Referral from "../src/api/models/Referral"
+import Certificate from "../src/api/models/Certificate"
 
 const log = (...args: unknown[]): void => console.log("[ensure-indexes]", ...args)
 
@@ -38,23 +47,52 @@ interface DuplicateDoc {
   ids: mongoose.Types.ObjectId[]
 }
 
+/**
+ * Users are keyed by email, and the unique index on it is byte-exact.
+ *
+ * `User.email` now has `lowercase: true`, so new writes are normalised — but
+ * rows written before that are not, and "A@x.com" and "a@x.com" would both
+ * survive a byte-exact unique index while being the same account to every
+ * human and to the login form. This groups case-insensitively, refuses to
+ * continue if that surfaces genuine duplicates (merging two accounts' courses,
+ * payments and progress is a decision, not a script), and otherwise rewrites
+ * the stragglers to lowercase.
+ *
+ * Idempotent: a second run finds nothing to change.
+ */
 async function dedupeUsers(): Promise<boolean> {
-  log("deduping users by email…")
+  log("checking users for case-insensitive duplicate emails…")
   const dupes = await User.aggregate<DuplicateDoc>([
-    { $group: { _id: "$email", ids: { $push: "$_id" }, count: { $sum: 1 } } },
+    { $group: { _id: { $toLower: "$email" }, ids: { $push: "$_id" }, count: { $sum: 1 } } },
     { $match: { count: { $gt: 1 } } },
   ])
 
-  if (dupes.length === 0) {
-    log("users: 0 duplicates — clean")
+  if (dupes.length > 0) {
+    log(
+      `users: ${dupes.length} duplicate email group(s) found — manual review required before index creation`
+    )
+    for (const dupe of dupes) {
+      console.error(`  email="${dupe._id}" has ids: ${dupe.ids.join(", ")}`)
+    }
+    return false
+  }
+
+  const notNormalised = await User.find({
+    $expr: { $ne: ["$email", { $toLower: "$email" }] },
+  })
+    .select("_id email")
+    .lean()
+
+  if (notNormalised.length === 0) {
+    log("users: 0 duplicates, all emails already lowercase — clean")
     return true
   }
 
-  log(`users: ${dupes.length} duplicate email group(s) found — manual review required before index creation`)
-  for (const dupe of dupes) {
-    console.error(`  email="${dupe._id}" has ids: ${dupe.ids.join(", ")}`)
+  log(`users: normalising ${notNormalised.length} mixed-case email(s) to lowercase`)
+  for (const user of notNormalised) {
+    await User.updateOne({ _id: user._id }, { $set: { email: user.email.toLowerCase() } })
   }
-  return false
+  return true
 }
 
 async function dedupePayments(): Promise<void> {
@@ -175,6 +213,97 @@ async function main(): Promise<void> {
     { courseName: "text", courseDescription: "text", whatYouWillLearn: "text", tag: "text" },
     { weights: { courseName: 10, tag: 5, courseDescription: 1, whatYouWillLearn: 1 }, name: "course_text_search" },
     "courses.text_search"
+  )
+
+  // Catalogue reads are always "published, not deleted, in this category" —
+  // without this compound index they fall back to a collection scan filtered in
+  // memory. Declared in the Course schema (Course.ts) but autoIndex is off, so
+  // this script is the sole authority for creating it in production.
+  await createIndexSafely(
+    Course,
+    { status: 1, deletedAt: 1, category: 1 },
+    {},
+    "courses.{status,deletedAt,category}"
+  )
+
+  // Backs the instructor's own course list (/dashboard/my-courses).
+  await createIndexSafely(
+    Course,
+    { instructor: 1, deletedAt: 1 },
+    {},
+    "courses.{instructor,deletedAt}"
+  )
+
+  /* ------------------------------------------------------------------ *
+   * TTL indexes.
+   *
+   * These were declared in the schemas and never created here, and with
+   * autoIndex off that means they did not exist in any deployed database.
+   * The consequences were not cosmetic:
+   *
+   *  - rateLimits: nothing ever expired a window, so `hits` incremented
+   *    forever and any account that reached ten failed logins was locked
+   *    out of the platform permanently. (The limiter now also resets the
+   *    window in code, so it no longer depends on this index for
+   *    correctness — this reclaims the storage.)
+   *  - otps: verification codes never expired. (Also now checked in code.)
+   *  - sessions: one document per login, kept forever, and every browser a
+   *    user had ever signed in from listed as an active device.
+   * ------------------------------------------------------------------ */
+  await createIndexSafely(
+    OTP,
+    { createdAt: 1 },
+    { expireAfterSeconds: 5 * 60 },
+    "otps.createdAt (TTL 5m)"
+  )
+  await createIndexSafely(
+    Session,
+    { createdAt: 1 },
+    { expireAfterSeconds: 48 * 60 * 60 },
+    "sessions.createdAt (TTL 48h)"
+  )
+  await createIndexSafely(Session, { jti: 1 }, { unique: true }, "sessions.jti")
+  await createIndexSafely(
+    Session,
+    { user: 1, revoked: 1 },
+    {},
+    "sessions.{user,revoked}"
+  )
+
+  // The rate-limit collection is defined inside the middleware rather than in
+  // models/, so it is reached through the driver by name.
+  const rateLimits = mongoose.connection.collection("ratelimits")
+  await createIndexSafely(
+    { collection: rateLimits },
+    { expiresAt: 1 },
+    { expireAfterSeconds: 0 },
+    "ratelimits.expiresAt (TTL)"
+  )
+  await createIndexSafely(
+    { collection: rateLimits },
+    { key: 1 },
+    { unique: true },
+    "ratelimits.key"
+  )
+
+  // Referral commission is credited once per {referrer, order}; the
+  // duplicate-key error is what makes a settle retry a no-op instead of
+  // paying an affiliate twice for the same purchase.
+  await createIndexSafely(
+    Referral,
+    { referrer: 1, orderId: 1 },
+    { unique: true },
+    "referrals.{referrer,orderId}"
+  )
+
+  // Certificates are issued at most once per {user, course} — the unique
+  // index is what makes checkAndIssueCertificate safe to call on every
+  // progress heartbeat.
+  await createIndexSafely(
+    Certificate,
+    { user: 1, course: 1 },
+    { unique: true },
+    "certificates.{user,course}"
   )
 
   log("done")

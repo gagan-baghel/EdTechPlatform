@@ -33,6 +33,10 @@ export default function RouteError({
           >
             Try again
           </button>
+          {/* Deliberately a plain anchor, not next/link: this is the error
+              boundary, and a client-side transition would re-mount into the
+              same broken tree. A full document load is the reset. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
             className="rounded-md border border-richblack-600 px-6 py-3 font-semibold text-richblack-5 transition hover:bg-richblack-800"

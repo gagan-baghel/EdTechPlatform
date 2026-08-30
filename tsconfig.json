@@ -1,17 +1,20 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "noEmit": true,
     "incremental": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-
     /* Strictness. `strict` is the whole family; the rest are the checks
        outside it that catch real bugs without demanding a rewrite.
        Deliberately NOT enabling noUncheckedIndexedAccess or
@@ -24,23 +27,32 @@
     "noImplicitReturns": false,
     "useUnknownInCatchVariables": true,
     "forceConsistentCasingInFileNames": true,
-
     /* Migration complete — all files are TypeScript. allowJs is now off so
        the compiler will reject any .js file accidentally added in future. */
     "allowJs": false,
     "checkJs": false,
-
     /* No `baseUrl` — deprecated in TS 6. Paths resolve relative to this file. */
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
-    "plugins": [{ "name": "next" }]
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", ".next", "out"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out"
+  ]
 }

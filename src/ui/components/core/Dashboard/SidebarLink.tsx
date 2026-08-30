@@ -41,7 +41,7 @@ interface SidebarLinkProps {
   iconName: string;
 }
 
-export default function SidebarLink({ link, iconName }: SidebarLinkProps): JSX.Element {
+export default function SidebarLink({ link, iconName }: SidebarLinkProps) {
   const Icon = iconMap[iconName] || VscAccount
   const location = useLocation()
   const dispatch = useDispatch<AppDispatch>()

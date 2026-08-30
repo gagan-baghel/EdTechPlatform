@@ -49,8 +49,7 @@ export default function AnalyticsTab() {
     ;(async () => {
       setData(await fetchAnalyticsOverview(token as string))
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [token])
 
   if (!data) return <Spinner />
 

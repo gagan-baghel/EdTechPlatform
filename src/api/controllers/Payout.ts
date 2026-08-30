@@ -1,5 +1,7 @@
-import { queryString } from "../lib/request"
-import { fail } from "../lib/respond"
+import { z } from "zod"
+import { fail, parseOrThrow } from "../lib/respond"
+import { objectId, paginationQuery, text, toSkip } from "../lib/schemas"
+import { decrypt } from "../lib/crypto"
 import type { Types } from "mongoose"
 import type { Request, Response } from "express"
 import type { AuthedRequest } from "../lib/http"
@@ -7,6 +9,33 @@ import InstructorPayoutProfile from "../models/InstructorPayoutProfile"
 import Payout from "../models/Payout"
 import Payment from "../models/Payment"
 import { recordAudit } from "../utils/recordAudit"
+
+const KYC_STATUSES = ["not_submitted", "pending", "verified", "rejected"] as const
+const PAYOUT_STATUSES = ["pending", "paid", "failed"] as const
+
+/**
+ * Indian bank identifiers have fixed, checkable shapes. Validating them here
+ * is not cosmetic: an unvalidated account number is money sent to nowhere,
+ * and the failure surfaces days later as a bounced transfer rather than as a
+ * form error the instructor can fix.
+ */
+const PayoutProfileSchema = z.object({
+  bankAccountHolderName: text({ max: 120, label: "Account holder name" }),
+  bankAccountNumber: z
+    .string()
+    .trim()
+    .regex(/^\d{9,18}$/, "Bank account number must be 9-18 digits"),
+  ifscCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "IFSC code is not valid"),
+  panNumber: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{5}[0-9]{4}[A-Z]$/, "PAN number is not valid"),
+})
 
 /** A Payment with its `courses` refs resolved to the two fields selected. */
 interface PaymentWithCourses {
@@ -17,6 +46,24 @@ interface PaymentWithCourses {
 
 const maskAccountNumber = (accountNumber: string): string | null =>
   accountNumber ? `••••${accountNumber.slice(-4)}` : null
+
+/**
+ * `.lean()` returns raw documents, so the schema getter that decrypts
+ * bankAccountNumber never runs — masking the stored value directly would show
+ * the last four characters of AES ciphertext and look entirely plausible.
+ * Decryption is done explicitly here instead.
+ */
+const revealAccountNumber = (stored: string): string => {
+  if (!stored) return ""
+  try {
+    return decrypt(stored)
+  } catch (error) {
+    // A rotated or missing key must not turn into a masked value that looks
+    // real. Better to show nothing and log it.
+    console.error("Could not decrypt a payout account number", error)
+    return ""
+  }
+}
 
 /**
  * Takes `unknown` because `.lean()` types its result as `FlattenMaps<any>` and
@@ -33,7 +80,7 @@ const toMaskedProfile = (profile: unknown) => {
 
   return {
     ...raw,
-    bankAccountNumber: maskAccountNumber(bankAccountNumber),
+    bankAccountNumber: maskAccountNumber(revealAccountNumber(bankAccountNumber)),
     // PAN is a tax id, not a secret in the same sense as a bank account,
     // but there's no reason to echo the full value back on every read either.
     panNumber: panNumber ? `${panNumber.slice(0, 2)}••••••${panNumber.slice(-1)}` : null,
@@ -46,22 +93,25 @@ const toMaskedProfile = (profile: unknown) => {
 
 export const submitPayoutProfile = async (req: AuthedRequest, res: Response) => {
   try {
-    const { bankAccountHolderName, bankAccountNumber, ifscCode, panNumber } = req.body
-    if (!bankAccountHolderName || !bankAccountNumber || !ifscCode || !panNumber) {
-      return res.status(400).json({ success: false, message: "All fields are required" })
-    }
+    const { bankAccountHolderName, bankAccountNumber, ifscCode, panNumber } =
+      parseOrThrow(PayoutProfileSchema, req.body)
 
     const profile = await InstructorPayoutProfile.findOneAndUpdate(
       { instructor: req.user.id },
       {
-        bankAccountHolderName,
-        bankAccountNumber,
-        ifscCode,
-        panNumber,
-        // Any change to bank/KYC details resets verification — the whole
-        // point of KYC is that it verifies THESE details, not the account.
-        kycStatus: "pending",
-        kycRejectionReason: undefined,
+        $set: {
+          bankAccountHolderName,
+          bankAccountNumber,
+          ifscCode,
+          panNumber,
+          // Any change to bank/KYC details resets verification — the whole
+          // point of KYC is that it verifies THESE details, not the account.
+          kycStatus: "pending",
+        },
+        // `kycRejectionReason: undefined` was a no-op: Mongoose strips
+        // undefined from an update, so a resubmission kept displaying the
+        // reason the PREVIOUS details were rejected for.
+        $unset: { kycRejectionReason: 1 },
       },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     ).lean()
@@ -98,15 +148,28 @@ export const getMyPayouts = async (req: AuthedRequest, res: Response) => {
 
 export const adminListPayoutProfiles = async (req: Request, res: Response) => {
   try {
-    const kycStatus = queryString(req, "kycStatus")
+    const { kycStatus, page, limit } = parseOrThrow(
+      paginationQuery().extend({ kycStatus: z.enum(KYC_STATUSES).optional() }),
+      req.query
+    )
+    const { skip } = toSkip({ page, limit })
+
     const filter: Record<string, unknown> = {}
     if (kycStatus) filter.kycStatus = kycStatus
 
-    const profiles = await InstructorPayoutProfile.find(filter)
-      .populate("instructor", "firstName lastName email")
-      .lean()
+    const [profiles, total] = await Promise.all([
+      InstructorPayoutProfile.find(filter)
+        .populate("instructor", "firstName lastName email")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      InstructorPayoutProfile.countDocuments(filter),
+    ])
 
-    return res.status(200).json({ success: true, data: profiles.map(toMaskedProfile) })
+    return res
+      .status(200)
+      .json({ success: true, data: profiles.map(toMaskedProfile), page, limit, total })
   } catch (error) {
     return fail(res, error, "adminListPayoutProfiles", "Could not list payout profiles")
   }
@@ -114,15 +177,32 @@ export const adminListPayoutProfiles = async (req: Request, res: Response) => {
 
 export const adminSetKycStatus = async (req: AuthedRequest, res: Response) => {
   try {
-    const { profileId } = req.params
-    const { kycStatus, rejectionReason } = req.body
-    if (!["verified", "rejected", "pending"].includes(kycStatus)) {
-      return res.status(400).json({ success: false, message: "Invalid kycStatus" })
+    const { profileId } = parseOrThrow(
+      z.object({ profileId: objectId("A valid payout profile id is required") }),
+      req.params
+    )
+    const { kycStatus, rejectionReason } = parseOrThrow(
+      z.object({
+        kycStatus: z.enum(["verified", "rejected", "pending"]),
+        rejectionReason: text({ max: 500, label: "Rejection reason" }).optional(),
+      }),
+      req.body
+    )
+
+    if (kycStatus === "rejected" && !rejectionReason) {
+      return res.status(400).json({
+        success: false,
+        message: "A rejection reason is required so the instructor knows what to fix.",
+      })
     }
 
     const profile = await InstructorPayoutProfile.findByIdAndUpdate(
       profileId,
-      { kycStatus, kycRejectionReason: kycStatus === "rejected" ? rejectionReason : undefined },
+      kycStatus === "rejected"
+        ? { $set: { kycStatus, kycRejectionReason: rejectionReason } }
+        : // Same `undefined` trap as submitPayoutProfile — an approval must
+          // actually remove the stale rejection reason, not leave it behind.
+          { $set: { kycStatus }, $unset: { kycRejectionReason: 1 } },
       { new: true }
     )
     if (!profile) {
@@ -207,13 +287,19 @@ async function computeInstructorEarnings(
 
 export const adminGeneratePayoutRun = async (req: AuthedRequest, res: Response) => {
   try {
-    const { instructorId, periodStart, periodEnd } = req.body
-    if (!instructorId || !periodStart || !periodEnd) {
-      return res.status(400).json({
-        success: false,
-        message: "instructorId, periodStart and periodEnd are required",
-      })
-    }
+    const { instructorId, periodStart, periodEnd } = parseOrThrow(
+      z
+        .object({
+          instructorId: objectId("A valid instructor id is required"),
+          periodStart: z.coerce.date(),
+          periodEnd: z.coerce.date(),
+        })
+        .refine((data) => data.periodStart <= data.periodEnd, {
+          message: "periodStart must not be after periodEnd",
+          path: ["periodEnd"],
+        }),
+      req.body
+    )
 
     const profile = await InstructorPayoutProfile.findOne({ instructor: instructorId })
     if (!profile || profile.kycStatus !== "verified") {
@@ -232,8 +318,8 @@ export const adminGeneratePayoutRun = async (req: AuthedRequest, res: Response) 
 
     const { gross, includedPaymentIds } = await computeInstructorEarnings(
       instructorId,
-      new Date(periodStart),
-      new Date(periodEnd),
+      periodStart,
+      periodEnd,
       alreadyPaidPaymentIds
     )
 
@@ -276,19 +362,30 @@ export const adminGeneratePayoutRun = async (req: AuthedRequest, res: Response) 
 
 export const adminListPayouts = async (req: Request, res: Response) => {
   try {
-    const instructorId = queryString(req, "instructorId")
+    const { instructorId, status, page, limit } = parseOrThrow(
+      paginationQuery().extend({
+        instructorId: objectId().optional(),
+        status: z.enum(PAYOUT_STATUSES).optional(),
+      }),
+      req.query
+    )
+    const { skip } = toSkip({ page, limit })
 
-    const status = queryString(req, "status")
     const filter: Record<string, unknown> = {}
     if (instructorId) filter.instructor = instructorId
     if (status) filter.status = status
 
-    const payouts = await Payout.find(filter)
-      .populate("instructor", "firstName lastName email")
-      .sort({ periodEnd: -1 })
-      .lean()
+    const [payouts, total] = await Promise.all([
+      Payout.find(filter)
+        .populate("instructor", "firstName lastName email")
+        .sort({ periodEnd: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      Payout.countDocuments(filter),
+    ])
 
-    return res.status(200).json({ success: true, data: payouts })
+    return res.status(200).json({ success: true, data: payouts, page, limit, total })
   } catch (error) {
     return fail(res, error, "adminListPayouts", "Could not list payouts")
   }
@@ -301,22 +398,34 @@ export const adminListPayouts = async (req: Request, res: Response) => {
  */
 export const adminMarkPayoutPaid = async (req: AuthedRequest, res: Response) => {
   try {
-    const { payoutId } = req.params
-    const { transactionReference } = req.body
-    if (!transactionReference) {
-      return res.status(400).json({
-        success: false,
-        message: "transactionReference is required as proof the transfer happened",
-      })
-    }
+    const { payoutId } = parseOrThrow(
+      z.object({ payoutId: objectId("A valid payout id is required") }),
+      req.params
+    )
+    const { transactionReference } = parseOrThrow(
+      z.object({
+        transactionReference: text({ max: 200, label: "Transaction reference" }),
+      }),
+      req.body
+    )
 
-    const payout = await Payout.findByIdAndUpdate(
-      payoutId,
-      { status: "paid", paidAt: new Date(), transactionReference },
+    // Conditional on the payout still being pending. A blind update let two
+    // admins (or a double-clicked button) each record a different transfer
+    // reference against the same payout, overwriting the first — which is
+    // exactly the record you need when reconciling a duplicate transfer.
+    const payout = await Payout.findOneAndUpdate(
+      { _id: payoutId, status: "pending" },
+      { $set: { status: "paid", paidAt: new Date(), transactionReference } },
       { new: true }
     )
     if (!payout) {
-      return res.status(404).json({ success: false, message: "Payout not found" })
+      const exists = await Payout.exists({ _id: payoutId })
+      return res.status(exists ? 409 : 404).json({
+        success: false,
+        message: exists
+          ? "That payout is no longer pending — it has already been marked paid."
+          : "Payout not found",
+      })
     }
 
     await recordAudit({

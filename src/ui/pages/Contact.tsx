@@ -8,7 +8,7 @@ import ContactForm from "../components/core/ContactPage/ContactForm"
 const contactImage =
   "https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2940&auto=format&fit=crop"
 
-function Contact(): JSX.Element {
+function Contact() {
   return (
     // Pinned dark — see About.jsx's comment; same gradient hero pattern.
     <div data-theme="dark" className="bg-richblack-900 text-richblack-5">

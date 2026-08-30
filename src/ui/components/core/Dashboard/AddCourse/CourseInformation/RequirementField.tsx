@@ -32,20 +32,17 @@ export default function RequirementsField<TFieldValues extends FieldValues = Fie
 }: RequirementsFieldProps<TFieldValues>) {
   const { editCourse, course } = useSelector((state: RootState) => state.course)
   const [requirement, setRequirement] = useState("")
-  const [requirementsList, setRequirementsList] = useState<string[]>([])
+  const [requirementsList, setRequirementsList] = useState<string[]>(
+    editCourse && course?.instructions ? course.instructions : []
+  )
 
   useEffect(() => {
-    if (editCourse && course?.instructions) {
-      setRequirementsList(course.instructions)
-    }
     register(name, { required: true, validate: (value: string[]) => value.length > 0 })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [register, name])
 
   useEffect(() => {
     setValue(name, requirementsList as FieldValue<TFieldValues>)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requirementsList])
+  }, [requirementsList, name, setValue])
 
   const handleAddRequirement = () => {
     if (requirement) {

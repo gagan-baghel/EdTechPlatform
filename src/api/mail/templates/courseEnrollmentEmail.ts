@@ -1,4 +1,5 @@
-import { emailLayout, escapeHtml, getEmailBaseUrl } from "./shared"
+import { emailLayout, escapeHtml } from "./shared"
+import { resolveSiteUrl } from "@/lib/siteUrl"
 
 export const courseEnrollmentEmail = (courseName: string, name: string): string => {
   return emailLayout({
@@ -9,6 +10,6 @@ export const courseEnrollmentEmail = (courseName: string, name: string): string 
       <p>You have successfully registered for the course <span class="highlight">"${escapeHtml(courseName)}"</span>. We are excited to have you as a participant!</p>
       <p>Please log in to your learning dashboard to access the course materials and start your learning journey.</p>
     `,
-    cta: { href: `${getEmailBaseUrl()}/dashboard`, label: "Go to Dashboard" },
+    cta: { href: `${resolveSiteUrl()}/dashboard`, label: "Go to Dashboard" },
   })
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
 import Image from "next/image"
 import { useNavigate } from "@/ui/lib/router"
@@ -50,20 +50,20 @@ interface WorkspaceData {
   streak?: number
 }
 
-export default function MyLearning(): JSX.Element {
+export default function MyLearning() {
   const { token } = useSelector((state: RootState) => state.auth)
   const navigate = useNavigate()
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null)
 
-  const load = async () => {
-    const result = await fetchWorkspace<WorkspaceData>(token as string)
-    setWorkspace(result)
-  }
+  const load = useCallback(() => {
+    return fetchWorkspace<WorkspaceData>(token as string).then((result) => {
+      setWorkspace(result)
+    })
+  }, [token])
 
   useEffect(() => {
     load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [load])
 
   const handleContinue = (item: ContinueLearningItem) => {
     if (!item.lastWatchedSubSection) return
@@ -72,7 +72,7 @@ export default function MyLearning(): JSX.Element {
 
   const handleUnsave = async (courseId: string) => {
     await removeCourseFromWishlist(token as string, courseId)
-    load()
+    void load()
   }
 
   if (!workspace) return <Spinner />

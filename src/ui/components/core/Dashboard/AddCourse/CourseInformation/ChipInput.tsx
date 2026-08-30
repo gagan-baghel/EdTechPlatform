@@ -35,20 +35,17 @@ export default function ChipInput<TFieldValues extends FieldValues = FieldValues
 }: ChipInputProps<TFieldValues>) {
   const { editCourse, course } = useSelector((state: RootState) => state.course)
 
-  const [chips, setChips] = useState<string[]>([])
+  const [chips, setChips] = useState<string[]>(
+    editCourse && course?.tag ? course.tag : []
+  )
 
   useEffect(() => {
-    if (editCourse && course?.tag) {
-      setChips(course.tag)
-    }
     register(name, { required: true, validate: (value: string[]) => value.length > 0 })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [register, name])
 
   useEffect(() => {
     setValue(name, chips as FieldValue<TFieldValues>)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chips])
+  }, [chips, name, setValue])
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter" || event.key === ",") {

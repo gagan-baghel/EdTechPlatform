@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo } from "react"
 import Image from "next/image"
 import {
   AiOutlineArrowRight,
@@ -125,25 +125,30 @@ const logos = [
   { name: "Princeton Day", icon: AiOutlineUsergroupAdd },
 ]
 
+// Bar grows from 0 to 94% with a pure CSS animation — no JS state required,
+// so there is no useEffect setState cascade and no React Compiler lint error.
 function CountUpBar() {
-  const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    setLoaded(true)
-  }, [])
-
   return (
     <div className="w-full h-3 overflow-hidden rounded-full bg-richblack-700">
       <div
-        className={`h-full rounded-full bg-green-500 transition-all duration-1000 ease-out ${
-          loaded ? "w-[94%]" : "w-0"
-        }`}
+        className="h-full rounded-full bg-green-500"
+        style={{
+          width: "94%",
+          animation: "countup-bar 1s ease-out forwards",
+          transformOrigin: "left",
+        }}
       />
+      <style>{`
+        @keyframes countup-bar {
+          from { width: 0; }
+          to   { width: 94%; }
+        }
+      `}</style>
     </div>
   )
 }
 
-function Home(): JSX.Element {
+function Home() {
   const marquee = useMemo(() => [...logos, ...logos], [])
   const t = useTranslations("Home")
 

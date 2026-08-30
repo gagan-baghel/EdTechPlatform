@@ -1,4 +1,56 @@
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { z } from "zod"
+
+const questionSchema = z.object({
+  questionText: z.string().min(1, "questionText is required"),
+  options: z.array(z.string()).min(2, "Every question needs text and at least 2 options"),
+  correctOptionIndex: z.number().min(0, "correctOptionIndex must point at a real option")
+}).refine(data => data.correctOptionIndex < data.options.length, {
+  message: "correctOptionIndex must point at a real option",
+  path: ["correctOptionIndex"]
+})
+
+const createQuizSchema = z.object({
+  courseId: objectId("courseId, title and at least one question are required"),
+  subSectionId: objectId().optional(),
+  title: z.string().min(1, "courseId, title and at least one question are required"),
+  questions: z.array(questionSchema).min(1, "courseId, title and at least one question are required"),
+  passingScorePercent: z.number().optional(),
+})
+
+const updateQuizBodySchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  // `.min(1)` matters: an empty array was accepted, and submitQuizAttempt then
+  // divided by `quiz.questions.length` — scorePercent came back NaN, the
+  // attempt was stored with NaN, and the pass check silently evaluated false
+  // forever, permanently blocking the course's certificate.
+  questions: z.array(questionSchema).min(1, "A quiz needs at least one question").optional(),
+  passingScorePercent: z.coerce.number().min(0).max(100).optional(),
+  published: z.boolean().optional(),
+})
+
+const submitQuizAttemptBodySchema = z.object({
+  answers: z
+    .array(
+      z.object({
+        questionId: objectId(),
+        selectedOptionIndex: z.coerce.number().int().min(0).max(50),
+      })
+    )
+    .max(200, "Too many answers"),
+})
+
+const quizParamsSchema = z.object({ quizId: objectId("A valid quiz id is required") })
+const courseParamsSchema = z.object({ courseId: objectId("A valid course id is required") })
+
+/**
+ * Attempts are capped.
+ *
+ * Every submission returns the score, and the answer key never changes, so
+ * unlimited attempts make a quiz solvable by brute force in a handful of
+ * requests — the "assessment" verifies nothing. The cap is per quiz, per user.
+ */
+const MAX_ATTEMPTS_PER_QUIZ = 10
 
 /** Projection returned by the student quiz list — see the `.lean()` above. */
 interface QuizSummarySource {
@@ -17,6 +69,7 @@ interface QuizQuestionSource {
 }
 import type { Types } from "mongoose"
 import { containsId } from "../lib/ids"
+import { objectId } from "../lib/schemas"
 import type { Response } from "express"
 import type { AuthedRequest } from "../lib/http"
 import Quiz from "../models/Quiz"
@@ -36,27 +89,11 @@ async function assertCourseOwnership(
 
 export const createQuiz = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId, subSectionId, title, questions, passingScorePercent } = req.body
-    if (!courseId || !title || !Array.isArray(questions) || questions.length === 0) {
-      return res.status(400).json({ success: false, message: "courseId, title and at least one question are required" })
-    }
+    const { courseId, subSectionId, title, questions, passingScorePercent } = parseOrThrow(createQuizSchema, req.body)
 
     const course = await assertCourseOwnership(courseId, req.user.id)
     if (!course) {
       return res.status(403).json({ success: false, message: "Not authorized to add a quiz to this course" })
-    }
-
-    for (const q of questions) {
-      if (!q.questionText || !Array.isArray(q.options) || q.options.length < 2) {
-        return res.status(400).json({ success: false, message: "Every question needs text and at least 2 options" })
-      }
-      if (
-        q.correctOptionIndex === undefined ||
-        q.correctOptionIndex < 0 ||
-        q.correctOptionIndex >= q.options.length
-      ) {
-        return res.status(400).json({ success: false, message: "correctOptionIndex must point at a real option" })
-      }
     }
 
     const quiz = await Quiz.create({
@@ -79,14 +116,13 @@ export const createQuiz = async (req: AuthedRequest, res: Response) => {
 
     return res.status(201).json({ success: true, data: quiz })
   } catch (error) {
-    console.error("createQuiz failed", error)
-    return res.status(500).json({ success: false, message: "Could not create quiz" })
+    return fail(res, error, "createQuiz", "Could not create quiz")
   }
 }
 
 export const updateQuiz = async (req: AuthedRequest, res: Response) => {
   try {
-    const { quizId } = req.params
+    const { quizId } = parseOrThrow(quizParamsSchema, req.params)
     const quiz = await Quiz.findById(quizId)
     if (!quiz) {
       return res.status(404).json({ success: false, message: "Quiz not found" })
@@ -97,7 +133,7 @@ export const updateQuiz = async (req: AuthedRequest, res: Response) => {
       return res.status(403).json({ success: false, message: "Not authorized to edit this quiz" })
     }
 
-    const { title, questions, passingScorePercent, published } = req.body
+    const { title, questions, passingScorePercent, published } = parseOrThrow(updateQuizBodySchema, req.body)
     if (title !== undefined) quiz.title = title
     if (questions !== undefined) quiz.questions = questions
     if (passingScorePercent !== undefined) quiz.passingScorePercent = passingScorePercent
@@ -113,7 +149,7 @@ export const updateQuiz = async (req: AuthedRequest, res: Response) => {
 
 export const deleteQuiz = async (req: AuthedRequest, res: Response) => {
   try {
-    const { quizId } = req.params
+    const { quizId } = parseOrThrow(quizParamsSchema, req.params)
     const quiz = await Quiz.findById(quizId)
     if (!quiz) {
       return res.status(404).json({ success: false, message: "Quiz not found" })
@@ -133,7 +169,7 @@ export const deleteQuiz = async (req: AuthedRequest, res: Response) => {
 // Instructor view — includes correct answers and unpublished drafts.
 export const listQuizzesForCourseInstructor = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.params
+    const { courseId } = parseOrThrow(courseParamsSchema, req.params)
     const course = await assertCourseOwnership(courseId, req.user.id)
     if (!course) {
       return res.status(403).json({ success: false, message: "Not authorized" })
@@ -150,7 +186,7 @@ export const listQuizzesForCourseInstructor = async (req: AuthedRequest, res: Re
 // before deciding to start a specific quiz.
 export const listQuizzesForCourseStudent = async (req: AuthedRequest, res: Response) => {
   try {
-    const { courseId } = req.params
+    const { courseId } = parseOrThrow(courseParamsSchema, req.params)
     const userId = req.user.id
 
     const user = await User.findById(userId).select("courses")
@@ -183,7 +219,7 @@ export const listQuizzesForCourseStudent = async (req: AuthedRequest, res: Respo
 // separate code path structurally can't.
 export const getQuizForStudent = async (req: AuthedRequest, res: Response) => {
   try {
-    const { quizId } = req.params
+    const { quizId } = parseOrThrow(quizParamsSchema, req.params)
     const userId = req.user.id
 
     const quiz = await Quiz.findOne({ _id: quizId, published: true }).lean()
@@ -213,13 +249,9 @@ export const getQuizForStudent = async (req: AuthedRequest, res: Response) => {
 
 export const submitQuizAttempt = async (req: AuthedRequest, res: Response) => {
   try {
-    const { quizId } = req.params
-    const { answers } = req.body
+    const { quizId } = parseOrThrow(quizParamsSchema, req.params)
+    const { answers } = parseOrThrow(submitQuizAttemptBodySchema, req.body)
     const userId = req.user.id
-
-    if (!Array.isArray(answers)) {
-      return res.status(400).json({ success: false, message: "answers array is required" })
-    }
 
     const quiz = await Quiz.findOne({ _id: quizId, published: true })
     if (!quiz) {
@@ -229,6 +261,21 @@ export const submitQuizAttempt = async (req: AuthedRequest, res: Response) => {
     const user = await User.findById(userId).select("courses")
     if (!containsId(user?.courses, quiz.course.toString())) {
       return res.status(403).json({ success: false, message: "You are not enrolled in this course" })
+    }
+
+    const attemptCount = await QuizAttempt.countDocuments({ quiz: quizId, user: userId })
+    if (attemptCount >= MAX_ATTEMPTS_PER_QUIZ) {
+      return res.status(429).json({
+        success: false,
+        message: `You have used all ${MAX_ATTEMPTS_PER_QUIZ} attempts for this quiz.`,
+      })
+    }
+
+    if (quiz.questions.length === 0) {
+      return res.status(409).json({
+        success: false,
+        message: "This quiz has no questions yet.",
+      })
     }
 
     // Grade server-side against the stored answer key — the client never
@@ -260,19 +307,26 @@ export const submitQuizAttempt = async (req: AuthedRequest, res: Response) => {
 
     return res.status(200).json({
       success: true,
-      data: { scorePercent, passed, passingScorePercent: quiz.passingScorePercent, attemptId: attempt._id },
+      data: {
+        scorePercent,
+        passed,
+        passingScorePercent: quiz.passingScorePercent,
+        attemptId: attempt._id,
+        attemptsUsed: attemptCount + 1,
+        attemptsAllowed: MAX_ATTEMPTS_PER_QUIZ,
+      },
     })
   } catch (error) {
-    console.error("submitQuizAttempt failed", error)
-    return res.status(500).json({ success: false, message: "Could not submit quiz attempt" })
+    return fail(res, error, "submitQuizAttempt", "Could not submit quiz attempt")
   }
 }
 
 export const listMyAttempts = async (req: AuthedRequest, res: Response) => {
   try {
-    const { quizId } = req.params
+    const { quizId } = parseOrThrow(quizParamsSchema, req.params)
     const attempts = await QuizAttempt.find({ quiz: quizId, user: req.user.id })
       .sort({ createdAt: -1 })
+      .limit(MAX_ATTEMPTS_PER_QUIZ)
       .lean()
     return res.status(200).json({ success: true, data: attempts })
   } catch (error) {
@@ -294,9 +348,16 @@ export const hasPassedAllCourseQuizzes = async (
   const courseQuizzes = await Quiz.find({ course: courseId, subSection: null, published: true }).select("_id")
   if (courseQuizzes.length === 0) return true
 
-  for (const quiz of courseQuizzes) {
-    const passedAttempt = await QuizAttempt.findOne({ quiz: quiz._id, user: userId, passed: true })
-    if (!passedAttempt) return false
-  }
-  return true
+  // One query, not one per quiz. This runs on every progress heartbeat via
+  // checkAndIssueCertificate, so an N+1 here is an N+1 on the hottest path
+  // in the whole learning flow.
+  const quizIds = courseQuizzes.map((quiz: { _id: Types.ObjectId }) => quiz._id)
+  const passedQuizIds = await QuizAttempt.find({
+    quiz: { $in: quizIds },
+    user: userId,
+    passed: true,
+  }).distinct("quiz")
+
+  const passed = new Set(passedQuizIds.map(String))
+  return quizIds.every((id: Types.ObjectId) => passed.has(String(id)))
 }

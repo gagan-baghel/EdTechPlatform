@@ -18,5 +18,5 @@ router.post("/", auth, isInstructorOrAdmin, authedHandler(createCoupon, "createC
 router.get("/", auth, isInstructorOrAdmin, authedHandler(listCoupons, "listCoupons"))
 router.patch("/:couponId/deactivate", auth, isInstructorOrAdmin, authedHandler(deactivateCoupon, "deactivateCoupon"))
 // Checkout-time validation — student checks a code before paying.
-router.post("/check", auth, isStudent, checkCoupon)
+router.post("/check", auth, isStudent, authedHandler(checkCoupon, "checkCoupon"))
 export default router

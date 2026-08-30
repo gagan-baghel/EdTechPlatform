@@ -30,6 +30,13 @@ const userSchema = new Schema<UserSchemaShape>({
         type:String,
         required:true,
         trim:true,
+        // The unique index below is byte-exact, so without this
+        // "A@x.com" and "a@x.com" are two accounts that both believe they
+        // own the same address — and the owner of the second one can never
+        // log in as the first. Normalised here as well as at the request
+        // boundary (lib/schemas.ts `email()`) so a write from anywhere in
+        // the codebase lands in the same shape.
+        lowercase:true,
         // Declared here for a fresh environment; on an existing database
         // this index must be created by scripts/ensure-indexes.js AFTER it
         // has deduped any existing collisions — autoIndex is off (see

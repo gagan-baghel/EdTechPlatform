@@ -8,7 +8,7 @@ import Spinner from "../components/common/Spinner"
 
 import type { RootState, AppDispatch } from "../store"
 
-function ForgotPassword(): JSX.Element {
+function ForgotPassword() {
   const [email, setEmail] = useState("")
   const [emailSent, setEmailSent] = useState(false)
   const dispatch = useDispatch<AppDispatch>()

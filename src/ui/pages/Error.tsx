@@ -15,7 +15,7 @@ export default function Error({
   code = "404",
   title = "We couldn't find that page",
   message = "The link may be out of date, or the page may have moved.",
-}: ErrorProps): JSX.Element {
+}: ErrorProps) {
   return (
     // Pinned dark — see About.jsx's comment; same gradient-text pattern.
     <div data-theme="dark" className="grid min-h-[calc(100vh-3.5rem)] place-items-center bg-richblack-900 px-6 py-16">

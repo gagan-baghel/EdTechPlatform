@@ -22,7 +22,7 @@ interface DashboardLink {
   icon: string
 }
 
-export default function Sidebar(): JSX.Element {
+export default function Sidebar() {
   const { user, loading: profileLoading } = useSelector((state: RootState) => state.profile)
   const { loading: authLoading } = useSelector((state: RootState) => state.auth)
   const dispatch = useDispatch<AppDispatch>()

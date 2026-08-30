@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { Provider, useDispatch, useSelector } from "react-redux"
 import { configureStore } from "@reduxjs/toolkit"
 import { Toaster } from "react-hot-toast"
@@ -86,14 +86,13 @@ function AuthBootstrap(): null {
 }
 
 export default function AppProviders({ children }: { children: React.ReactNode }): React.JSX.Element {
-  const storeRef = useRef<AppStore | null>(null)
-
-  if (!storeRef.current) {
-    storeRef.current = makeStore()
-  }
+  // Initialized directly with useState so the store is created exactly once 
+  // (on the first render). This avoids the React Compiler "Cannot access 
+  // refs during render" error that occurs when reading storeRef.current.
+  const [store] = useState<AppStore>(() => makeStore())
 
   return (
-    <Provider store={storeRef.current}>
+    <Provider store={store}>
       <ThemeProvider>
         <LocaleProvider>
           <AuthBootstrap />

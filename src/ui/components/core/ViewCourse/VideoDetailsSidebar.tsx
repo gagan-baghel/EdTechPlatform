@@ -5,7 +5,7 @@ import { BsChevronDown } from "react-icons/bs"
 import { IoIosArrowBack } from "react-icons/io"
 import { AiOutlineClose } from "react-icons/ai"
 import { useSelector } from "react-redux"
-import { useLocation, useNavigate, useParams } from "@/ui/lib/router"
+import { useNavigate, useParams } from "@/ui/lib/router"
 import type { RootState } from "../../../store"
 
 import IconBtn from "../../common/IconBtn"
@@ -17,12 +17,9 @@ interface VideoDetailsSidebarProps {
 }
 
 export default function VideoDetailsSidebar({ setReviewModal, open = false, onClose }: VideoDetailsSidebarProps) {
-  const [activeStatus, setActiveStatus] = useState<string>("")
-  const [videoBarActive, setVideoBarActive] = useState<string>("")
   const navigate = useNavigate()
-  const location = useLocation()
   const { sectionId, subSectionId } = useParams<{ sectionId: string; subSectionId: string }>()
-  
+
   const {
     courseSectionData,
     courseEntireData,
@@ -30,21 +27,28 @@ export default function VideoDetailsSidebar({ setReviewModal, open = false, onCl
     completedLectures,
   } = useSelector((state: RootState) => state.viewCourse)
 
-  useEffect(() => {
-    if (!courseSectionData.length) return
+  const [activeStatus, setActiveStatus] = useState("")
+  const [videoBarActive, setVideoBarActive] = useState("")
+  const [prevSectionId, setPrevSectionId] = useState(sectionId)
+  const [prevSubSectionId, setPrevSubSectionId] = useState(subSectionId)
 
-    const currentSectionIndx = courseSectionData.findIndex(
-      (data) => data._id === sectionId
-    )
-    const currentSubSectionIndx = courseSectionData?.[
-      currentSectionIndx
-    ]?.subSection?.findIndex((data) => data._id === subSectionId)
-    const activeSubSectionId =
-      courseSectionData[currentSectionIndx]?.subSection?.[currentSubSectionIndx]?._id
-
-    setActiveStatus(courseSectionData?.[currentSectionIndx]?._id || "")
-    setVideoBarActive(activeSubSectionId || "")
-  }, [courseSectionData, sectionId, subSectionId, location.pathname])
+  if (sectionId !== prevSectionId || subSectionId !== prevSubSectionId) {
+    setPrevSectionId(sectionId)
+    setPrevSubSectionId(subSectionId)
+    if (courseSectionData.length) {
+      const currentSectionIndx = courseSectionData.findIndex(
+        (data) => data._id === sectionId
+      )
+      const currentSubSectionIndx = courseSectionData?.[
+        currentSectionIndx
+      ]?.subSection?.findIndex((data) => data._id === subSectionId)
+      const activeSubSectionId =
+        courseSectionData[currentSectionIndx]?.subSection?.[currentSubSectionIndx]?._id
+      
+      setActiveStatus(courseSectionData?.[currentSectionIndx]?._id || "")
+      setVideoBarActive(activeSubSectionId || "")
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -62,7 +66,6 @@ export default function VideoDetailsSidebar({ setReviewModal, open = false, onCl
     navigate(
       `/view-course/${courseEntireData?._id}/section/${sectionIdValue}/sub-section/${topicId}`
     )
-    setVideoBarActive(topicId)
     onClose?.()
   }
 

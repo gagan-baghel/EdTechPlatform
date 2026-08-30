@@ -80,6 +80,7 @@ export default function SubSectionModal({
     }
   }, [
     edit,
+    lecture,
     lecture?.description,
     lecture?.title,
     lecture?.videoUrl,

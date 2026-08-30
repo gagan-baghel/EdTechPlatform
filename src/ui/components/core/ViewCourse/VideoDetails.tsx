@@ -3,23 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate, useParams } from "@/ui/lib/router"
-import { Player, BigPlayButton, type PlayerReference } from "video-react"
-
-/**
- * video-react forwards the underlying <video> media events but its typings
- * don't declare them. Widening here keeps the two handlers below checked
- * rather than casting the whole component to `any`.
- */
-type MediaEvents = {
-  onLoadedMetadata?: React.ReactEventHandler<HTMLVideoElement>
-  onTimeUpdate?: React.ReactEventHandler<HTMLVideoElement>
-}
-const VideoPlayer = Player as React.ComponentType<
-  React.ComponentProps<typeof Player> & MediaEvents
->
 import Image from "next/image"
-
-import "video-react/dist/video-react.css"
 
 import { updateCompletedLectures } from "../../../slices/viewCourseSlice"
 import { markLectureAsComplete, updateWatchPosition } from "../../../services/operations/courseDetailsAPI"
@@ -33,7 +17,7 @@ export default function VideoDetails() {
   const { courseId, sectionId, subSectionId } = useParams<{ courseId: string; sectionId: string; subSectionId: string }>()
   const navigate = useNavigate()
   const dispatch = useDispatch<AppDispatch>()
-  const playerRef = useRef<PlayerReference | null>(null)
+  const playerRef = useRef<HTMLVideoElement | null>(null)
   
   const { token } = useSelector((state: RootState) => state.auth)
   const { user } = useSelector((state: RootState) => state.profile)
@@ -49,7 +33,8 @@ export default function VideoDetails() {
   const defaultPlaybackSpeed = user?.additionalDetails?.defaultPlaybackSpeed || 1
   const autoplayNext = user?.additionalDetails?.autoplayNext !== false
 
-  const [videoEnded, setVideoEnded] = useState<boolean>(false)
+  const [videoEndedId, setVideoEndedId] = useState<string | null>(null)
+  const videoEnded = videoEndedId === subSectionId
   const [loading, setLoading] = useState<boolean>(false)
   const lastHeartbeatAtRef = useRef<number>(0)
   const hasResumedRef = useRef<boolean>(false)
@@ -78,8 +63,10 @@ export default function VideoDetails() {
     }
   }, [courseId, navigate, sectionId, subSectionId])
 
+  // We no longer need to reset videoEnded state here because it's derived
+  // from videoEndedId === subSectionId. When subSectionId changes, videoEnded
+  // naturally becomes false, avoiding a setState cascade entirely.
   useEffect(() => {
-    setVideoEnded(false)
     hasResumedRef.current = false
     lastHeartbeatAtRef.current = 0
   }, [subSectionId])
@@ -97,7 +84,7 @@ export default function VideoDetails() {
     )?.positionSeconds
 
     if (savedPosition && playerRef.current) {
-      playerRef.current.seek(savedPosition)
+      playerRef.current.currentTime = savedPosition
     }
   }
 
@@ -108,7 +95,7 @@ export default function VideoDetails() {
     if (now - lastHeartbeatAtRef.current < HEARTBEAT_INTERVAL_MS) return
     lastHeartbeatAtRef.current = now
 
-    const { currentTime, duration } = playerRef.current.getState().player
+    const { currentTime, duration } = playerRef.current
     if (!currentTime || !courseId || !subSectionId || !token) return
 
     updateWatchPosition(
@@ -200,20 +187,26 @@ export default function VideoDetails() {
           sizes="100vw"
         />
       ) : (
-        
-                  <VideoPlayer
-          ref={playerRef}
-          aspectRatio="16:9"
-          playsInline
-          onEnded={() => {
-            setVideoEnded(true)
-            if (autoplayNext && !isLastVideo()) goToNextVideo()
-          }}
-          onLoadedMetadata={handleLoadedMetadata}
-          onTimeUpdate={handleTimeUpdate}
-          src={videoData?.videoUrl}
-        >
-          <BigPlayButton position="center" />
+        // video-react (abandoned since 2023, blocked a React 19 install) was
+        // a styled wrapper around exactly this element — a 16:9 <video> plus
+        // the ref-based seek/playbackRate/currentTime API it exposed, all of
+        // which the native element already provides. `relative` replaces
+        // what video-react's own wrapper div gave the end-of-video overlay
+        // below to position itself against.
+        <div className="relative">
+          <video
+            ref={playerRef}
+            className="aspect-video w-full rounded-md bg-black"
+            playsInline
+            controls
+            onEnded={() => {
+              setVideoEndedId(subSectionId as string)
+              if (autoplayNext && !isLastVideo()) goToNextVideo()
+            }}
+            onLoadedMetadata={handleLoadedMetadata}
+            onTimeUpdate={handleTimeUpdate}
+            src={videoData?.videoUrl}
+          />
           {videoEnded && (
             <div
               style={{
@@ -233,9 +226,10 @@ export default function VideoDetails() {
               <IconBtn
                 disabled={loading}
                 onClick={() => {
-                  if (playerRef?.current) {
-                    playerRef?.current?.seek(0)
-                    setVideoEnded(false)
+                  if (playerRef.current) {
+                    playerRef.current.currentTime = 0
+                    playerRef.current.play()
+                    setVideoEndedId(null)
                   }
                 }}
                 text="Rewatch"
@@ -263,7 +257,7 @@ export default function VideoDetails() {
               </div>
             </div>
           )}
-        </VideoPlayer>
+        </div>
       )}
 
       <h1 className="mt-4 text-3xl font-semibold">{videoData?.title}</h1>

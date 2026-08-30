@@ -1,5 +1,7 @@
+import { z } from "zod"
 import type { Types } from "mongoose"
-import { fail } from "../lib/respond"
+import { fail, parseOrThrow } from "../lib/respond"
+import { text } from "../lib/schemas"
 import { isDuplicateKeyError } from "../lib/AppError"
 import type { Request, Response } from "express"
 import type { AuthedRequest } from "../lib/http"
@@ -83,6 +85,7 @@ export const getMyCertificates = async (req: AuthedRequest, res: Response) => {
     const certificates = await Certificate.find({ user: req.user.id })
       .populate("course", "courseName thumbnail")
       .sort({ issuedAt: -1 })
+      .limit(200)
       .lean()
     return res.status(200).json({ success: true, data: certificates })
   } catch (error) {
@@ -94,7 +97,10 @@ export const getMyCertificates = async (req: AuthedRequest, res: Response) => {
 // (an employer) can verify it without needing an account.
 export const verifyCertificate = async (req: Request, res: Response) => {
   try {
-    const { certificateNumber } = req.params
+    const { certificateNumber } = parseOrThrow(
+      z.object({ certificateNumber: text({ max: 64, label: "Certificate number" }) }),
+      req.params
+    )
     const certificate = await Certificate.findOne({ certificateNumber })
       .populate("user", "firstName lastName")
       .populate("course", "courseName")

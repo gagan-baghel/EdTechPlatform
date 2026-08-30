@@ -7,7 +7,7 @@ import IconBtn from "../../common/IconBtn"
 
 import type { RootState } from "../../../store"
 
-export default function MyProfile(): JSX.Element {
+export default function MyProfile() {
   const { user } = useSelector((state: RootState) => state.profile)
   const navigate = useNavigate()
 
