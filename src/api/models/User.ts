@@ -120,7 +120,18 @@ const userSchema = new Schema<UserSchemaShape>({
     // so minting a code for every account would be pure waste.
     referralCode: {
         type: String,
-        default: null,
+        // NO `default: null`. A sparse unique index only skips documents where
+        // the field is ABSENT — a field that is present and null still
+        // participates, so with a default of null exactly one user in the
+        // entire database could exist without a referral code and the second
+        // signup died on a duplicate-key error. The field now genuinely does
+        // not exist until Affiliate.getMyReferralCode mints one, which is what
+        // makes `sparse` do the job it was chosen for.
+        //
+        // This never fired in production only because autoIndex is off and the
+        // index was never built — a latent landmine that any syncIndexes()
+        // would have set off. scripts/ensure-indexes.ts now builds it, after
+        // clearing the stored nulls.
         unique: true,
         sparse: true,
     },
