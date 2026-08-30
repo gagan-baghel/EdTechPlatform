@@ -183,6 +183,27 @@ async function main(): Promise<void> {
   await dedupeRatingAndReview()
 
   await createIndexSafely(User, { email: 1 }, { unique: true }, "users.email")
+
+  /**
+   * `referralCode` is unique+sparse, and sparse only skips documents where the
+   * field is ABSENT. The model used to default it to null, so every user
+   * carried a present-and-null value and the index could not be built at all
+   * (and had it been built, the second signup would have failed). Clear those
+   * nulls first, then enforce it.
+   */
+  const clearedNulls = await User.updateMany(
+    { referralCode: null },
+    { $unset: { referralCode: 1 } }
+  )
+  if (clearedNulls.modifiedCount > 0) {
+    log(`users: cleared ${clearedNulls.modifiedCount} null referralCode value(s)`)
+  }
+  await createIndexSafely(
+    User,
+    { referralCode: 1 },
+    { unique: true, sparse: true },
+    "users.referralCode"
+  )
   await createIndexSafely(
     Payment,
     { orderId: 1, consumer: 1 },

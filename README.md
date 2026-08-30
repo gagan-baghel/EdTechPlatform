@@ -98,12 +98,50 @@ else degrades explicitly: mail, media, payments and AI endpoints each report
 ## Verify
 
 ```bash
-npm run verify   # typecheck + lint + tests
+npm run verify   # typecheck + lint + unit tests + integration tests
 npm run build    # production build; typecheck and lint gate it
 ```
 
 `next.config.js` deliberately does NOT set `typescript.ignoreBuildErrors` or
 `eslint.ignoreDuringBuilds` — a green build is meant to mean something.
+
+### Two test suites, on purpose
+
+```bash
+npm run test              # unit — fast, data layer mocked
+npm run test:integration  # integration — real controllers, real database
+```
+
+**Unit tests** (`*.test.ts`) mock the data layer to test one decision in
+isolation: HMAC verification, field encryption, the validation primitives that
+reject a Mongo operator where a string belongs.
+
+**Integration tests** (`*.itest.ts`) run the actual Express app against a real
+MongoDB started in-process, through real HTTP. Routing, auth middleware, Zod
+validation, controller, Mongoose write, response — none of it is stubbed.
+Only three modules are swapped, in `vitest.integration.mts`: the Razorpay,
+Cloudinary and nodemailer SDKs, because those are the only parts that cannot
+run without a third-party account. Nothing in `src/api` is faked.
+
+**No API keys or configuration are needed.** The suite provides its own
+environment and its own database, so `npm run test:integration` works on a
+clean checkout. The first run downloads a MongoDB binary (~100MB, cached
+afterwards); later runs are offline.
+
+This split exists because the two want opposite things. A mocked test proves a
+function branches correctly; it cannot tell you whether a purchase actually
+enrols anybody. The integration suite covers the paths where that distinction
+matters: checkout and settlement, webhook delivery and replay, refund
+idempotency, signup through a real OTP, password reset, session revocation,
+cross-tenant authorization, quiz grading and certificate issuance.
+
+It has already earned its keep. On its first run it caught `User.referralCode`
+being declared `unique + sparse` *with* `default: null` — sparse only skips
+documents where the field is absent, so a present-and-null value still
+participates and only one user in the entire database could exist without a
+referral code. It never fired in production only because `autoIndex` is off and
+the index was never built; any `syncIndexes()` would have broken every signup
+after the first.
 
 ## Deploying
 
