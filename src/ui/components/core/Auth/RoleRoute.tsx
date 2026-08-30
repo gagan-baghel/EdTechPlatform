@@ -10,8 +10,19 @@ interface RoleRouteProps {
 }
 
 export default function RoleRoute({ children, allowedRoles = [] }: RoleRouteProps) {
-  const { token } = useSelector((state: RootState) => state.auth)
+  const { token, hydrated } = useSelector((state: RootState) => state.auth)
   const { user } = useSelector((state: RootState) => state.profile)
+
+  // Storage has not been read yet, so `token` is null for reasons that have
+  // nothing to do with being signed out. Deciding here would redirect a
+  // signed-in user away from the page they asked for.
+  if (!hydrated) {
+    return (
+      <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
+        <Spinner />
+      </div>
+    )
+  }
 
   if (token === null) {
     return <Navigate to="/login" />

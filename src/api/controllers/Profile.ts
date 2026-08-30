@@ -432,7 +432,12 @@ export const instructorDashboard = async(req: AuthedRequest, res: Response) => {
 			return courseDataWithStats
 		})
 
-		res.status(200).json({courses:courseData});
+		// `success: true` is not decoration — every other endpoint sends it and
+		// the client gates on it (`response.data.success ? ... : []`). Without
+		// it this endpoint's payload was discarded on arrival, so the
+		// instructor dashboard showed 0 students and zero income to everyone,
+		// always, while the API was returning the correct numbers.
+		res.status(200).json({ success: true, courses: courseData });
 
 	}
 	catch (error) {

@@ -4,7 +4,6 @@ import React, {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useSyncExternalStore,
 } from "react"
 
@@ -46,6 +45,11 @@ const ThemeContext = createContext<ThemeContextType>({
 function subscribe(onChange: () => void): () => void {
   window.addEventListener(CHANGE_EVENT, onChange)
 
+  // The snapshot depends on the OS preference while no explicit choice is
+  // stored, so a change there has to notify too.
+  const media = window.matchMedia("(prefers-color-scheme: light)")
+  media.addEventListener("change", onChange)
+
   // Covers the OS flipping, and any write to the attribute from outside React.
   const observer = new MutationObserver(onChange)
   observer.observe(document.documentElement, {
@@ -55,12 +59,22 @@ function subscribe(onChange: () => void): () => void {
 
   return () => {
     window.removeEventListener(CHANGE_EVENT, onChange)
+    media.removeEventListener("change", onChange)
     observer.disconnect()
   }
 }
 
 function getSnapshot(): Theme {
-  return document.documentElement.getAttribute("data-theme") === "light"
+  const explicit = document.documentElement.getAttribute("data-theme")
+  if (explicit === "light" || explicit === "dark") return explicit
+
+  /*
+   * No attribute means no explicit choice, in which case the CSS is following
+   * `prefers-color-scheme` (see globals.css). This has to mirror that exactly:
+   * otherwise a light-OS visitor gets a light page while React still believes
+   * it is dark, and the navbar shows the wrong toggle icon.
+   */
+  return window.matchMedia("(prefers-color-scheme: light)").matches
     ? "light"
     : "dark"
 }
@@ -100,23 +114,14 @@ export default function ThemeProvider({
     () => true
   )
 
-  // Track the OS setting for as long as the user has not overridden it.
-  // Without this, someone whose system flips to dark at sunset keeps the light
-  // palette until they reload. Writing the attribute notifies the store above.
-  useEffect(() => {
-    if (!followsSystem) return
-
-    const query = window.matchMedia("(prefers-color-scheme: light)")
-    const apply = () => {
-      document.documentElement.setAttribute(
-        "data-theme",
-        query.matches ? "light" : "dark"
-      )
-    }
-
-    query.addEventListener("change", apply)
-    return () => query.removeEventListener("change", apply)
-  }, [followsSystem])
+  /*
+   * Nothing writes `data-theme` until the user actually picks a theme.
+   *
+   * While they have not, the palette comes from `prefers-color-scheme` in CSS
+   * and `getSnapshot` reads the same media query — so following the OS costs
+   * no JavaScript at all and cannot flash. Stamping an attribute on mount to
+   * "track" the OS would have re-introduced exactly the flash this removed.
+   */
 
   /**
    * Writes go straight to the DOM and localStorage, then notify — never a

@@ -38,11 +38,30 @@ const clearCartState = (): void => {
   localStorage.removeItem("totalItems")
 }
 
+/**
+ * Initial state must match what the SERVER renders, which is an empty store.
+ *
+ * Reading localStorage here ran during the client's first (hydration) render,
+ * so the server produced a signed-out tree and the client produced a signed-in
+ * one. React cannot reconcile that: it discards the server HTML and
+ * re-renders everything on the client, logging a hydration error on every page
+ * for every signed-in user — the SSR output was worse than useless.
+ *
+ * The stored values are applied instead by `hydrateCart`, dispatched
+ * once after mount from AppProviders.
+ */
 const initialState: CartState = {
+  cart: [],
+  total: 0,
+  totalItems: 0,
+}
+
+/** The persisted cart, read once after mount. */
+export const readStoredCart = (): CartState => ({
   cart: readStorage<CourseDetail[]>("cart", []),
   total: readStorage<number>("total", 0),
   totalItems: readStorage<number>("totalItems", 0),
-}
+})
 
 const cartSlice = createSlice({
   name: "cart",
@@ -82,6 +101,12 @@ const cartSlice = createSlice({
         toast.success("Course removed from cart")
       }
     },
+    /** Applies the persisted cart once, after mount. */
+    hydrateCart: (state, action: PayloadAction<CartState>) => {
+      state.cart = action.payload.cart
+      state.total = action.payload.total
+      state.totalItems = action.payload.totalItems
+    },
     resetCart: (state) => {
       state.cart = []
       state.total = 0
@@ -91,6 +116,6 @@ const cartSlice = createSlice({
   },
 })
 
-export const { addToCart, removeFromCart, resetCart } = cartSlice.actions
+export const { addToCart, removeFromCart, resetCart, hydrateCart } = cartSlice.actions
 
 export default cartSlice.reducer

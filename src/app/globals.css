@@ -69,6 +69,52 @@
   --accent-nav: 255 214 10;
 }
 
+/*
+ * Light theme.
+ *
+ * Applied in two situations, and the split matters:
+ *
+ *  1. The OS asks for light and the user has NOT overridden it. Pure CSS, so
+ *     it is correct in the very first painted frame with no JavaScript. This
+ *     is what replaced the theme boot script — React 19 will not execute a
+ *     <script> rendered in the component tree, and next/script's
+ *     `beforeInteractive` broke hydration in the App Router, so the script
+ *     shipped and never ran. A media query cannot desync from the server
+ *     render and keeps every page statically prerenderable.
+ *
+ *  2. The user explicitly chose light, whatever the OS says. ThemeProvider
+ *     stamps `data-theme` after mount; only this minority sees a brief flash,
+ *     and only when their choice disagrees with their system.
+ */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+  --richblack-5: 0 8 20;
+  --richblack-25: 22 29 41;
+  --richblack-50: 44 51 63;
+  --richblack-100: 66 72 84;
+  --richblack-200: 88 93 105;
+  --richblack-300: 110 114 127;
+  --richblack-400: 131 136 148;
+  --richblack-500: 153 157 170;
+  --richblack-600: 175 178 191;
+  --richblack-700: 197 199 212;
+  --richblack-800: 219 221 234;
+  --richblack-900: 241 242 255;
+
+  /* On a light ground a white hairline vanishes, so the same "subtle border"
+     intent has to be expressed as a dark line at low alpha. */
+  --hairline: 0 8 20;
+  --hairline-alpha: 0.12;
+  --glass: 0 8 20;
+  --glass-alpha: 0.04;
+  --shadow-color: 15 23 42;
+  --shadow-alpha: 0.12;
+
+  --accent-link: 3 105 161;
+  --accent-nav: 133 77 14;
+  }
+}
+
 :root[data-theme="light"] {
   --richblack-5: 0 8 20;
   --richblack-25: 22 29 41;
@@ -139,10 +185,16 @@ html {
      instantly; this makes them travel. Overridden for anyone who asks for
      reduced motion, further down. */
   scroll-behavior: smooth;
-  /* Tells the browser which of the two palettes below is in play, so native
-     UI — form controls, scrollbars, the flash of background before paint —
-     matches the theme instead of always rendering light. */
+  /* Tells the browser which palette is in play, so native UI — form controls,
+     scrollbars, the pre-paint background — matches the theme instead of
+     always rendering light. Mirrors the palette rules exactly. */
   color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+  }
 }
 
 :root[data-theme="light"] {
@@ -563,15 +615,48 @@ details > summary::-webkit-details-marker {
 
   /* Content is shown outright rather than animated quickly: someone who asks
      for no motion should get none, not a faster version of it. */
-  .js .reveal {
+  .reveal {
     opacity: 1;
     transform: none;
     transition: none;
   }
 }
 
+/* No scripting: nothing will ever reveal these, so never hide them. */
+@media (scripting: none) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* The dashboard's mobile tab strip. Fades both edges so it is visibly
+   scrollable, and hides the scrollbar itself (which on a 44px-tall strip
+   eats a third of the touch target). Desktop turns the mask off, since the
+   strip becomes a vertical sidebar there. */
+.dashboard-tabstrip {
+  scrollbar-width: none;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 1.5rem,
+    black calc(100% - 1.5rem),
+    transparent 100%
+  );
+}
+
+.dashboard-tabstrip::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .dashboard-tabstrip {
+    mask-image: none;
+  }
+}
+
 /* Settings > Accessibility > Reduce motion, same treatment. */
-.js.a11y-reduced-motion .reveal,
 .a11y-reduced-motion .reveal {
   opacity: 1;
   transform: none;
@@ -581,10 +666,16 @@ details > summary::-webkit-details-marker {
 /* Scroll reveal (components/common/Reveal.tsx). The component only toggles
    `is-visible`; everything about how it looks and whether it moves at all
    lives here, so the accessibility rules below can switch it off wholesale. */
-/* Scoped to `html.js` (set by the boot script in app/layout.tsx): without
-   scripting there is nothing to reveal the content again, so it must never be
-   hidden in the first place. */
-.js .reveal {
+/*
+ * The hidden-until-revealed state.
+ *
+ * This used to be scoped to `html.js`, set by a boot script that no longer
+ * exists (see layout.tsx). The `scripting: none` query below covers the
+ * no-JavaScript case instead — and note that this app is a client-rendered
+ * React SPA, so without scripting there is no usable page to protect either
+ * way. The 2.5s failsafe in Reveal.tsx is the belt to this braces.
+ */
+.reveal {
   opacity: 0;
   transition:
     opacity 700ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -598,20 +689,20 @@ details > summary::-webkit-details-marker {
    The browser promotes them for the duration of the transition on its own,
    which is all that was needed. */
 
-.js .reveal--up {
+.reveal--up {
   transform: translate3d(0, 28px, 0);
 }
-.js .reveal--down {
+.reveal--down {
   transform: translate3d(0, -28px, 0);
 }
-.js .reveal--left {
+.reveal--left {
   transform: translate3d(28px, 0, 0);
 }
-.js .reveal--right {
+.reveal--right {
   transform: translate3d(-28px, 0, 0);
 }
 
-.js .reveal.is-visible {
+.reveal.is-visible {
   opacity: 1;
   transform: none;
 }

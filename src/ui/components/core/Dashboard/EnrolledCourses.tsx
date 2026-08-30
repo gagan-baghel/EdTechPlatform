@@ -48,7 +48,9 @@ export default function EnrolledCourses() {
 
   return (
     <>
-      <div className="text-3xl text-richblack-50">Enrolled Courses</div>
+      <h1 className="text-2xl font-medium text-richblack-5 sm:text-3xl">
+        Enrolled Courses
+      </h1>
       {!enrolledCourses ? (
         <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
           <Spinner />
@@ -73,26 +75,30 @@ export default function EnrolledCourses() {
           </Link>
         </div>
       ) : (
-        <div className="my-8 text-richblack-5">
-          {/* Headings */}
-          <div className="flex rounded-t-lg bg-richblack-500 ">
+        <div className="mt-6 text-richblack-5">
+          {/* Column headings are meaningless once the rows stop being rows, so
+              they are hidden on phones where each entry becomes a card. */}
+          <div className="hidden rounded-t-lg bg-richblack-600 sm:flex">
             <p className="w-[45%] px-5 py-3">Course Name</p>
             <p className="w-1/4 px-2 py-3">Duration</p>
             <p className="flex-1 px-2 py-3">Progress</p>
           </div>
           {/* Course Names */}
           {enrolledCourses.map((course, i, arr) => (
+            // A card on a phone, a table row from sm. Forced into a row at
+            // 375px the title wrapped one word per line and the columns were
+            // unreadable.
             <div
-              className={`flex items-center border border-richblack-700 ${
-                i === arr.length - 1 ? "rounded-b-lg" : "rounded-none"
-              }`}
+              className={`flex flex-col border border-richblack-700 sm:flex-row sm:items-center ${
+                i === 0 ? "rounded-t-lg sm:rounded-t-none" : ""
+              } ${i === arr.length - 1 ? "rounded-b-lg" : ""}`}
               key={i}
             >
               <div
                 role="button"
                 tabIndex={0}
                 aria-label={`Continue ${course?.courseName ?? "course"}`}
-                className="flex w-[45%] cursor-pointer items-center gap-4 px-5 py-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-inset"
+                className="flex w-full cursor-pointer items-center gap-4 px-4 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow-50 sm:w-[45%] sm:px-5 sm:py-3"
                 onClick={() => {
                   // Resume where the learner left off — find the section
                   // that contains lastWatchedSubSection, if there is one —
@@ -144,10 +150,10 @@ export default function EnrolledCourses() {
                   alt="course_img"
                   width={56}
                   height={56}
-                  className="h-14 w-14 rounded-lg object-cover"
+                  className="h-14 w-14 shrink-0 rounded-lg object-cover"
                   sizes="56px"
                 />
-                <div className="flex max-w-xs flex-col gap-2">
+                <div className="flex min-w-0 flex-col gap-1">
                   <p className="font-semibold">{course.courseName}</p>
                   <p className="text-xs text-richblack-300">
                     {course.courseDescription.length > 50
@@ -156,9 +162,14 @@ export default function EnrolledCourses() {
                   </p>
                 </div>
               </div>
-              <div className="w-1/4 px-2 py-3">{course?.totalDuration}</div>
-              <div className="flex w-1/5 flex-col gap-2 px-2 py-3">
-                <p>Progress: {course.progressPercentage || 0}%</p>
+              <div className="px-4 pb-1 text-sm text-richblack-200 sm:w-1/4 sm:px-2 sm:py-3 sm:text-base sm:text-richblack-5">
+                <span className="sm:hidden">Duration: </span>
+                {course?.totalDuration}
+              </div>
+              <div className="flex flex-col gap-2 px-4 pb-4 sm:w-1/5 sm:px-2 sm:py-3">
+                <p className="text-sm sm:text-base">
+                  Progress: {course.progressPercentage || 0}%
+                </p>
                 <ProgressBar
                   completed={course.progressPercentage || 0}
                   height="8px"

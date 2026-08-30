@@ -71,7 +71,7 @@ function Template({ eyebrow, title, subtitle, image, formType }: TemplateProps) 
           <Spinner />
         </div>
       ) : (
-        <div className="relative mx-auto grid min-h-[calc(100vh-3.5rem)] w-full max-w-7xl grid-cols-1 gap-10 px-6 py-8 sm:px-8 sm:py-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:px-10 lg:py-14">
+        <div className="relative mx-auto grid min-h-[calc(100vh-3.5rem)] w-full max-w-7xl grid-cols-1 items-center gap-10 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:px-10 lg:py-20">
           <div className="order-2 flex flex-col justify-center lg:order-1">
             <div className="mb-6 inline-flex max-w-max items-center rounded-full border border-hairline bg-glass px-4 py-2 text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-richblack-100 backdrop-blur-xl">
               {eyebrow || content.badge}

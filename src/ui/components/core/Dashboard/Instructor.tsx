@@ -76,8 +76,8 @@ export default function Instructor() {
   )
 
   return (
-    <div>
-      <div className="space-y-2">
+    <div className="space-y-6">
+      <div className="space-y-1">
         <h1 className="text-2xl font-bold text-richblack-5">
           Hi {user?.firstName} 👋
         </h1>
@@ -88,45 +88,55 @@ export default function Instructor() {
       {loading ? (
         <Spinner />
       ) : courses.length > 0 ? (
-        <div>
-          <div className="my-4 flex h-[450px] space-x-4">
+        <div className="space-y-6">
+          {/* Stacks below lg. It was a fixed-height `flex` row with a
+              `min-w-[250px]` stats panel, so on a 375px phone the two panels
+              could not both fit — the chart was crushed to ~130px and the
+              statistics ran off the right edge of the screen. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
             {/* Render chart / graph */}
             {(totalAmount ?? 0) > 0 || (totalStudents ?? 0) > 0 ? (
               <InstructorChart courses={instructorData ?? []} />
             ) : (
-              <div className="flex-1 rounded-md bg-richblack-800 p-6">
-                <p className="text-lg font-bold text-richblack-5">Visualize</p>
-                <p className="mt-4 text-xl font-medium text-richblack-50">
-                  Not Enough Data To Visualize
-                </p>
+              <div className="grid min-h-[220px] place-items-center rounded-md bg-richblack-800 p-6 text-center lg:min-h-[420px]">
+                <div>
+                  <p className="text-lg font-bold text-richblack-5">Visualize</p>
+                  <p className="mt-2 text-base font-medium text-richblack-200">
+                    Not enough data to visualise yet — it appears once your
+                    first students enrol.
+                  </p>
+                </div>
               </div>
             )}
             {/* Total Statistics */}
-            <div className="flex min-w-[250px] flex-col rounded-md bg-richblack-800 p-6">
+            <div className="rounded-md bg-richblack-800 p-5 sm:p-6">
               <p className="text-lg font-bold text-richblack-5">Statistics</p>
-              <div className="mt-4 space-y-4">
+              {/* Three across on a phone, stacked once there is a column to
+                  stack in — a single column of three big numbers wasted most
+                  of a phone screen. */}
+              <div className="mt-4 grid grid-cols-3 gap-4 lg:grid-cols-1 lg:gap-5">
                 <div>
-                  <p className="text-lg text-richblack-200">Total Courses</p>
-                  <p className="text-3xl font-semibold text-richblack-50">
+                  <p className="text-sm text-richblack-200">Total Courses</p>
+                  <p className="text-2xl font-semibold text-richblack-50 lg:text-3xl">
                     {courses.length}
                   </p>
                 </div>
                 <div>
-                  <p className="text-lg text-richblack-200">Total Students</p>
-                  <p className="text-3xl font-semibold text-richblack-50">
-                    {totalStudents}
+                  <p className="text-sm text-richblack-200">Total Students</p>
+                  <p className="text-2xl font-semibold text-richblack-50 lg:text-3xl">
+                    {totalStudents ?? 0}
                   </p>
                 </div>
                 <div>
-                  <p className="text-lg text-richblack-200">Total Income</p>
-                  <p className="text-3xl font-semibold text-richblack-50">
+                  <p className="text-sm text-richblack-200">Total Income</p>
+                  <p className="truncate text-2xl font-semibold text-richblack-50 lg:text-3xl">
                     {formatCurrency(totalAmount)}
                   </p>
                 </div>
               </div>
             </div>
           </div>
-          <div className="rounded-md bg-richblack-800 p-6">
+          <div className="rounded-md bg-richblack-800 p-5 sm:p-6">
             {/* Render 3 courses */}
             <div className="flex items-center justify-between">
               <p className="text-lg font-bold text-richblack-5">Your Courses</p>
@@ -134,19 +144,21 @@ export default function Instructor() {
                 <p className="text-xs font-semibold text-yellow-50">View All</p>
               </Link>
             </div>
-            <div className="my-4 flex items-start space-x-6">
+            {/* One column on a phone, three on a desktop. Three fixed
+                one-third columns made each card ~110px wide at 375px. */}
+            <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {courses.slice(0, 3).map((course) => (
-                <div key={course._id} className="w-1/3">
+                <div key={course._id} className="min-w-0">
                   <Image
                     src={course.thumbnail}
                     alt={course.courseName}
                     width={720}
                     height={402}
-                    className="h-[201px] w-full rounded-md object-cover"
+                    className="aspect-video w-full rounded-md object-cover"
                     sizes="(max-width: 1024px) 100vw, 33vw"
                   />
                   <div className="mt-3 w-full">
-                    <p className="text-sm font-medium text-richblack-50">
+                    <p className="line-clamp-2 text-sm font-medium text-richblack-50">
                       {course.courseName}
                     </p>
                     <div className="mt-1 flex items-center space-x-2">
@@ -167,7 +179,7 @@ export default function Instructor() {
           </div>
         </div>
       ) : (
-        <div className="mt-20 rounded-md bg-richblack-800 p-6 py-20">
+        <div className="rounded-md bg-richblack-800 px-6 py-16">
           <p className="text-center text-2xl font-bold text-richblack-5">
             You have not created any courses yet
           </p>
