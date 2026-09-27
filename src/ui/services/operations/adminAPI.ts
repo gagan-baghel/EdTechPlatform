@@ -1,3 +1,4 @@
+import axios from "axios"
 import { toast } from "react-hot-toast"
 
 import type { ApiFailure } from "@/types/api"
@@ -183,26 +184,29 @@ export async function fetchRefundEligible<
   }
 }
 
-export async function fetchSystemHealth<TChecks = Record<string, unknown>>(
+export async function fetchSystemHealth<THealth extends object = { checks: Record<string, unknown> }>(
   token: string
 ) {
   try {
-    const response = await apiConnector<
-      { success: true; checks: TChecks } | ApiFailure
-    >("GET", ADMIN_HEALTH_API, null, authHeader(token))
-    return response.data.success ? response.data : null
-  } catch {
+    const response = await apiConnector<THealth>("GET", ADMIN_HEALTH_API, null, authHeader(token))
+    return response.data
+  } catch (error) {
+    // A 503 is still a health report — the database being down is the
+    // answer, not a failed request — so its body is shown, not a toast.
+    const body: unknown = axios.isAxiosError(error) ? error.response?.data : null
+    if (body && typeof body === "object" && "checks" in body) return body as THealth
     toast.error("Could not load system health")
     return null
   }
 }
 
 export async function fetchAnalyticsOverview<TData = Record<string, unknown>>(
-  token: string
+  token: string,
+  days = 30
 ) {
   try {
     const response = await apiConnector<DataBody<TData> | ApiFailure>(
-      "GET", ADMIN_ANALYTICS_API, null, authHeader(token))
+      "GET", ADMIN_ANALYTICS_API, null, authHeader(token), { days })
     return response.data?.success ? response.data.data : null
   } catch {
     toast.error("Could not load analytics")

@@ -12,6 +12,7 @@ import Card from "../../common/Card"
 import Spinner from "../../common/Spinner"
 
 import type { RootState } from "../../../store"
+import { PageHeader } from "../../common/DashKit"
 
 /** Payload of GET /affiliate/my-referrals. */
 interface AffiliateSummary {
@@ -59,7 +60,7 @@ export default function Affiliate() {
 
   return (
     <div>
-      <h1 className="mb-10 text-3xl font-medium text-richblack-5">Refer & earn</h1>
+      <PageHeader title="Refer and earn" meta="Your referral code and commissions" />
 
       <Card padding="p-6" className="mb-10">
         <p className="text-sm text-richblack-300">Your referral link</p>

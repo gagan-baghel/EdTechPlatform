@@ -58,7 +58,7 @@ export default function UsersTab() {
           placeholder="Search by name or email"
           className="form-style w-full max-w-sm"
         />
-        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-ink">
+        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-on-signal">
           Search
         </button>
       </form>
@@ -105,7 +105,7 @@ export default function UsersTab() {
                         btn2Handler: () => setConfirmationModal(null),
                       })
                     }
-                    className="text-sm font-semibold text-yellow-50 underline"
+                    className="text-sm font-semibold text-accent underline"
                   >
                     {user.active === false ? "Reactivate" : "Suspend"}
                   </button>

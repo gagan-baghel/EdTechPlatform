@@ -79,7 +79,7 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={handleOpen}
-        className="relative text-richblack-100 hover:text-yellow-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 rounded-md p-1"
+        className="relative text-richblack-100 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md p-1"
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
         aria-expanded={open}
       >
@@ -99,7 +99,7 @@ export default function NotificationBell() {
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="text-xs text-yellow-50 hover:underline"
+                className="text-xs text-accent hover:underline"
               >
                 Mark all read
               </button>

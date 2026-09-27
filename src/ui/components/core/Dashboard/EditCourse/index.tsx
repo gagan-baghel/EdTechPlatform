@@ -11,6 +11,7 @@ import RenderSteps from "../AddCourse/RenderSteps"
 import Spinner from "../../../common/Spinner"
 import type { RootState } from "../../../../store"
 import type { AppDispatch } from "../../../../store"
+import { PageHeader } from "../../../common/DashKit"
 
 export default function EditCourse() {
   const dispatch = useDispatch<AppDispatch>()
@@ -44,9 +45,7 @@ export default function EditCourse() {
 
   return (
     <div>
-      <h1 className="mb-14 text-3xl font-medium text-richblack-5">
-        Edit Course
-      </h1>
+      <PageHeader title="Edit course" />
       <div className="mx-auto max-w-[600px]">
         {course ? (
           <RenderSteps />

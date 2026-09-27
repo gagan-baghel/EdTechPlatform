@@ -32,6 +32,7 @@ import Spinner from "../../common/Spinner"
 
 import type { RootState } from "../../../store"
 import React from "react"
+import { PageHeader } from "../../common/DashKit"
 
 export default function Organizations() {
   const { token } = useSelector((state: RootState) => state.auth)
@@ -107,7 +108,7 @@ export default function Organizations() {
 
   return (
     <div>
-      <h1 className="mb-10 text-3xl font-medium text-richblack-5">Organizations</h1>
+      <PageHeader title="Organizations" meta="Team seats and invite codes" />
 
       {orgs && orgs.length > 0 && (
         <div className="mb-10 flex flex-col gap-4">
@@ -118,7 +119,7 @@ export default function Organizations() {
                 <button
                   type="button"
                   onClick={() => handleCopyInvite(org.inviteCode)}
-                  className="rounded-md border border-richblack-600 px-3 py-1 text-sm text-richblack-100 hover:border-yellow-50"
+                  className="rounded-md border border-richblack-600 px-3 py-1 text-sm text-richblack-100 hover:border-accent"
                 >
                   Invite code: {org.inviteCode}
                 </button>

@@ -164,7 +164,7 @@ export default function PayoutsTab() {
             className="form-style mt-1"
           />
         </label>
-        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-ink">
+        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-on-signal">
           Generate
         </button>
       </form>

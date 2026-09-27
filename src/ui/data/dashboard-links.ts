@@ -42,6 +42,13 @@ export const sidebarLinks = [
     icon: "VscGraph",
   },
   {
+    id: 12,
+    name: "Scorecard",
+    path: "/dashboard/scorecard",
+    type: ACCOUNT_TYPE.STUDENT,
+    icon: "VscChecklist",
+  },
+  {
     id: 5,
     name: "Enrolled Courses",
     path: "/dashboard/enrolled-courses",

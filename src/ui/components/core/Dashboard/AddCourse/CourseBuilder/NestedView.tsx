@@ -202,7 +202,7 @@ export default function NestedView({ handleChangeEditSectionName }: NestedViewPr
                     e.stopPropagation()
                     handleSubSectionDrop(section._id, data._id)
                   }}
-                  className="flex cursor-pointer items-center justify-between gap-x-3 border-b-2 border-b-richblack-600 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-inset"
+                  className="flex cursor-pointer items-center justify-between gap-x-3 border-b-2 border-b-richblack-600 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
                 >
                   <div className="flex items-center gap-x-3 py-2 ">
                     <span
@@ -255,7 +255,7 @@ export default function NestedView({ handleChangeEditSectionName }: NestedViewPr
               {/* Add New Lecture to Section */}
               <button
                 onClick={() => setAddSubsection(section._id)}
-                className="mt-3 flex items-center gap-x-1 text-yellow-50"
+                className="mt-3 flex items-center gap-x-1 text-accent"
               >
                 <FaPlus className="text-lg" />
                 <p>Add Lecture</p>

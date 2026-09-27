@@ -9,7 +9,6 @@ import { useNavigate } from "@/ui/lib/router"
 import SidebarLink from "./SidebarLink"
 import { logout } from "../../../services/operations/authAPI"
 import ConfirmationModal from "../../common/ConfirmationModal"
-import Spinner from "../../common/Spinner"
 import { sidebarLinks } from "../../../data/dashboard-links"
 import type { RootState, AppDispatch } from "../../../store"
 
@@ -46,9 +45,7 @@ export default function Sidebar() {
 
   if (profileLoading || authLoading) {
     return (
-      <div className="grid w-full items-center border-b border-richblack-700 bg-richblack-800 py-6 md:h-[calc(100vh-3.5rem)] md:w-auto md:min-w-[220px] md:border-b-0 md:border-r">
-        <Spinner />
-      </div>
+      <div className="w-full border-b border-richblack-700 bg-richblack-900 py-6 md:h-[calc(100vh-3.5rem)] md:w-auto md:min-w-[232px] md:border-b-0 md:border-r" aria-busy="true" />
     )
   }
 
@@ -68,15 +65,16 @@ export default function Sidebar() {
         // so six of the eight destinations were effectively hidden.
         // `sticky top-14` keeps it reachable instead of scrolling away with
         // the content on a long page.
-        className="dashboard-tabstrip sticky top-14 z-30 flex w-full shrink-0 flex-row overflow-x-auto border-b border-richblack-700 bg-richblack-800 md:static md:h-[calc(100vh-3.5rem)] md:w-auto md:min-w-[220px] md:flex-col md:overflow-x-visible md:overflow-y-auto md:border-b-0 md:border-r md:py-10"
+        className="dashboard-tabstrip print:hidden sticky top-14 z-30 flex w-full shrink-0 flex-row overflow-x-auto border-b border-richblack-700 bg-richblack-900 md:static md:h-[calc(100vh-3.5rem)] md:w-auto md:min-w-[232px] md:flex-col md:overflow-x-visible md:overflow-y-auto md:border-b-0 md:border-r md:py-6"
       >
+        <p className="stamp hidden px-6 pb-3 text-richblack-400 md:block">{user?.accountType ?? "Account"}</p>
         <div className="flex flex-row md:flex-col">
           {visibleLinks.map((link) => (
             <SidebarLink key={link.id} link={link} iconName={link.icon} />
           ))}
         </div>
 
-        <div className="mx-auto my-6 hidden h-[1px] w-10/12 bg-richblack-700 md:block" />
+        <div className="my-4 hidden h-px w-full bg-richblack-700 md:block" />
 
         <div className="flex flex-row md:flex-col">
           <SidebarLink
@@ -95,10 +93,10 @@ export default function Sidebar() {
                 btn2Handler: () => setConfirmationModal(null),
               })
             }
-            className="shrink-0 whitespace-nowrap px-5 py-3 text-sm font-medium text-richblack-300 transition hover:text-richblack-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow-50 md:px-8 md:py-2"
+            className="shrink-0 whitespace-nowrap px-5 py-3 text-[13px] text-richblack-300 transition-colors hover:bg-richblack-800 hover:text-richblack-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent md:px-6 md:py-2.5"
           >
-            <div className="flex items-center gap-x-2">
-              <VscSignOut className="text-lg" />
+            <div className="flex items-center gap-x-3">
+              <VscSignOut className="text-base" />
               <span>Logout</span>
             </div>
           </button>

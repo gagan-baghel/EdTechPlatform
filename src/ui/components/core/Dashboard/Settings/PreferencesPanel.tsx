@@ -44,6 +44,8 @@ export default function PreferencesPanel() {
   const [weeklyGoalMinutes, setWeeklyGoalMinutes] = useState(details.weeklyGoalMinutes ?? 0)
   const [defaultPlaybackSpeed, setDefaultPlaybackSpeed] = useState(details.defaultPlaybackSpeed ?? 1)
   const [autoplayNext, setAutoplayNext] = useState(details.autoplayNext ?? true)
+  const [showOnLeaderboard, setShowOnLeaderboard] = useState(details.showOnLeaderboard ?? true)
+  const isStudent = user?.accountType === "Student"
   const [timezone, setTimezoneState] = useState(
     details.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
   )
@@ -96,7 +98,7 @@ export default function PreferencesPanel() {
 
   return (
     <>
-      <Card padding="p-6" className="my-6">
+      <Card padding="p-6" className="my-6 scroll-mt-20" id="learning">
         <h2 className="mb-4 text-lg font-semibold text-richblack-5">Learning & playback</h2>
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm text-richblack-100">
@@ -104,11 +106,14 @@ export default function PreferencesPanel() {
             <input
               type="number"
               min={0}
+              max={10080}
+              step={15}
               value={weeklyGoalMinutes}
               onChange={(e) => setWeeklyGoalMinutes(Number(e.target.value))}
               onBlur={() => savePreferences({ weeklyGoalMinutes })}
               className="form-style w-32"
             />
+            <span className="text-xs text-richblack-300">Tracked on My Learning over the last 7 days. 0 turns it off.</span>
           </label>
           <label className="flex flex-col gap-1 text-sm text-richblack-100">
             Default playback speed
@@ -142,7 +147,7 @@ export default function PreferencesPanel() {
         </div>
       </Card>
 
-      <Card padding="p-6" className="my-6">
+      <Card padding="p-6" className="my-6 scroll-mt-20" id="appearance">
         <h2 className="mb-4 text-lg font-semibold text-richblack-5">Appearance & language</h2>
         <div className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm text-richblack-100">
@@ -187,7 +192,7 @@ export default function PreferencesPanel() {
         </div>
       </Card>
 
-      <Card padding="p-6" className="my-6">
+      <Card padding="p-6" className="my-6 scroll-mt-20" id="accessibility">
         <h2 className="mb-4 text-lg font-semibold text-richblack-5">Accessibility</h2>
         <div className="flex flex-col gap-4">
           <label className="flex items-center justify-between text-sm text-richblack-100">
@@ -214,8 +219,27 @@ export default function PreferencesPanel() {
         </div>
       </Card>
 
-      <Card padding="p-6" className="my-6">
-        <h2 className="mb-2 text-lg font-semibold text-richblack-5">Your data</h2>
+      <Card padding="p-6" className="my-6 scroll-mt-20" id="privacy">
+        <h2 className="mb-4 text-lg font-semibold text-richblack-5">Privacy & data</h2>
+        {isStudent && (
+          <label className="mb-5 flex items-start justify-between gap-4 text-sm text-richblack-100">
+            <span>
+              Show my name on course leaderboards
+              <span className="block text-xs text-richblack-300">
+                Classmates see your first name and last initial. Off hides it; your own position still shows on your scorecard.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={showOnLeaderboard}
+              onChange={(e) => {
+                setShowOnLeaderboard(e.target.checked)
+                savePreferences({ showOnLeaderboard: e.target.checked })
+              }}
+              className="mt-1 h-4 w-4 shrink-0 rounded border-richblack-500 bg-richblack-700"
+            />
+          </label>
+        )}
         <p className="mb-4 text-sm text-richblack-300">
           Download a copy of your profile, payments, certificates, notes and progress.
         </p>

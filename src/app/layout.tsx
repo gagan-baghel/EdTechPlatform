@@ -1,6 +1,7 @@
 import "./globals.css"
 import AppShell from "../ui/layout/AppShell"
 import AppProviders from "../ui/providers/AppProviders"
+import { geist, geistMono } from "../ui/fonts"
 import { resolveSiteUrl } from "@/lib/siteUrl"
 
 const SITE_URL = resolveSiteUrl()
@@ -21,18 +22,17 @@ export const metadata = {
     siteName: "IntelleCraft",
     type: "website",
     url: SITE_URL,
-    images: [{ url: "/logo.png", width: 512, height: 512, alt: "IntelleCraft" }],
+    // The image comes from app/opengraph-image.tsx.
   },
   twitter: {
     card: "summary_large_image",
     title: "IntelleCraft — Learn without limits",
     description: DESCRIPTION,
-    images: ["/logo.png"],
   },
 }
 
 export const viewport = {
-  themeColor: "#000814",
+  themeColor: "#0f0f0e",
   width: "device-width",
   initialScale: 1,
 }
@@ -52,11 +52,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
      * needs no JavaScript, cannot desync from the server render, and keeps
      * every page statically prerenderable.
      */
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${geist.variable} ${geistMono.variable}`}>
       <body>
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:rounded-md focus:bg-yellow-50 focus:px-4 focus:py-2 focus:font-semibold focus:text-ink"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[200] focus:bg-yellow-50 focus:px-4 focus:py-2 focus:font-semibold focus:text-on-signal"
         >
           Skip to content
         </a>

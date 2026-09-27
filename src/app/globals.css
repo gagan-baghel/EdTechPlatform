@@ -26,18 +26,18 @@
  * files for the ~55 sites this applied to.
  */
 :root {
-  --richblack-5: 241 242 255;
-  --richblack-25: 219 221 234;
-  --richblack-50: 197 199 212;
-  --richblack-100: 175 178 191;
-  --richblack-200: 153 157 170;
-  --richblack-300: 131 136 148;
-  --richblack-400: 110 114 127;
-  --richblack-500: 88 93 105;
-  --richblack-600: 66 72 84;
-  --richblack-700: 44 51 63;
-  --richblack-800: 22 29 41;
-  --richblack-900: 0 8 20;
+  --richblack-5: 242 242 238;
+  --richblack-25: 230 230 225;
+  --richblack-50: 216 216 211;
+  --richblack-100: 196 196 190;
+  --richblack-200: 173 173 167;
+  --richblack-300: 149 149 143;
+  --richblack-400: 122 122 117;
+  --richblack-500: 90 90 86;
+  --richblack-600: 61 61 58;
+  --richblack-700: 43 43 41;
+  --richblack-800: 23 23 22;
+  --richblack-900: 15 15 14;
 
   --ink: 0 8 20;
   --paper: 241 242 255;
@@ -62,11 +62,15 @@
   /* Accent used for inline links on a panel. The pale brand blue is legible
      on a dark surface and washes out completely on a light one, so the light
      theme substitutes a darker tone of the same hue. */
-  --accent-link: 195 235 250;
+  --accent-link: 129 153 255;
   /* Active nav item. The brand yellow is legible on a dark bar and almost
      invisible on a light one, so light mode uses a dark amber of the same
      hue rather than a different colour. */
-  --accent-nav: 255 214 10;
+  --accent-nav: 129 153 255;
+  /* The primary fill colour (bg-yellow-50) and the text that sits on it —
+     see tailwind.config.ts. */
+  --signal: 61 90 254;
+  --on-signal: 255 255 255;
 }
 
 /*
@@ -88,18 +92,18 @@
  */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-  --richblack-5: 0 8 20;
-  --richblack-25: 22 29 41;
-  --richblack-50: 44 51 63;
-  --richblack-100: 66 72 84;
-  --richblack-200: 88 93 105;
-  --richblack-300: 110 114 127;
-  --richblack-400: 131 136 148;
-  --richblack-500: 153 157 170;
-  --richblack-600: 175 178 191;
-  --richblack-700: 197 199 212;
-  --richblack-800: 219 221 234;
-  --richblack-900: 241 242 255;
+  --richblack-5: 17 17 16;
+  --richblack-25: 29 29 27;
+  --richblack-50: 44 44 41;
+  --richblack-100: 63 63 59;
+  --richblack-200: 82 82 77;
+  --richblack-300: 92 92 87;
+  --richblack-400: 110 110 105;
+  --richblack-500: 154 154 149;
+  --richblack-600: 189 189 184;
+  --richblack-700: 214 214 210;
+  --richblack-800: 235 235 232;
+  --richblack-900: 244 244 242;
 
   /* On a light ground a white hairline vanishes, so the same "subtle border"
      intent has to be expressed as a dark line at low alpha. */
@@ -110,24 +114,26 @@
   --shadow-color: 15 23 42;
   --shadow-alpha: 0.12;
 
-  --accent-link: 3 105 161;
-  --accent-nav: 133 77 14;
-  }
+  --accent-link: 31 63 224;
+  --accent-nav: 31 63 224;
+  --signal: 31 63 224;
+  --on-signal: 255 255 255;
+}
 }
 
 :root[data-theme="light"] {
-  --richblack-5: 0 8 20;
-  --richblack-25: 22 29 41;
-  --richblack-50: 44 51 63;
-  --richblack-100: 66 72 84;
-  --richblack-200: 88 93 105;
-  --richblack-300: 110 114 127;
-  --richblack-400: 131 136 148;
-  --richblack-500: 153 157 170;
-  --richblack-600: 175 178 191;
-  --richblack-700: 197 199 212;
-  --richblack-800: 219 221 234;
-  --richblack-900: 241 242 255;
+  --richblack-5: 17 17 16;
+  --richblack-25: 29 29 27;
+  --richblack-50: 44 44 41;
+  --richblack-100: 63 63 59;
+  --richblack-200: 82 82 77;
+  --richblack-300: 92 92 87;
+  --richblack-400: 110 110 105;
+  --richblack-500: 154 154 149;
+  --richblack-600: 189 189 184;
+  --richblack-700: 214 214 210;
+  --richblack-800: 235 235 232;
+  --richblack-900: 244 244 242;
 
   /* On a light ground a white hairline vanishes, so the same "subtle border"
      intent has to be expressed as a dark line at low alpha. */
@@ -138,8 +144,10 @@
   --shadow-color: 15 23 42;
   --shadow-alpha: 0.12;
 
-  --accent-link: 3 105 161;
-  --accent-nav: 133 77 14;
+  --accent-link: 31 63 224;
+  --accent-nav: 31 63 224;
+  --signal: 31 63 224;
+  --on-signal: 255 255 255;
 }
 
 /*
@@ -152,8 +160,8 @@
  * cascade — no JS, no per-element opt-out needed. See Home.jsx's root div.
  */
 [data-theme="dark"] {
-  --accent-nav: 255 214 10;
-  --accent-link: 195 235 250;
+  --accent-nav: 129 153 255;
+  --accent-link: 129 153 255;
   --hairline: 255 255 255;
   --hairline-alpha: 0.1;
   --glass: 255 255 255;
@@ -161,18 +169,20 @@
   --shadow-color: 0 8 20;
   --shadow-alpha: 0.45;
 
-  --richblack-5: 241 242 255;
-  --richblack-25: 219 221 234;
-  --richblack-50: 197 199 212;
-  --richblack-100: 175 178 191;
-  --richblack-200: 153 157 170;
-  --richblack-300: 131 136 148;
-  --richblack-400: 110 114 127;
-  --richblack-500: 88 93 105;
-  --richblack-600: 66 72 84;
-  --richblack-700: 44 51 63;
-  --richblack-800: 22 29 41;
-  --richblack-900: 0 8 20;
+  --richblack-5: 242 242 238;
+  --richblack-25: 230 230 225;
+  --richblack-50: 216 216 211;
+  --richblack-100: 196 196 190;
+  --richblack-200: 173 173 167;
+  --richblack-300: 149 149 143;
+  --richblack-400: 122 122 117;
+  --richblack-500: 90 90 86;
+  --richblack-600: 61 61 58;
+  --richblack-700: 43 43 41;
+  --richblack-800: 23 23 22;
+  --richblack-900: 15 15 14;
+  --signal: 61 90 254;
+  --on-signal: 255 255 255;
 }
 
 html,
@@ -278,56 +288,6 @@ details > summary::-webkit-details-marker {
     spinner-oaa3wk 1.6s infinite linear;
 }
 
-.codeblock1 {
-  width: 372.95px;
-  height: 257.05px;
-  border-radius: 100%;
-  left: calc(50% - 372.95px / 2 - 76.53px);
-  top: calc(50% - 257.05px / 2 - 47.47px);
-  background: linear-gradient(
-    123.77deg,
-    #8a2be2 -6.46%,
-    #ffa500 59.04%,
-    #f8f8ff 124.53%
-  );
-  opacity: 0.2;
-  filter: blur(34px);
-  transform: matrix(1, 0, -0.03, 1, 0, 0);
-}
-.codeblock2 {
-  position: absolute;
-  width: 372.95px;
-  height: 257.05px;
-  left: calc(50% - 372.95px / 2 - 76.53px);
-  top: calc(50% - 257.05px / 2 - 47.47px);
-  border-radius: 100%;
-  background: linear-gradient(
-    118.19deg,
-    #1fa2ff -3.62%,
-    #12d8fa 50.44%,
-    #a6ffcb 104.51%
-  );
-  opacity: 0.2;
-  filter: blur(34px);
-  transform: matrix(1, 0, -0.03, 1, 0, 0);
-}
-.code-border {
-  border: 2px solid;
-  border-image-slice: 1;
-  border-width: 2px;
-  border-image-source: linear-gradient(to right bottom, #ffffff38, #ffffff00);
-  background: linear-gradient(
-    111.93deg,
-    rgba(14, 26, 45, 0.24) -1.4%,
-    rgba(17, 30, 50, 0.38) 104.96%
-  );
-  /* backdrop-filter: blur(26px); */
-}
-.homepage_bg {
-  background: url("../ui/assets/Images/bghome.svg");
-  /* background-size: contain; */
-}
-
 @keyframes spinner-bulqg1 {
   0% {
     clip-path: polygon(50% 50%, 0 0, 50% 0%, 50% 0%, 50% 0%, 50% 0%, 50% 0%);
@@ -427,7 +387,7 @@ details > summary::-webkit-details-marker {
 /* For conditional coloring of icons in dashboard sidebar */
 .active-icon {
   fill: #ffd60a !important;
-  color: #ffd60a !important;
+  color: rgb(var(--accent-nav)) !important;
 }
 
 .inactive-icon {
@@ -437,7 +397,7 @@ details > summary::-webkit-details-marker {
 
 /* Buttons */
 .yellowButton {
-  @apply cursor-pointer rounded-md bg-yellow-50 px-[20px] py-[8px] font-semibold text-ink;
+  @apply cursor-pointer bg-yellow-50 px-[20px] py-[8px] font-semibold text-on-signal;
 }
 
 /* Swiper CSS Starts */
@@ -458,7 +418,7 @@ details > summary::-webkit-details-marker {
 /* Swiper CSS Ends */
 
 .blackButton {
-  @apply cursor-pointer rounded-md bg-richblack-800 px-[20px] py-[8px] font-semibold text-richblack-5;
+  @apply cursor-pointer border border-richblack-600 bg-transparent px-[20px] py-[8px] font-semibold text-richblack-5;
 }
 .lable-style {
   @apply text-[14px] text-richblack-5;
@@ -468,7 +428,7 @@ details > summary::-webkit-details-marker {
      focus-visible rule right after is the replacement. Without it, every
      input using this class (every form in the dashboard) has no visible
      focus indicator at all for keyboard users. */
-  @apply rounded-lg bg-richblack-700 p-3 text-[16px] leading-[24px] text-richblack-5 shadow-[0_1px_0_0] shadow-white/50 placeholder:text-richblack-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50;
+  @apply p-3 text-[16px] leading-[24px] text-richblack-5 placeholder:text-richblack-400 focus:outline-none;
 }
 /* The auth field and submit styles were the same ~10 utilities pasted at
    three call sites (LoginForm twice, SignupForm once), all built from
@@ -485,116 +445,29 @@ details > summary::-webkit-details-marker {
   color: rgb(var(--accent-nav));
 }
 
-/* The brand wordmark gradient. The dark-theme ramp runs through white, which
-   is invisible on a light ground — so the light theme uses a deeper ramp of
-   the same two hues rather than dropping the gradient. */
+/* The wordmark. Solid ink: the system has no gradients. */
 .brand-gradient {
-  background-image: linear-gradient(
-    to right,
-    #7cc4de,
-    #1f6f8b 45%,
-    #b28900
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-:root[data-theme="dark"] .brand-gradient,
-[data-theme="dark"] .brand-gradient,
-:root:not([data-theme="light"]) .brand-gradient {
-  background-image: linear-gradient(to right, #c3ebfa, #ffffff 45%, #fae27c);
+  color: rgb(var(--richblack-5));
 }
 
 .auth-input {
-  @apply w-full rounded-2xl border border-hairline bg-richblack-900/80 px-4 py-4 text-base text-richblack-5 outline-none transition-all placeholder:text-richblack-400;
-  box-shadow: inset 0 1px 0 rgb(var(--hairline) / calc(var(--hairline-alpha) * 0.5));
+  @apply w-full border border-richblack-600 bg-transparent px-4 py-3.5 text-base text-richblack-5 outline-none transition-colors placeholder:text-richblack-400;
 }
 
 .auth-input:focus-visible {
-  border-color: rgb(var(--accent-link) / 0.6);
-  box-shadow: 0 0 0 4px rgb(var(--accent-link) / 0.15);
+  border-color: rgb(var(--accent-nav));
+  outline: 1px solid rgb(var(--accent-nav));
+  outline-offset: -2px;
 }
 
 .auth-submit {
-  /* richblack-5 on richblack-900 inverts with the theme, so the button stays
-     high-contrast against the card in both — `bg-white` did not. */
-  @apply mt-2 rounded-full bg-richblack-5 px-6 py-4 text-base font-bold text-richblack-900 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99];
-  box-shadow: 0 18px 45px rgb(var(--shadow-color) / calc(var(--shadow-alpha) * 0.5));
-}
-
-.auth-submit:hover {
-  box-shadow: 0 22px 55px rgb(var(--shadow-color) / calc(var(--shadow-alpha) * 0.7));
+  @apply mt-2 bg-yellow-50 px-6 py-4 font-mono text-sm uppercase tracking-[0.08em] text-on-signal transition-[filter,transform] duration-150 hover:brightness-110 active:translate-y-px;
 }
 
 .section_heading {
   @apply text-2xl font-bold text-richblack-5 lg:text-4xl;
 }
 
-.homepage-logo-strip {
-  overflow: hidden;
-  position: relative;
-  width: 100%;
-  mask-image: linear-gradient(
-    to right,
-    transparent 0,
-    black 8rem,
-    black calc(100% - 8rem),
-    transparent 100%
-  );
-}
-
-.homepage-logo-strip__track {
-  display: flex;
-  width: max-content;
-  animation: homepage-marquee 26s linear infinite;
-}
-
-@keyframes homepage-marquee {
-  from {
-    transform: translateX(0);
-  }
-
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-/* The one orbit icon that is not a third-party brand mark, so unlike the
-   others it must adapt: the pale blue that reads well on a dark card is
-   almost invisible on the light one. */
-.orbit-accent {
-  color: #38bdf8;
-}
-
-:root[data-theme="light"] .orbit-accent,
-[data-theme="light"] .orbit-accent {
-  color: #0369a1;
-}
-
-/* Integration orbit (HomePage/IntegrationOrbit.tsx).
-   Two rotors turn at different speeds; each node counter-rotates at the same
-   duration so the logos stay upright instead of tumbling. Durations and
-   direction are set per-element in the component — only the motion lives
-   here. */
-.orbit-rotor,
-.orbit-node {
-  animation-name: orbit-spin;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
-@keyframes orbit-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* The static positions are already correct, so stopping the animation is a
-   complete, non-degraded state rather than a fallback. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -707,6 +580,120 @@ details > summary::-webkit-details-marker {
   transform: none;
 }
 
+/* Homepage (restored sections): code-block glows, logo marquee, orbit,
+   drift and pulse. */
+.codeblock1 {
+  width: 372.95px;
+  height: 257.05px;
+  border-radius: 100%;
+  left: calc(50% - 372.95px / 2 - 76.53px);
+  top: calc(50% - 257.05px / 2 - 47.47px);
+  background: linear-gradient(
+    123.77deg,
+    #8a2be2 -6.46%,
+    #ffa500 59.04%,
+    #f8f8ff 124.53%
+  );
+  opacity: 0.2;
+  filter: blur(34px);
+  transform: matrix(1, 0, -0.03, 1, 0, 0);
+}
+.codeblock2 {
+  position: absolute;
+  width: 372.95px;
+  height: 257.05px;
+  left: calc(50% - 372.95px / 2 - 76.53px);
+  top: calc(50% - 257.05px / 2 - 47.47px);
+  border-radius: 100%;
+  background: linear-gradient(
+    118.19deg,
+    #1fa2ff -3.62%,
+    #12d8fa 50.44%,
+    #a6ffcb 104.51%
+  );
+  opacity: 0.2;
+  filter: blur(34px);
+  transform: matrix(1, 0, -0.03, 1, 0, 0);
+}
+.code-border {
+  border: 2px solid;
+  border-image-slice: 1;
+  border-width: 2px;
+  border-image-source: linear-gradient(to right bottom, #ffffff38, #ffffff00);
+  background: linear-gradient(
+    111.93deg,
+    rgba(14, 26, 45, 0.24) -1.4%,
+    rgba(17, 30, 50, 0.38) 104.96%
+  );
+  /* backdrop-filter: blur(26px); */
+}
+.homepage_bg {
+  background: url("../ui/assets/Images/bghome.svg");
+  /* background-size: contain; */
+}
+
+.homepage-logo-strip {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 8rem,
+    black calc(100% - 8rem),
+    transparent 100%
+  );
+}
+
+.homepage-logo-strip__track {
+  display: flex;
+  width: max-content;
+  animation: homepage-marquee 26s linear infinite;
+}
+
+@keyframes homepage-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* The one orbit icon that is not a third-party brand mark, so unlike the
+   others it must adapt: the pale blue that reads well on a dark card is
+   almost invisible on the light one. */
+.orbit-accent {
+  color: #38bdf8;
+}
+
+:root[data-theme="light"] .orbit-accent,
+[data-theme="light"] .orbit-accent {
+  color: #0369a1;
+}
+
+/* Integration orbit (HomePage/IntegrationOrbit.tsx).
+   Two rotors turn at different speeds; each node counter-rotates at the same
+   duration so the logos stay upright instead of tumbling. Durations and
+   direction are set per-element in the component — only the motion lives
+   here. */
+.orbit-rotor,
+.orbit-node {
+  animation-name: orbit-spin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Slow vertical drift, for decorative elements that should feel alive
    without asking for attention. */
 .float-slow {
@@ -761,4 +748,219 @@ details > summary::-webkit-details-marker {
 
 .a11y-font-x-large {
   font-size: 125%;
+}
+
+/* ------------------------------------------------------------------ *
+ * "Ledger" — the design system, app-wide
+ *
+ * Flat and ruled: square corners everywhere, no elevation, and sections
+ * divided by 1px rules instead of cards floating on a background. A neutral
+ * carbon (dark) or paper (light) ground — the richblack scale above — with
+ * one accent: cobalt, the flat blue of Swiss print, for primary actions, the
+ * current page, and anything that needs you. Geist for reading, Geist Mono
+ * for figures and labels (loaded in app/layout.tsx).
+ * ------------------------------------------------------------------ */
+/* Corners: boxes are square and circles are round — see `borderRadius` in
+   tailwind.config.ts, where every box radius is 0 and `rounded-full` stays a
+   true circle for avatars, dots, rings and toggles. */
+
+.form-style {
+  /* Ledger: a ruled field, not a filled pill. */
+  border: 1px solid rgb(var(--richblack-600));
+  background: rgb(var(--richblack-900));
+  box-shadow: none;
+}
+
+.form-style:focus-visible {
+  outline: 2px solid rgb(var(--accent-nav));
+  outline-offset: -1px;
+}
+
+/* Figures line up in columns and don't jitter as they update. */
+.figure {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* Metadata stamp: small mono caps for labels, units and ids. */
+.stamp {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/*
+ * Print (the scorecard's "Print report card", or any Ctrl+P). Paper is white
+ * whatever the theme, and dark-theme body text is near-white — so print
+ * always uses the light scale. `:root[data-theme]` matches the explicit
+ * theme selectors' specificity, and being last in the file, wins.
+ */
+@media print {
+  :root,
+  :root[data-theme] {
+    --richblack-5: 0 8 20;
+    --richblack-25: 22 29 41;
+    --richblack-50: 44 51 63;
+    --richblack-100: 66 72 84;
+    --richblack-200: 88 93 105;
+    --richblack-300: 110 114 127;
+    --richblack-400: 131 136 148;
+    --richblack-500: 153 157 170;
+    --richblack-600: 175 178 191;
+    --richblack-700: 197 199 212;
+    --richblack-800: 255 255 255;
+    --richblack-900: 255 255 255;
+  }
+  body {
+    background: #fff !important;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Motion
+ *
+ * Movement explains structure and never decorates it: things arrive in
+ * reading order, figures count to their value, bars grow from their baseline.
+ * One curve (a fast-out, soft-land ease) and short durations. Everything here
+ * resolves to its final state instantly under reduced motion — the OS setting
+ * below, or Settings > Accessibility via `.a11y-reduced-motion`.
+ * ------------------------------------------------------------------ */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes ledger-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes ledger-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ledger-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes ledger-drawer {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ledger-cell {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+/* A page arriving: its content rises in. */
+.page-enter {
+  animation: ledger-enter 520ms var(--ease-out) both;
+}
+
+/* Children of a ruled grid or list arrive in order, 50ms apart. */
+.stagger > * {
+  animation: ledger-enter 560ms var(--ease-out) both;
+  animation-delay: calc(var(--n, 0) * 50ms);
+}
+.stagger > :nth-child(2) { --n: 1; }
+.stagger > :nth-child(3) { --n: 2; }
+.stagger > :nth-child(4) { --n: 3; }
+.stagger > :nth-child(5) { --n: 4; }
+.stagger > :nth-child(6) { --n: 5; }
+.stagger > :nth-child(7) { --n: 6; }
+.stagger > :nth-child(8) { --n: 7; }
+.stagger > :nth-child(n + 9) { --n: 8; }
+
+.grow-x {
+  transform-origin: left center;
+  animation: ledger-grow-x 900ms var(--ease-out) both;
+  animation-delay: 150ms;
+}
+
+.drawer-enter {
+  animation: ledger-drawer 320ms var(--ease-out) both;
+}
+
+.fade-in {
+  animation: ledger-fade 400ms ease-out both;
+}
+
+.heat-cell {
+  animation: ledger-cell 420ms var(--ease-out) both;
+  animation-delay: calc(var(--d, 0) * 14ms);
+}
+
+/* A line chart that draws itself: set --len to at least the path's length. */
+@keyframes ledger-draw {
+  from {
+    stroke-dashoffset: var(--len, 800);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.draw-line {
+  stroke-dasharray: var(--len, 800);
+  animation: ledger-draw 1800ms var(--ease-out) 350ms both;
+}
+
+/* Columns rising from their baseline, in order. */
+@keyframes ledger-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+.grow-y {
+  transform-origin: bottom center;
+  animation: ledger-grow-y 900ms var(--ease-out) both;
+  animation-delay: calc(var(--n, 0) * 70ms + 250ms);
+}
+
+/* The course ticker: two copies of the list slide one width left, forever. */
+@keyframes ledger-ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ledger-ticker 48s linear infinite;
+}
+.ticker:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+@keyframes ledger-live {
+  50% {
+    opacity: 0.25;
+  }
+}
+.live-dot {
+  animation: ledger-live 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .stagger > *,
+  .grow-x,
+  .grow-y,
+  .draw-line,
+  .ticker-track,
+  .live-dot,
+  .drawer-enter,
+  .fade-in,
+  .heat-cell {
+    animation: none;
+  }
 }

@@ -74,7 +74,7 @@ export default function ChipInput<TFieldValues extends FieldValues = FieldValues
         {chips.map((chip, index) => (
           <div
             key={index}
-            className="m-1 flex items-center rounded-full bg-yellow-400 px-2 py-1 text-sm text-paper"
+            className="m-1 flex items-center border border-richblack-600 bg-richblack-800 px-2 py-1 text-sm text-richblack-5"
           >
             {chip}
             <button

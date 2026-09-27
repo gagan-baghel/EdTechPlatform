@@ -5,9 +5,11 @@ const config: Config = {
   content: ["./src/**/*.{js,jsx,ts,tsx,mdx}"],
   theme: {
     fontFamily: {
-      inter: ["Inter", "sans-serif"],
+      // The class name predates the typeface: `font-inter` is Geist now (see
+      // app/layout.tsx), kept so the ~every-page usage needs no edit.
+      inter: ["var(--font-geist)", "ui-sans-serif", "system-ui", "sans-serif"],
       "edu-sa": ["Edu SA Beginner", "cursive"],
-      mono: ["Roboto Mono", "monospace"],
+      mono: ["var(--font-geist-mono)", "Roboto Mono", "monospace"],
     },
     colors: {
       white: "#fff",
@@ -38,6 +40,13 @@ const config: Config = {
       // See globals.css's comment on --ink/--paper for why these exist
       // instead of just using richblack-900/richblack-5 for this.
       ink: "rgb(var(--ink) / <alpha-value>)",
+      // The one accent: brand yellow on dark, the same hue deepened to amber
+      // on a light ground where yellow text is unreadable. Use it for text,
+      // rules and marks; a yellow FILL stays bg-yellow-50 with text-ink.
+      accent: "rgb(var(--accent-nav) / <alpha-value>)",
+      // Text on a bg-yellow-50 fill: ink on the brand yellow, white on the
+      // dashboards' cobalt (see --signal in globals.css).
+      "on-signal": "rgb(var(--on-signal) / <alpha-value>)",
       paper: "rgb(var(--paper) / <alpha-value>)",
       // Semantic, theme-aware surfaces. See the token block in globals.css:
       // these express "hairline border" and "frosted panel" as intent, so the
@@ -117,7 +126,10 @@ const config: Config = {
       yellow: {
         5: "#FFF970",
         25: "#FFE83D",
-        50: "#FFD60A",
+        // Through a variable so the dashboards can swap the brand yellow for
+        // their own signal colour (globals.css, :root.dash) without touching
+        // a single bg-yellow-50 button. Everywhere else it is #FFD60A.
+        50: "rgb(var(--signal) / <alpha-value>)",
         100: "#E7C009",
         200: "#CFAB08",
         300: "#B69507",
@@ -142,6 +154,21 @@ const config: Config = {
         800: "#171717",
         900: "#141414",
       },
+    },
+    // Boxes are square: panels, inputs, buttons, images, tooltips. Only what is
+    // genuinely round keeps a curve — `rounded-full` for avatars, status dots,
+    // rings, radio buttons and toggles. Replacing (not extending) the scale is
+    // what makes every existing `rounded-lg` in the app square at once.
+    borderRadius: {
+      none: "0",
+      sm: "0",
+      DEFAULT: "0",
+      md: "0",
+      lg: "0",
+      xl: "0",
+      "2xl": "0",
+      "3xl": "0",
+      full: "9999px",
     },
     extend: {
       maxWidth: {

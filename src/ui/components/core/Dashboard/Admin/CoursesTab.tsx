@@ -104,7 +104,7 @@ export default function CoursesTab() {
                         btn2Handler: () => setConfirmationModal(null),
                       })
                     }
-                    className="text-sm font-semibold text-yellow-50 underline"
+                    className="text-sm font-semibold text-accent underline"
                   >
                     {course.deletedAt ? "Restore" : "Take down"}
                   </button>

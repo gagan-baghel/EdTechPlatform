@@ -73,7 +73,7 @@ export default function RequirementsField<TFieldValues extends FieldValues = Fie
         <button
           type="button"
           onClick={handleAddRequirement}
-          className="font-semibold text-yellow-50"
+          className="font-semibold text-accent"
         >
           Add
         </button>

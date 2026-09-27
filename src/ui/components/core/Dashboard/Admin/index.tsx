@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 
+import { PageHeader } from "../../../common/DashKit"
+
 import UsersTab from "./UsersTab"
 import CoursesTab from "./CoursesTab"
 import PaymentsTab from "./PaymentsTab"
@@ -31,17 +33,19 @@ export default function Admin() {
 
   return (
     <div>
-      <h1 className="mb-8 text-3xl font-medium text-richblack-5">Admin</h1>
-      <div className="mb-8 flex flex-wrap gap-2 border-b border-richblack-700">
+      <PageHeader title="Admin" meta={`${TABS.find((t) => t.id === activeTab)?.label}`} />
+      <div role="tablist" aria-label="Admin sections" className="-mt-6 mb-10 flex overflow-x-auto border-b border-richblack-600 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-3 text-sm font-medium transition ${
+            className={`stamp -mb-px shrink-0 border-b-2 px-4 py-3 transition-colors ${
               activeTab === tab.id
-                ? "border-b-2 border-yellow-50 text-yellow-50"
-                : "text-richblack-300 hover:text-richblack-100"
+                ? "border-accent text-richblack-5"
+                : "border-transparent text-richblack-400 hover:text-richblack-5"
             }`}
           >
             {tab.label}
@@ -49,6 +53,7 @@ export default function Admin() {
         ))}
       </div>
 
+      <div key={activeTab} role="tabpanel" className="fade-in">
       {activeTab === "analytics" && <AnalyticsTab />}
       {activeTab === "users" && <UsersTab />}
       {activeTab === "courses" && <CoursesTab />}
@@ -59,6 +64,7 @@ export default function Admin() {
       {activeTab === "audit" && <AuditLogTab />}
       {activeTab === "flags" && <FeatureFlagsTab />}
       {activeTab === "health" && <HealthTab />}
+      </div>
     </div>
   )
 }

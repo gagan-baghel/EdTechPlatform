@@ -2,7 +2,7 @@ import React from "react"
 import { cn } from "../../lib/cn"
 
 const VARIANTS = {
-  primary: "bg-yellow-50 text-ink hover:brightness-95",
+  primary: "bg-yellow-50 text-on-signal hover:brightness-95",
   secondary: "bg-richblack-800 text-richblack-5 hover:brightness-110",
   // The generic bordered button (error pages, Search pagination, etc —
   // the audit's "outline secondary" pattern).

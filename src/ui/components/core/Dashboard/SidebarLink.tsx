@@ -1,6 +1,7 @@
 import {
   VscAccount,
   VscAdd,
+  VscChecklist,
   VscCreditCard,
   VscDashboard,
   VscGift,
@@ -31,6 +32,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   VscCreditCard,
   VscOrganization,
   VscGift,
+  VscChecklist,
 }
 
 interface SidebarLinkProps {
@@ -63,19 +65,19 @@ export default function SidebarLink({ link, iconName }: SidebarLinkProps) {
         }
       }}
       aria-current={isActive ? "page" : undefined}
-      className={`relative shrink-0 whitespace-nowrap px-5 py-3 text-sm font-medium md:px-8 md:py-2 ${
-        isActive ? "bg-yellow-800 text-yellow-50" : "bg-opacity-0 text-richblack-300"
-      } transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow-50`}
+      className={`relative shrink-0 whitespace-nowrap px-5 py-3 text-[13px] md:px-6 md:py-2.5 ${
+        isActive ? "bg-richblack-800 text-richblack-5" : "text-richblack-300 hover:bg-richblack-800 hover:text-richblack-5"
+      } transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent`}
     >
       {/* Active marker sits underneath on mobile, at the left edge on desktop */}
       <span
-        className={`absolute bottom-0 left-0 h-[0.15rem] w-full bg-yellow-50 md:top-0 md:h-full md:w-[0.15rem] ${
+        className={`absolute bottom-0 left-0 h-[2px] w-full bg-accent md:top-0 md:h-full md:w-[2px] ${
           isActive ? "opacity-100" : "opacity-0"
         }`}
         aria-hidden="true"
       />
-      <div className="flex items-center gap-x-2">
-        <Icon className="text-lg" />
+      <div className="flex items-center gap-x-3">
+        <Icon className="text-base" />
         <span>{link.name}</span>
       </div>
     </NavLink>

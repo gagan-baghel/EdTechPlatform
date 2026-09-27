@@ -12,6 +12,7 @@ const {
   QUIZ_DETAIL_API,
   QUIZ_SUBMIT_API,
   QUIZ_MY_ATTEMPTS_API,
+  QUIZ_REVIEW_API,
 } = quizEndpoints
 
 const authHeader = (token: string) => ({ Authorization: `Bearer ${token}` })
@@ -115,6 +116,18 @@ export async function fetchMyQuizAttempts(token: string, quizId: string) {
     const response = await apiConnector("GET", QUIZ_MY_ATTEMPTS_API(quizId), null, authHeader(token))
     return response.data.success ? response.data : null
   } catch {
+    return null
+  }
+}
+
+/** The answer review — the server answers 403 until it has unlocked. */
+export async function fetchQuizReview<TReview = Record<string, unknown>>(token: string, quizId: string) {
+  try {
+    const response = await apiConnector<DataBody<TReview> | ApiFailure>(
+      "GET", QUIZ_REVIEW_API(quizId), null, authHeader(token))
+    return response.data.success ? response.data.data : null
+  } catch (error) {
+    toast.error((error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Could not load the review")
     return null
   }
 }
