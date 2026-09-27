@@ -1,9 +1,14 @@
 import type { IconType } from "react-icons"
-import { AiOutlineBook, AiOutlineReload } from "react-icons/ai"
-import { FaGoogle, FaMicrosoft, FaSlack } from "react-icons/fa"
+import { AiOutlinePlayCircle, AiOutlineRobot } from "react-icons/ai"
+import { SiOpenai, SiRazorpay } from "react-icons/si"
+
+import { BrandMark } from "../../common/Brand"
 
 /**
- * The "plug into your ecosystem" orbit.
+ * The "what it runs on" orbit: the services the platform actually uses —
+ * Razorpay for payments, OpenAI for lecture transcription, a CDN for video,
+ * and a language model for the tutor and assistant. (It used to show Google
+ * Workspace, Slack and Microsoft 365, none of which the product connects to.)
  *
  * The previous version placed each logo with a hardcoded pixel translate
  * (`translate(-120px, -90px)`, `translate(200px, -150px)`, …) that had no
@@ -49,12 +54,12 @@ type RingName = keyof typeof RINGS
 
 const INTEGRATIONS: Record<RingName, Integration[]> = {
   inner: [
-    { name: "Google Workspace", Icon: FaGoogle, color: "#4285F4", angle: 200 },
-    { name: "Automated two-way sync", Icon: AiOutlineReload, angle: 20 },
+    { name: "Payments by Razorpay", Icon: SiRazorpay, color: "#3395FF", angle: 200 },
+    { name: "AI tutor and assistant", Icon: AiOutlineRobot, angle: 20 },
   ],
   outer: [
-    { name: "Slack", Icon: FaSlack, color: "#A855F7", angle: 315 },
-    { name: "Microsoft 365", Icon: FaMicrosoft, color: "#00a4ef", angle: 135 },
+    { name: "Lecture transcripts by OpenAI Whisper", Icon: SiOpenai, angle: 315 },
+    { name: "Video streamed from a global CDN", Icon: AiOutlinePlayCircle, angle: 135 },
   ],
 }
 
@@ -155,7 +160,7 @@ export default function IntegrationOrbit() {
       <div className="absolute left-1/2 top-1/2 z-20 h-[21%] w-[21%] -translate-x-1/2 -translate-y-1/2">
         {/* Same reason as the pulse rings: `float-slow` animates `transform`. */}
         <div className="float-slow flex h-full w-full items-center justify-center rounded-[30%] border border-[#c3ebfa]/40 bg-gradient-to-br from-[#c3ebfa] to-[#8ab4f8] shadow-[0_20px_60px_-12px_rgba(195,235,250,0.45)]">
-          <AiOutlineBook className="h-1/2 w-1/2 text-ink" aria-hidden />
+          <BrandMark className="h-1/2 w-1/2 text-ink" />
           <span className="sr-only">IntelleCraft</span>
         </div>
       </div>

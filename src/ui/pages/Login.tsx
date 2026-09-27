@@ -4,7 +4,7 @@ import Template from "../components/core/Auth/Template"
 function Login() {
   return (
     <Template
-      eyebrow="Secure campus access"
+      eyebrow="Welcome back"
       title={
         <>
           Welcome back to{" "}
@@ -14,7 +14,7 @@ function Login() {
         </>
       }
       subtitle="Sign in."
-      image="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
+      image="https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=2000&auto=format&fit=crop"
       formType="login"
     />
   )

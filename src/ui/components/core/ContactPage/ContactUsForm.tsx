@@ -103,7 +103,7 @@ const ContactUsForm: React.FC = () => {
         <input
           type="email"
           id="email"
-          placeholder="you@institution.edu"
+          placeholder="you@example.com"
           className={inputClass}
           autoComplete="email"
           {...register("email", { required: true })}

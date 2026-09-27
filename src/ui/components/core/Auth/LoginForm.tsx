@@ -42,7 +42,7 @@ function LoginForm() {
           name="email"
           value={email}
           onChange={handleOnChange}
-          placeholder="you@institution.edu"
+          placeholder="you@example.com"
           autoComplete="email"
           spellCheck={false}
           className="auth-input"

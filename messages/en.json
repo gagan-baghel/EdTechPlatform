@@ -12,11 +12,11 @@
     "rights": "All rights reserved."
   },
   "Home": {
-    "heroTitlePrefix": "Education,",
-    "heroTitleHighlight": "reimagined.",
-    "heroSubtitle": "A meticulously crafted operating system for the world's most innovative schools. From enrollment to graduation, everything just works.",
-    "createAccount": "Create Free Account",
-    "watchKeynote": "Watch Keynote"
+    "heroLine1": "Learn it properly.",
+    "heroLine2": "Prove it.",
+    "heroSubtitle": "Courses from working instructors, quizzes that grade honestly, and a scorecard that shows exactly where you stand.",
+    "browseCourses": "Browse courses",
+    "teach": "Teach on IntelleCraft"
   },
   "CourseCard": {
     "buyNow": "Buy Now",

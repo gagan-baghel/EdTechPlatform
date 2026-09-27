@@ -9,6 +9,7 @@ import { useSelector } from "react-redux"
 import { useNavigate } from "@/ui/lib/router"
 
 import { formatCurrency } from "../../../utils/formatCurrency"
+import PurchaseTerms from "../../common/PurchaseTerms"
 import { saveCourseToWishlist, removeCourseFromWishlist } from "../../../services/operations/workspaceAPI"
 import CurrencyHint from "./CurrencyHint"
 import Image from "next/image"
@@ -93,6 +94,7 @@ function CourseDetailsCard({ course, handleBuyCourse, handleAddToCart }: CourseD
               </button>
             )}
           </div>
+          {(!user || !course?.studentsEnrolled.includes(user?._id)) && <PurchaseTerms />}
           <div className={`pt-6`}>
             <p className={`my-2 text-xl font-semibold `}>
               This Course Includes :

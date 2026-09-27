@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { useNavigate } from "@/ui/lib/router"
 
 import IconBtn from "../../../common/IconBtn"
+import PurchaseTerms from "../../../common/PurchaseTerms"
 import { buyCourse } from "../../../../services/operations/studentFeaturesAPI"
 import { checkCoupon } from "../../../../services/operations/couponAPI"
 import { formatCurrency } from "../../../../utils/formatCurrency"
@@ -94,12 +95,13 @@ export default function RenderTotalAmount() {
       {discount > 0 && (
         <p className="mb-1 text-sm text-richblack-400 line-through">{formatCurrency(total)}</p>
       )}
-      <p className="mb-6 text-3xl font-medium text-yellow-100">{formatCurrency(payable)}</p>
+      <p className="mb-6 text-3xl font-medium text-accent">{formatCurrency(payable)}</p>
       <IconBtn
         text="Buy Now"
         onClick={handleBuyCourse}
         customClasses="w-full justify-center"
       />
+      <PurchaseTerms />
     </div>
   )
 }
