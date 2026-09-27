@@ -5,34 +5,37 @@ import { Link } from "@/ui/lib/router"
 
 import Footer from "../components/common/Footer"
 
+// Unsplash photography (free for commercial use).
 const heroImage =
-  "https://images.unsplash.com/photo-1580582932707-520aed937b7b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTU4NDh8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBzY2hvb2wlMjBjYW1wdXMlMjBzdHVkZW50cyUyMGhhbGx3YXl8ZW58MHx8fHwxNzY3NDA0NzI4fDA&ixlib=rb-4.1.0&q=85"
+  "https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1600&auto=format&fit=crop"
 
 const teamImage =
-  "https://plus.unsplash.com/premium_photo-1661284896386-0ff76f0b4ae0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTU4NDh8MHwxfHNlYXJjaHwxfHxlZHVjYXRvcnMlMjBtZWV0aW5nJTIwY2xhc3Nyb29tJTIwdGVjaG5vbG9neSUyMHBob3RvfGVufDB8fHx8MTc2NzQwNDcwNHww&ixlib=rb-4.1.0&q=85"
+  "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1600&auto=format&fit=crop"
 
 const pillars = [
   {
     icon: AiOutlineCheckCircle,
-    title: "Operational clarity",
-    description: "Replace scattered tools with one calm system.",
+    title: "Learning you can see",
+    description: "Progress, quiz scores and a class position for every course, updated as you learn.",
   },
   {
     icon: AiOutlineLineChart,
-    title: "Visible outcomes",
-    description: "See academic, financial, and parent activity faster.",
+    title: "Teaching with evidence",
+    description: "Instructors see where students stop and which questions they miss.",
   },
   {
     icon: AiOutlineRocket,
-    title: "Clean rollout",
-    description: "Adopt modern workflows without adding noise.",
+    title: "Proof that holds up",
+    description: "Certificates anyone can verify, earned by finishing and passing.",
   },
 ]
 
+// Facts about how the platform works — not audience numbers, which live on
+// the homepage and are counted from the database.
 const stats = [
-  { value: "2.4M+", label: "Active Students" },
-  { value: "45+", label: "Countries" },
-  { value: "99.99%", label: "Uptime SLA" },
+  { value: "EN · HI", label: "Languages" },
+  { value: "10", label: "Quiz attempts" },
+  { value: "30 days", label: "Refund window" },
 ]
 
 function About() {
@@ -49,13 +52,13 @@ function About() {
               About IntelleCraft
             </div>
             <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[1.02] tracking-tighter text-richblack-5 sm:text-6xl lg:text-7xl">
-              Modern school operations,{" "}
+              Learning that shows{" "}
               <span className="brand-gradient">
-                kept simple.
+                its work.
               </span>
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-8 text-richblack-100 sm:text-lg">
-              IntelleCraft is built for institutions that want fewer tools, cleaner workflows, and a sharper daily experience for staff, students, and families.
+              IntelleCraft is an online learning platform: courses from working instructors, quizzes graded honestly, a scorecard for every learner, and certificates anyone can check.
             </p>
 
             <div className="mt-8 grid grid-cols-3 gap-3 sm:gap-4">
@@ -76,10 +79,10 @@ function About() {
 
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
               <Link
-                to="/signup"
+                to="/search"
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-sm font-bold text-ink transition-all hover:scale-[1.01]"
               >
-                Start free
+                Browse courses
                 <AiOutlineArrowRight className="h-5 w-5" />
               </Link>
               <Link
@@ -94,7 +97,7 @@ function About() {
           <div className="overflow-hidden rounded-[36px] border border-white/10 bg-richblack-800/70 shadow-[0_30px_90px_rgba(0,8,20,0.42)]">
             <Image
               src={heroImage}
-              alt="Modern school campus"
+              alt="Students studying together in a library"
               width={1200}
               height={900}
               className="h-[320px] w-full object-cover sm:h-[420px]"
@@ -131,7 +134,7 @@ function About() {
           <div className="overflow-hidden rounded-[36px] border border-white/10 bg-richblack-800/70 shadow-[0_30px_90px_rgba(0,8,20,0.42)]">
             <Image
               src={teamImage}
-              alt="Educators collaborating with technology"
+              alt="A classroom of students and their teacher"
               width={1200}
               height={900}
               className="h-[320px] w-full object-cover sm:h-[420px]"
@@ -145,10 +148,10 @@ function About() {
                 Why we built it
               </p>
               <h2 className="mt-3 text-3xl font-bold tracking-tight text-richblack-5 sm:text-4xl">
-                Schools need sharper systems, not more tabs.
+                A certificate should mean you learned something.
               </h2>
               <p className="mt-4 text-base leading-8 text-richblack-200">
-                We focus on the parts of education software that matter most: speed, clarity, trust, and fewer operational dead ends.
+                So quizzes are graded where they can&apos;t be gamed, progress is measured rather than claimed, and every certificate carries a number anyone can look up.
               </p>
             </div>
 
@@ -157,7 +160,7 @@ function About() {
                 What we believe
               </p>
               <p className="mt-3 text-base leading-8 text-richblack-200">
-                Great institutional software should feel calm, fast, and obvious to use from day one.
+                Learners deserve to know exactly where they stand, and instructors deserve to see what is working — both from the same honest numbers.
               </p>
             </div>
           </div>
@@ -167,10 +170,10 @@ function About() {
       <section className="px-6 pb-20 sm:px-8 lg:px-10 lg:pb-24">
         <div className="mx-auto max-w-5xl rounded-[36px] border border-white/10 bg-richblack-800/70 px-6 py-10 text-center shadow-[0_30px_90px_rgba(0,8,20,0.42)] backdrop-blur-xl sm:px-10">
           <h2 className="text-4xl font-black tracking-tighter text-richblack-5 sm:text-5xl">
-            Build a calmer campus workflow.
+            Learn something properly.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-richblack-200">
-            Start with the core operations your team touches every day.
+            Pick a course, or teach one of your own.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
@@ -183,7 +186,7 @@ function About() {
               to="/contact"
               className="inline-flex items-center justify-center rounded-full border border-white/10 bg-richblack-900/70 px-8 py-4 text-sm font-semibold text-richblack-5 transition-all hover:bg-richblack-800"
             >
-              Contact sales
+              Contact us
             </Link>
           </div>
         </div>

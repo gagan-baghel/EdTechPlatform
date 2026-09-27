@@ -15,6 +15,7 @@ import Spinner from "../../../common/Spinner"
 
 import type { RootState } from "../../../../store"
 import React from "react"
+import { PageHeader } from "../../../common/DashKit"
 
 const KYC_LABELS: Record<string, string> = {
   not_submitted: "Not submitted",
@@ -88,7 +89,7 @@ export default function Payouts() {
 
   return (
     <div>
-      <h1 className="mb-8 text-3xl font-medium text-richblack-5">Payouts</h1>
+      <PageHeader title="Payouts" meta="Bank details, KYC and payout history" />
 
       <div className="mb-10 rounded-md border border-richblack-700 bg-richblack-800 p-6">
         <h2 className="mb-4 text-lg font-semibold text-richblack-5">Payout details</h2>
@@ -102,7 +103,7 @@ export default function Payouts() {
                   ? "text-caribbeangreen-100"
                   : profile.kycStatus === "rejected"
                   ? "text-pink-200"
-                  : "text-yellow-50"
+                  : "text-accent"
               }
             >
               {KYC_LABELS[profile.kycStatus]}
@@ -157,7 +158,7 @@ export default function Payouts() {
           <button
             type="submit"
             disabled={saving}
-            className="w-fit rounded-md bg-yellow-50 px-6 py-2 font-semibold text-ink disabled:opacity-60"
+            className="w-fit rounded-md bg-yellow-50 px-6 py-2 font-semibold text-on-signal disabled:opacity-60"
           >
             {saving ? "Saving..." : profile ? "Update details" : "Submit details"}
           </button>
@@ -191,7 +192,7 @@ export default function Payouts() {
                 <Td className="px-4 py-3">{formatCurrency(payout.platformFeeAmount)}</Td>
                 <Td className="px-4 py-3">{formatCurrency(payout.netAmount)}</Td>
                 <Td className="px-4 py-3">
-                  <span className={payout.status === "paid" ? "text-caribbeangreen-100" : "text-yellow-50"}>
+                  <span className={payout.status === "paid" ? "text-caribbeangreen-100" : "text-accent"}>
                     {payout.status}
                   </span>
                 </Td>

@@ -1,18 +1,23 @@
 "use client"
 
-/** What the server returns after grading an attempt. */
-export interface QuizAttemptResult {
-  scorePercent: number
-  passed: boolean
-  passingScorePercent: number
-}
-
 import React, { useState } from "react"
 import { useSelector } from "react-redux"
 
 import { submitQuizAttempt } from "../../../services/operations/quizAPI"
 import Button from "../../common/Button"
+import QuizReview, { type ReviewItem } from "./QuizReview"
 import type { RootState } from "../../../store"
+
+/** What the server returns after grading an attempt. */
+export interface QuizAttemptResult {
+  scorePercent: number
+  passed: boolean
+  passingScorePercent: number
+  attemptsUsed: number
+  attemptsAllowed: number
+  /** Null until the student passes or runs out of attempts. */
+  review: ReviewItem[] | null
+}
 
 export interface QuizQuestion {
   _id: string
@@ -72,8 +77,30 @@ export default function QuizPlayer({ quiz, onClose, onCompleted }: QuizPlayerPro
             {result.scorePercent}% — {result.passed ? "Passed" : "Not passed"}
           </p>
           <p className="mt-2 text-sm text-richblack-300">
-            Passing score: {result.passingScorePercent}%
+            Passing score: {result.passingScorePercent}% · Attempt {result.attemptsUsed} of {result.attemptsAllowed}
           </p>
+          {result.review ? (
+            <div className="mt-6">
+              <h4 className="mb-3 font-semibold text-richblack-5">Your answers</h4>
+              <QuizReview items={result.review} />
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <p className="text-sm text-richblack-300">
+                The answer review unlocks once you pass or use every attempt.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setResult(null)
+                  setAnswers({})
+                }}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <>

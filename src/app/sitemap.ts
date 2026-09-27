@@ -8,7 +8,18 @@ export const revalidate = 3600
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = resolveSiteUrl()
 
-  const staticRoutes = ["", "/about", "/contact", "/login", "/signup"].map((path) => ({
+  const staticRoutes = [
+    "",
+    "/about",
+    "/contact",
+    "/search",
+    "/subscribe",
+    "/login",
+    "/signup",
+    "/privacy",
+    "/terms",
+    "/refund-policy",
+  ].map((path) => ({
     url: `${siteUrl}${path}`,
     lastModified: new Date(),
     changeFrequency: path === "" ? "daily" : "monthly",

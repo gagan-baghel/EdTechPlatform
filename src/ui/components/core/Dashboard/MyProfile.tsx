@@ -9,6 +9,7 @@ import Card from "../../common/Card"
 import IconBtn from "../../common/IconBtn"
 
 import type { RootState } from "../../../store"
+import { PageHeader } from "../../common/DashKit"
 
 /** Padding that actually fits a phone. `p-8 px-12` left 279px of usable width at 375px. */
 const CARD_PADDING = "p-5 sm:p-6 lg:p-8"
@@ -51,7 +52,7 @@ export default function MyProfile() {
 
   return (
     <div className="space-y-5 sm:space-y-6">
-      <h1 className="text-2xl font-medium text-richblack-5 sm:text-3xl">My Profile</h1>
+      <PageHeader title="Profile" meta={user?.accountType} />
 
       <Card padding={CARD_PADDING}>
         {/* Wraps below sm: at 375px the avatar, a full name, an email and a

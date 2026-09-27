@@ -58,22 +58,17 @@ export async function getUserEnrolledCourses<TCourse = Record<string, unknown>>(
   return result
 }
 
-export async function getInstructorData<TStat = Record<string, unknown>>(
-  token: string
+export async function getInstructorData<TData = Record<string, unknown>>(
+  token: string,
+  days = 30,
+  tz?: string
 ) {
-  let result: TStat[] = [];
-  try{
-    const response = await apiConnector<
-      { success: true; courses: TStat[] } | ApiFailure
-    >("GET", GET_INSTRUCTOR_DATA_API, null, {
-      Authorization: `Bearer ${token}`,
-    })
-
-    result = response.data.success ? response.data.courses : []
-
+  try {
+    const response = await apiConnector<DataBody<TData> | ApiFailure>(
+      "GET", GET_INSTRUCTOR_DATA_API, null, { Authorization: `Bearer ${token}` }, { days, tz })
+    return response.data.success ? response.data.data : null
+  } catch {
+    toast.error("Could not load your dashboard")
+    return null
   }
-  catch {
-    toast.error("Could not Get Instructor Data")
-  }
-  return result;
 }

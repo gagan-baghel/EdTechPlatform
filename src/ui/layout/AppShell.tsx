@@ -20,7 +20,7 @@ export default function AppShell({ children }: { children: React.ReactNode }): R
        * Sections that deliberately sit UNDER a transparent navbar (the
        * homepage hero) opt out with `-mt-14`.
        */}
-      <main id="main-content" className="pt-14">
+      <main id="main-content" className="pt-14 print:pt-0">
         {children}
       </main>
     </div>

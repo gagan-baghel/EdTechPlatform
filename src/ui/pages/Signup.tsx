@@ -4,7 +4,7 @@ import Template from "../components/core/Auth/Template"
 function Signup() {
   return (
     <Template
-      eyebrow="Launch your school OS"
+      eyebrow="Learn or teach"
       title={
         <>
           Start your{" "}
@@ -14,7 +14,7 @@ function Signup() {
         </>
       }
       subtitle="Create your account."
-      image="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=2622&auto=format&fit=crop"
+      image="https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=2000&auto=format&fit=crop"
       formType="signup"
     />
   )

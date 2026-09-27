@@ -1,8 +1,14 @@
 "use client"
 import type { ModalData } from "@/ui/components/common/ConfirmationModal"
 
+import axios from "axios"
 import { useEffect, useState, useCallback } from "react"
 import { useSelector } from "react-redux"
+
+import type { ApiFailure } from "@/types/api"
+import type { DataBody } from "@/ui/types"
+import { getApiErrorMessage } from "@/ui/lib/apiError"
+import { apiConnector } from "../../../../../services/apiconnector"
 
 import {
   createQuiz,
@@ -20,6 +26,8 @@ interface QuizQuestion {
   questionText: string
   options: string[]
   correctOptionIndex: number
+  /** Shown to students in their answer review. */
+  explanation?: string
 }
 
 interface Quiz {
@@ -30,7 +38,7 @@ interface Quiz {
   published: boolean
 }
 
-const emptyQuestion = (): QuizQuestion => ({ questionText: "", options: ["", ""], correctOptionIndex: 0 })
+const emptyQuestion = (): QuizQuestion => ({ questionText: "", options: ["", ""], correctOptionIndex: 0, explanation: "" })
 
 interface QuizManagerProps {
   courseId: string
@@ -42,6 +50,36 @@ export default function QuizManager({ courseId }: QuizManagerProps) {
   const [title, setTitle] = useState("")
   const [questions, setQuestions] = useState<QuizQuestion[]>([emptyQuestion()])
   const [confirmationModal, setConfirmationModal] = useState<ModalData | null>(null)
+  const [draftCount, setDraftCount] = useState(5)
+  const [drafting, setDrafting] = useState(false)
+  const [draftNote, setDraftNote] = useState<string | null>(null)
+  const [aiUnavailable, setAiUnavailable] = useState(false)
+
+  // Fills the form with an AI draft. Nothing is saved: the instructor edits,
+  // then creates the quiz, which still starts as an unpublished draft.
+  const handleDraft = async () => {
+    setDrafting(true)
+    setDraftNote(null)
+    try {
+      const response = await apiConnector<
+        DataBody<{ questions: QuizQuestion[]; grounding: "transcripts" | "outline" }> | ApiFailure
+      >("POST", "/api/v1/ai/copilot/quiz", { courseId, questionCount: draftCount }, { Authorization: `Bearer ${token}` })
+      if (response.data.success) {
+        const { questions: drafted, grounding } = response.data.data
+        setQuestions(drafted.map((q) => ({ ...q, explanation: q.explanation ?? "" })))
+        if (!title.trim()) setTitle("Knowledge check")
+        setDraftNote(
+          grounding === "transcripts"
+            ? "Drafted from your lecture transcripts. Check every answer before publishing."
+            : "No lecture transcripts yet, so this was drafted from lecture titles and descriptions — review it carefully."
+        )
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 503) setAiUnavailable(true)
+      else setDraftNote(getApiErrorMessage(error, "Could not draft a quiz right now."))
+    }
+    setDrafting(false)
+  }
 
   const load = useCallback(() => {
     return fetchQuizzesForCourseInstructor<Quiz>(token as string, courseId).then((result) => {
@@ -132,7 +170,27 @@ export default function QuizManager({ courseId }: QuizManagerProps) {
       )}
 
       <Card padding="p-5">
-        <h3 className="mb-4 font-semibold text-richblack-5">New quiz</h3>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="font-semibold text-richblack-5">New quiz</h3>
+          {!aiUnavailable && (
+            <div className="flex items-center gap-2">
+              <select
+                value={draftCount}
+                onChange={(e) => setDraftCount(Number(e.target.value))}
+                aria-label="Number of questions to draft"
+                className="form-style w-auto py-1 text-sm"
+              >
+                {[3, 5, 8, 10].map((n) => (
+                  <option key={n} value={n}>{n} questions</option>
+                ))}
+              </select>
+              <Button size="sm" variant="outline" type="button" disabled={drafting} onClick={handleDraft}>
+                {drafting ? "Drafting…" : "Draft with AI"}
+              </Button>
+            </div>
+          )}
+        </div>
+        {draftNote && <p className="mb-4 rounded-md bg-richblack-700 px-3 py-2 text-xs text-richblack-100">{draftNote}</p>}
         <form onSubmit={handleCreate} className="flex flex-col gap-4">
           <Input placeholder="Quiz title" value={title} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} />
 
@@ -163,15 +221,21 @@ export default function QuizManager({ courseId }: QuizManagerProps) {
               <button
                 type="button"
                 onClick={() => addOption(qIndex)}
-                className="text-sm font-semibold text-yellow-50"
+                className="text-sm font-semibold text-accent"
               >
                 + Add option
               </button>
+              <Input
+                placeholder="Explanation (optional) — shown in the student's answer review"
+                value={q.explanation ?? ""}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateQuestion(qIndex, { explanation: e.target.value })}
+                className="mt-3"
+              />
             </div>
           ))}
 
           <div className="flex justify-between">
-            <button type="button" onClick={addQuestion} className="text-sm font-semibold text-yellow-50">
+            <button type="button" onClick={addQuestion} className="text-sm font-semibold text-accent">
               + Add question
             </button>
             <Button type="submit">Create quiz (draft)</Button>

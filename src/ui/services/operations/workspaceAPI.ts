@@ -19,6 +19,17 @@ export async function fetchWorkspace<TData = Record<string, unknown>>(
   }
 }
 
+export async function fetchScorecard<TData = Record<string, unknown>>(token: string) {
+  try {
+    const response = await apiConnector<DataBody<TData> | ApiFailure>(
+      "GET", `${BASE_URL}/scorecard`, null, authHeader(token))
+    return response.data?.success ? response.data.data : null
+  } catch {
+    toast.error("Could not load your scorecard")
+    return null
+  }
+}
+
 export async function saveCourseToWishlist(token: string, courseId: string) {
   try {
     await apiConnector("POST", `${BASE_URL}/saved-courses`, { courseId }, authHeader(token))

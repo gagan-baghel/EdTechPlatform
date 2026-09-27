@@ -12,6 +12,13 @@ import AuditLog from "../models/AuditLog"
 import FeatureFlag from "../models/FeatureFlag"
 import Event from "../models/Event"
 import Certificate from "../models/Certificate"
+import CourseProgress from "../models/CourseProgress"
+import AIInteraction from "../models/AIInteraction"
+import QuizAttempt from "../models/QuizAttempt"
+import SubSection from "../models/SubSection"
+import Payout from "../models/Payout"
+import InstructorPayoutProfile from "../models/InstructorPayoutProfile"
+import { dayKeys, sinceDays, zeroFill } from "../lib/analytics"
 import { recordAudit } from "../utils/recordAudit"
 
 const parsePagination = (req: Request) => {
@@ -367,28 +374,55 @@ export const upsertFeatureFlag = async (req: AuthedRequest, res: Response) => {
 
 export const systemHealth = async (req: Request, res: Response) => {
   const checks: Record<string, unknown> = {}
+  const env = getEnv()
 
+  const pingStart = Date.now()
   try {
     await User.estimatedDocumentCount()
     checks.database = "ok"
   } catch {
     checks.database = "unreachable"
   }
+  const databaseLatencyMs = Date.now() - pingStart
 
   checks.cloudinaryConfigured = Boolean(
-    getEnv().CLOUDINARY_CLOUD_NAME &&
-      getEnv().CLOUDINARY_API_KEY &&
-      getEnv().CLOUDINARY_API_SECRET
+    env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET
   )
-  checks.mailConfigured = Boolean(
-    getEnv().MAIL_HOST && getEnv().MAIL_USER && getEnv().MAIL_PASS
-  )
-  checks.razorpayConfigured = Boolean(getEnv().RAZORPAY_KEY && getEnv().RAZORPAY_SECRET)
-  checks.webhookConfigured = Boolean(getEnv().WEBHOOK_SECRET)
+  checks.mailConfigured = Boolean(env.MAIL_HOST && env.MAIL_USER && env.MAIL_PASS)
+  checks.razorpayConfigured = Boolean(env.RAZORPAY_KEY && env.RAZORPAY_SECRET)
+  checks.webhookConfigured = Boolean(env.WEBHOOK_SECRET)
+  checks.cronConfigured = Boolean(env.CRON_SECRET)
+  checks.encryptionConfigured = Boolean(env.FIELD_ENCRYPTION_KEY)
+  checks.aiTutorConfigured = Boolean(env.ANTHROPIC_API_KEY)
+  checks.transcriptionConfigured = Boolean(env.OPENAI_API_KEY)
 
   const healthy = checks.database === "ok"
 
-  return res.status(healthy ? 200 : 503).json({ success: healthy, checks })
+  // Work that is stuck or waiting on a human. Each is a count an operator can
+  // act on from another tab; skipped when the database itself is down.
+  let attention: Record<string, number> | null = null
+  if (healthy) {
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const [failedTranscripts, pendingKyc, pendingPayouts, aiFailures24h, aiCalls24h, abandonedCheckouts24h] =
+      await Promise.all([
+        SubSection.countDocuments({ transcriptStatus: "failed" }),
+        InstructorPayoutProfile.countDocuments({ kycStatus: "pending" }),
+        Payout.countDocuments({ status: "pending" }),
+        AIInteraction.countDocuments({ succeeded: false, createdAt: { $gte: dayAgo } }),
+        AIInteraction.countDocuments({ createdAt: { $gte: dayAgo } }),
+        Order.countDocuments({ status: "created", createdAt: { $gte: dayAgo, $lte: hourAgo } }),
+      ])
+    attention = { failedTranscripts, pendingKyc, pendingPayouts, aiFailures24h, aiCalls24h, abandonedCheckouts24h }
+  }
+
+  return res.status(healthy ? 200 : 503).json({
+    success: healthy,
+    checks,
+    databaseLatencyMs,
+    attention,
+    checkedAt: new Date().toISOString(),
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -399,9 +433,17 @@ export const systemHealth = async (req: Request, res: Response) => {
 // that dashboard.
 // ---------------------------------------------------------------------------
 
+const AnalyticsRangeSchema = z.object({
+  days: z.enum(["7", "30", "90"]).catch("30").transform(Number),
+})
+
+const byDay = (field: string) => ({ $dateToString: { format: "%Y-%m-%d", date: field } })
+
 export const analyticsOverview = async (req: Request, res: Response) => {
   try {
-    const since30d = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const { days } = parseOrThrow(AnalyticsRangeSchema, req.query)
+    const since = sinceDays(days)
+    const keys = dayKeys(days)
 
     const [
       revenueTotal,
@@ -412,17 +454,23 @@ export const analyticsOverview = async (req: Request, res: Response) => {
       certificateCount,
       enrollmentCount,
       aiInteractionCount,
+      signupsByDay,
+      activeByDay,
+      enrollmentsByDay,
+      aiByDay,
+      usersByRole,
+      coursesByStatus,
+      quizStats,
     ] = await Promise.all([
       Payment.aggregate([{ $group: { _id: null, total: { $sum: "$amount" } } }]),
-      Payment.aggregate([
-        { $match: { date: { $gte: since30d } } },
-        { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } }, total: { $sum: "$amount" } } },
-        { $sort: { _id: 1 } },
+      Payment.aggregate<{ _id: string; total: number }>([
+        { $match: { date: { $gte: since } } },
+        { $group: { _id: byDay("$date"), total: { $sum: "$amount" } } },
       ]),
       Promise.all([
-        Event.countDocuments({ verb: "course_viewed", timestamp: { $gte: since30d } }),
-        Event.countDocuments({ verb: "checkout_started", timestamp: { $gte: since30d } }),
-        Event.countDocuments({ verb: "purchase_completed", timestamp: { $gte: since30d } }),
+        Event.countDocuments({ verb: "course_viewed", timestamp: { $gte: since } }),
+        Event.countDocuments({ verb: "checkout_started", timestamp: { $gte: since } }),
+        Event.countDocuments({ verb: "purchase_completed", timestamp: { $gte: since } }),
       ]),
       Order.aggregate([
         { $group: { _id: "$status", count: { $sum: 1 } } },
@@ -441,17 +489,61 @@ export const analyticsOverview = async (req: Request, res: Response) => {
       Certificate.countDocuments({}),
       User.aggregate([{ $project: { count: { $size: { $ifNull: ["$courses", []] } } } }, { $group: { _id: null, total: { $sum: "$count" } } }]),
       Event.countDocuments({ verb: "ai_interaction" }),
+      // User has no createdAt, but every ObjectId carries its creation time.
+      User.aggregate<{ _id: string; count: number }>([
+        { $project: { created: { $toDate: "$_id" } } },
+        { $match: { created: { $gte: since } } },
+        { $group: { _id: byDay("$created"), count: { $sum: 1 } } },
+      ]),
+      Event.aggregate<{ _id: string; count: number }>([
+        { $match: { timestamp: { $gte: since }, actor: { $ne: null } } },
+        { $group: { _id: { day: byDay("$timestamp"), actor: "$actor" } } },
+        { $group: { _id: "$_id.day", count: { $sum: 1 } } },
+      ]),
+      CourseProgress.aggregate<{ _id: string; count: number }>([
+        { $match: { createdAt: { $gte: since } } },
+        { $group: { _id: byDay("$createdAt"), count: { $sum: 1 } } },
+      ]),
+      AIInteraction.aggregate<{ _id: string; ok: number; failed: number }>([
+        { $match: { createdAt: { $gte: since } } },
+        {
+          $group: {
+            _id: byDay("$createdAt"),
+            ok: { $sum: { $cond: ["$succeeded", 1, 0] } },
+            failed: { $sum: { $cond: ["$succeeded", 0, 1] } },
+          },
+        },
+      ]),
+      User.aggregate<{ _id: string; count: number }>([{ $group: { _id: "$accountType", count: { $sum: 1 } } }]),
+      Course.aggregate<{ _id: string; count: number }>([
+        { $match: { deletedAt: null } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]),
+      QuizAttempt.aggregate<{ _id: null; attempts: number; passed: number; avgScore: number }>([
+        { $match: { createdAt: { $gte: since } } },
+        {
+          $group: {
+            _id: null,
+            attempts: { $sum: 1 },
+            passed: { $sum: { $cond: ["$passed", 1, 0] } },
+            avgScore: { $avg: "$scorePercent" },
+          },
+        },
+      ]),
     ])
 
     const [viewed, checkoutStarted, purchased] = funnelCounts
     const refundedCount = refundStats.find((s) => s._id === "refunded")?.count || 0
     const paidCount = refundStats.find((s) => s._id === "paid")?.count || 0
+    const count = (row: { count: number } | undefined) => row?.count ?? 0
+    const quiz = quizStats[0]
 
     return res.status(200).json({
       success: true,
       data: {
+        rangeDays: days,
         revenueTotalRupees: (revenueTotal[0]?.total || 0),
-        revenueByDay: revenueByDay.map((r) => ({ date: r._id, amountRupees: r.total })),
+        revenueByDay: zeroFill(keys, revenueByDay, (r, date) => ({ date, amountRupees: r?.total ?? 0 })),
         funnel: { viewed, checkoutStarted, purchased },
         refundRate: paidCount > 0 ? Math.round((refundedCount / (paidCount + refundedCount)) * 10000) / 100 : 0,
         topCourses,
@@ -460,6 +552,20 @@ export const analyticsOverview = async (req: Request, res: Response) => {
             ? Math.round((certificateCount / enrollmentCount[0].total) * 10000) / 100
             : 0,
         aiInteractionCount,
+        growthByDay: keys.map((date) => ({
+          date,
+          signups: count(signupsByDay.find((r) => r._id === date)),
+          activeUsers: count(activeByDay.find((r) => r._id === date)),
+          enrollments: count(enrollmentsByDay.find((r) => r._id === date)),
+        })),
+        aiByDay: zeroFill(keys, aiByDay, (r, date) => ({ date, succeeded: r?.ok ?? 0, failed: r?.failed ?? 0 })),
+        usersByRole: Object.fromEntries(usersByRole.map((r) => [r._id, r.count])),
+        coursesByStatus: Object.fromEntries(coursesByStatus.map((r) => [r._id, r.count])),
+        quizzes: {
+          attempts: quiz?.attempts ?? 0,
+          passRate: quiz?.attempts ? Math.round((quiz.passed / quiz.attempts) * 100) : null,
+          averageScore: quiz?.attempts ? Math.round(quiz.avgScore) : null,
+        },
       },
     })
   } catch (error) {

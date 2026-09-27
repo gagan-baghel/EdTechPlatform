@@ -1,5 +1,3 @@
-import type { Types } from "mongoose"
-
 /** The fields getEnrolledCourses reads off a CourseProgress row. */
 interface EnrolledCourseProgress {
   courseID: unknown
@@ -7,13 +5,6 @@ interface EnrolledCourseProgress {
   lastWatchedSubSection?: unknown
 }
 
-/** An instructor's course as read for the dashboard revenue table. */
-interface CourseWithContent {
-  _id: Types.ObjectId
-  courseName: string
-  courseDescription: string
-  studentsEnrolled: unknown[]
-}
 import type { Response } from "express"
 import { requireFile } from "../lib/request"
 import { getEnv } from "../config/env"
@@ -114,17 +105,20 @@ export const updateProfile = async (req: AuthedRequest, res: Response) => {
  * toggle shouldn't have to round-trip those.
  */
 const UpdatePreferencesSchema = z.object({
-	weeklyGoalMinutes: z.coerce.number().optional(),
-	defaultPlaybackSpeed: z.coerce.number().optional(),
+	// Bounded now that the dashboard divides by it: a negative goal rendered
+	// as a progress ring past 100% before anyone had watched a minute.
+	weeklyGoalMinutes: z.coerce.number().int().min(0).max(7 * 24 * 60).optional(),
+	defaultPlaybackSpeed: z.coerce.number().min(0.25).max(3).optional(),
 	autoplayNext: z.boolean().optional(),
 	theme: z.enum(["dark", "light"]).optional(),
 	locale: z.enum(["en", "hi"]).optional(),
-	timezone: z.string().optional(),
+	timezone: z.string().max(100).optional(),
+	showOnLeaderboard: z.boolean().optional(),
 })
 
 export const updatePreferences = async (req: AuthedRequest, res: Response) => {
 	try {
-		const { weeklyGoalMinutes, defaultPlaybackSpeed, autoplayNext, theme, locale, timezone } = parseOrThrow(UpdatePreferencesSchema, req.body)
+		const { weeklyGoalMinutes, defaultPlaybackSpeed, autoplayNext, theme, locale, timezone, showOnLeaderboard } = parseOrThrow(UpdatePreferencesSchema, req.body)
 
 		const userDetails = await User.findById(req.user.id)
 		if (!userDetails) {
@@ -138,6 +132,7 @@ export const updatePreferences = async (req: AuthedRequest, res: Response) => {
 		if (theme !== undefined) update.theme = theme
 		if (locale !== undefined) update.locale = locale
 		if (timezone !== undefined) update.timezone = timezone || null
+		if (showOnLeaderboard !== undefined) update.showOnLeaderboard = showOnLeaderboard
 
 		const profile = await Profile.findByIdAndUpdate(userDetails.additionalDetails, update, { new: true })
 
@@ -372,77 +367,6 @@ export const getEnrolledCourses = async (req: AuthedRequest, res: Response) => {
 	  })
 	} catch (error) {
 	  return fail(res, error, "getEnrolledCourses")}
-}
-
-export const instructorDashboard = async(req: AuthedRequest, res: Response) => {
-	try{
-		const courseDetails = await Course.find({ instructor: req.user.id, deletedAt: null });
-		const courseIds = courseDetails.map((course: { _id: unknown }) =>
-			String(course._id)
-		)
-
-		// totalAmountGenerated used to be studentsEnrolled.length * course.price
-		// — wrong the moment price changes after a sale, and inflated by any
-		// free/comped enrolment. This reads real Payment rows instead, same
-		// proportional-split approach as Payout.js's computeInstructorEarnings
-		// (a payment can cover multiple courses; Payment stores only the
-		// order total, not a per-course breakdown, so each course's share is
-		// approximated by its current price relative to the other courses in
-		// that same payment).
-		// Bounded: this scans Payment for every course the instructor owns, and
-		// without a ceiling it grows without limit as the platform sells more.
-		const relevantPayments = await Payment.find({ courses: { $in: courseIds } })
-			.sort({ date: -1 })
-			.limit(5000)
-			.populate({ path: "courses", select: "price" })
-			.lean()
-
-		const revenueByCourseId = new Map()
-		for (const payment of relevantPayments) {
-			const coursesInPayment = payment.courses || []
-			const totalOfAllCoursesInPayment = coursesInPayment.reduce(
-				(sum: number, course: { price?: number }) => sum + (course?.price || 0),
-				0
-			)
-			if (totalOfAllCoursesInPayment <= 0) continue
-
-			for (const course of coursesInPayment) {
-				if (!courseIds.includes(course._id.toString())) continue
-				const share = (course.price / totalOfAllCoursesInPayment) * payment.amount
-				revenueByCourseId.set(
-					course._id.toString(),
-					(revenueByCourseId.get(course._id.toString()) || 0) + share
-				)
-			}
-		}
-
-		const courseData  = courseDetails.map((course: CourseWithContent)=> {
-			const totalStudentsEnrolled = course.studentsEnrolled.length
-			const totalAmountGenerated =
-				Math.round((revenueByCourseId.get(course._id.toString()) || 0) * 100) / 100
-
-			//create an new object with the additional fields
-			const courseDataWithStats = {
-				_id: course._id,
-				courseName: course.courseName,
-				courseDescription: course.courseDescription,
-				totalStudentsEnrolled,
-				totalAmountGenerated,
-			}
-			return courseDataWithStats
-		})
-
-		// `success: true` is not decoration — every other endpoint sends it and
-		// the client gates on it (`response.data.success ? ... : []`). Without
-		// it this endpoint's payload was discarded on arrival, so the
-		// instructor dashboard showed 0 students and zero income to everyone,
-		// always, while the API was returning the correct numbers.
-		res.status(200).json({ success: true, courses: courseData });
-
-	}
-	catch (error) {
-		return fail(res, error, "instructorDashboard", "Could not load your dashboard")
-	}
 }
 
 /**

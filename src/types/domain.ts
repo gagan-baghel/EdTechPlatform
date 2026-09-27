@@ -98,6 +98,7 @@ export const AI_INTERACTION_TYPE_VALUES = [
   "tutor",
   "copilot_outline",
   "quiz_generation",
+  "assistant",
 ] as const
 export type AiInteractionType = (typeof AI_INTERACTION_TYPE_VALUES)[number]
 
@@ -132,6 +133,8 @@ export interface Profile<Id = IdLike> {
   theme: Theme
   locale: Locale
   timezone: string | null
+  /** Opt-out for appearing by name on course leaderboards. Rank is still computed. */
+  showOnLeaderboard: boolean
 }
 
 /**

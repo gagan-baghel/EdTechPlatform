@@ -20,3 +20,9 @@ process.env.CLOUDINARY_API_KEY = "key"
 process.env.CLOUDINARY_API_SECRET = "secret"
 process.env.FOLDER_NAME = "IntegrationFolder"
 process.env.ADMIN_SETUP_KEY = "integration-setup-key"
+
+// Unset, not faked: the AI endpoints must answer "not configured" here, and a
+// key inherited from the developer's shell would send test traffic to a real
+// provider.
+delete process.env.ANTHROPIC_API_KEY
+delete process.env.OPENAI_API_KEY

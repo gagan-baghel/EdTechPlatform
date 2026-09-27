@@ -34,12 +34,12 @@ export default function RenderSteps() {
               <button
                 className={`grid cursor-default aspect-square w-[34px] place-items-center rounded-full border-[1px] ${
                   step === item.id
-                    ? "border-yellow-50 bg-yellow-900 text-yellow-50"
+                    ? "border-accent bg-accent/10 text-accent"
                     : "border-richblack-700 bg-richblack-800 text-richblack-300"
-                } ${step > item.id ? "bg-yellow-50 text-yellow-50" : ""}`}
+                } ${step > item.id ? "bg-yellow-50 text-on-signal" : ""}`}
               >
                 {step > item.id ? (
-                  <FaCheck className="font-bold text-ink" />
+                  <FaCheck className="font-bold text-on-signal" />
                 ) : (
                   item.id
                 )}
@@ -49,7 +49,7 @@ export default function RenderSteps() {
               <>
                 <div
                   className={`h-[calc(34px/2)] w-[33%] border-dashed border-b-2 ${
-                    step > item.id ? "border-yellow-50" : "border-richblack-500"
+                    step > item.id ? "border-accent" : "border-richblack-500"
                   }`}
                 ></div>
               </>

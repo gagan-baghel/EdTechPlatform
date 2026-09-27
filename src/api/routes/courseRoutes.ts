@@ -9,6 +9,7 @@ const router = express.Router()
 import {
   createCourse,
   getAllCourses,
+  getPublicStats,
   getCourseDetails,
   getFullCourseDetails,
   editCourse,
@@ -83,6 +84,7 @@ router.post("/removeAttachment", auth, isInstructor, authedHandler(removeAttachm
 router.get("/getInstructorCourses", auth, isInstructor, authedHandler(getInstructorCourses, "getInstructorCourses"))
 // Get all Registered Courses
 router.get("/getAllCourses", asyncHandler(getAllCourses, "getAllCourses"))
+router.get("/stats", asyncHandler(getPublicStats, "getPublicStats"))
 // Full-text style search across published courses
 router.get("/searchCourses", asyncHandler(searchCourses, "searchCourses"))
 // Get Details for a Specific Courses

@@ -51,7 +51,7 @@ export default function CopilotOutlineHelper() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mb-6 text-sm font-semibold text-yellow-50 hover:underline"
+        className="mb-6 text-sm font-semibold text-accent hover:underline"
       >
         ✨ Draft an outline with AI
       </button>
@@ -73,7 +73,7 @@ export default function CopilotOutlineHelper() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-md bg-yellow-50 px-4 py-2 text-sm font-semibold text-ink"
+          className="rounded-md bg-yellow-50 px-4 py-2 text-sm font-semibold text-on-signal"
         >
           {loading ? "Drafting..." : "Draft outline"}
         </button>

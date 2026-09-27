@@ -34,6 +34,7 @@ export const studentEndpoints = {
 // COURSE ENDPOINTS
 export const courseEndpoints = {
   GET_ALL_COURSE_API: BASE_URL + "/course/getAllCourses",
+  PUBLIC_STATS_API: BASE_URL + "/course/stats",
   SEARCH_COURSES_API: BASE_URL + "/course/searchCourses",
   COURSE_DETAILS_API: BASE_URL + "/course/getCourseDetails",
   EDIT_COURSE_API: BASE_URL + "/course/editCourse",
@@ -144,6 +145,7 @@ export const quizEndpoints = {
   QUIZ_DETAIL_API: (quizId: string) => BASE_URL + `/quiz/${quizId}`,
   QUIZ_SUBMIT_API: (quizId: string) => BASE_URL + `/quiz/${quizId}/attempts`,
   QUIZ_MY_ATTEMPTS_API: (quizId: string) => BASE_URL + `/quiz/${quizId}/attempts/mine`,
+  QUIZ_REVIEW_API: (quizId: string) => BASE_URL + `/quiz/${quizId}/review`,
 }
 
 // INSTRUCTOR PAYOUT API

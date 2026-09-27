@@ -126,7 +126,7 @@ export default function LiveSessionManager({ courseId }: LiveSessionManagerProps
                   href={session.meetingUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm font-semibold text-yellow-50 hover:underline"
+                  className="text-sm font-semibold text-accent hover:underline"
                 >
                   Meeting link
                 </a>

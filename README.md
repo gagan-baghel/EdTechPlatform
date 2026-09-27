@@ -186,6 +186,31 @@ be set in production, and what breaks without them:
 Nothing in `src/api/config/env.ts` is `NEXT_PUBLIC_`, so no server secret can
 reach the client bundle.
 
+## Before launch
+
+What the code can't do for you:
+
+1. **Production environment.** Set every variable in the table above on the
+   host. Admin → System Health lists anything missing, and what is waiting on
+   a person (KYC reviews, payouts, failed transcriptions, abandoned checkouts).
+2. **Razorpay live mode.** Razorpay reviews the site before enabling live
+   payments; give it `/terms`, `/privacy`, `/refund-policy` and `/contact`.
+   Those pages describe what the code actually does (the constants they
+   depend on are named in each file), but have a lawyer confirm the legal
+   wording — governing law is set to India.
+3. **AI keys (optional).** `ANTHROPIC_API_KEY` turns on the lecture tutor, the
+   help assistant and the quiz copilot; `OPENAI_API_KEY` turns on lecture
+   transcripts. Without them those features say "not configured".
+4. **First data.** Run `npm run migrate:indexes`, create the first admin and
+   the course categories (see `.env.example`).
+
+The homepage needs no editing at launch: its course count, learner and
+certificate figures come from `GET /api/v1/course/stats`, its reviews are real
+course reviews (the section stays hidden until there are some), and the
+subject marquee appears once there are three categories.
+
+The screenshots at the top of this file predate the current design.
+
 ## Structure
 
 | Path | Responsibility |

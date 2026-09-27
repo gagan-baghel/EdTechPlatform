@@ -72,7 +72,7 @@ export default function PaymentsTab() {
           placeholder="Customer email"
           className="form-style"
         />
-        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-ink">
+        <button type="submit" className="rounded-md bg-yellow-50 px-4 py-2 font-semibold text-on-signal">
           Look up
         </button>
       </form>
@@ -135,7 +135,7 @@ export default function PaymentsTab() {
                   {order.user?.firstName} {order.user?.lastName} ({order.user?.email})
                 </Td>
                 <Td className="px-4 py-3">
-                  <span className={order.status === "paid" ? "text-caribbeangreen-100" : "text-yellow-50"}>
+                  <span className={order.status === "paid" ? "text-caribbeangreen-100" : "text-accent"}>
                     {order.status}
                   </span>
                 </Td>

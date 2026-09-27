@@ -35,8 +35,8 @@ import { emitEvent, EVENT_VERBS } from "../utils/emitEvent"
 // per-course/per-instructor policy is a product decision for later, not
 // something to invent unilaterally as a side effect of building the
 // refund pipeline.
-const REFUND_DEADLINE_DAYS = 30
-const REFUND_ELIGIBLE_COMPLETION_THRESHOLD = 0.5 // below 50% complete
+export const REFUND_DEADLINE_DAYS = 30
+export const REFUND_ELIGIBLE_COMPLETION_THRESHOLD = 0.5 // below 50% complete
 
 const REFUND_REASONS = [
   "requested_by_customer",

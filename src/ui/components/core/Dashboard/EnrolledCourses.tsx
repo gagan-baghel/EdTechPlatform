@@ -11,6 +11,7 @@ import { Link, useNavigate } from "@/ui/lib/router"
 import { getUserEnrolledCourses } from "../../../services/operations/profileAPI"
 import Spinner from "../../common/Spinner"
 import type { RootState } from "../../../store"
+import { PageHeader } from "../../common/DashKit"
 
 export default function EnrolledCourses() {
   const { token } = useSelector((state: RootState) => state.auth)
@@ -48,9 +49,7 @@ export default function EnrolledCourses() {
 
   return (
     <>
-      <h1 className="text-2xl font-medium text-richblack-5 sm:text-3xl">
-        Enrolled Courses
-      </h1>
+      <PageHeader title="Enrolled courses" meta="Every course you have access to" />
       {!enrolledCourses ? (
         <div className="grid min-h-[calc(100vh-3.5rem)] place-items-center">
           <Spinner />
@@ -58,7 +57,7 @@ export default function EnrolledCourses() {
       ) : !enrolledCourses.length ? (
         <div className="mt-10 flex flex-col items-center rounded-lg border border-dashed border-richblack-600 bg-richblack-800/40 px-6 py-14 text-center">
           <div className="grid h-16 w-16 place-items-center rounded-full bg-richblack-700">
-            <TbBooks className="text-3xl text-yellow-50" />
+            <TbBooks className="text-3xl text-accent" />
           </div>
           <h2 className="mt-5 text-xl font-semibold text-richblack-5">
             You haven&apos;t enrolled in a course yet
@@ -69,7 +68,7 @@ export default function EnrolledCourses() {
           </p>
           <Link
             to="/catalog/web-development"
-            className="mt-6 rounded-md bg-yellow-50 px-6 py-3 font-semibold text-ink transition hover:bg-yellow-25 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50 focus-visible:ring-offset-2 focus-visible:ring-offset-richblack-900"
+            className="mt-6 rounded-md bg-yellow-50 px-6 py-3 font-semibold text-on-signal transition hover:brightness-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-richblack-900"
           >
             Browse courses
           </Link>
@@ -98,7 +97,7 @@ export default function EnrolledCourses() {
                 role="button"
                 tabIndex={0}
                 aria-label={`Continue ${course?.courseName ?? "course"}`}
-                className="flex w-full cursor-pointer items-center gap-4 px-4 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow-50 sm:w-[45%] sm:px-5 sm:py-3"
+                className="flex w-full cursor-pointer items-center gap-4 px-4 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent sm:w-[45%] sm:px-5 sm:py-3"
                 onClick={() => {
                   // Resume where the learner left off — find the section
                   // that contains lastWatchedSubSection, if there is one —

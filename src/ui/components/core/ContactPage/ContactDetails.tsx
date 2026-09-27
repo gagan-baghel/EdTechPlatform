@@ -12,15 +12,15 @@ interface ContactDetailType {
 const contactDetails: ContactDetailType[] = [
   {
     icon: BiSolidChat,
-    heading: "Chat on us",
-    description: "Our friendly team is here to help.",
+    heading: "Email us",
+    description: "Questions about a course, a payment or a refund.",
     details: "support@intellecraft.com",
   },
   {
     icon: BiWorld,
-    heading: "Coverage",
-    description: "Remote-first support for institutions globally.",
-    details: "Available across time zones",
+    heading: "Who we help",
+    description: "Learners and instructors, in English or Hindi.",
+    details: "Replies by email",
   },
   {
     icon: AiOutlinePhone,

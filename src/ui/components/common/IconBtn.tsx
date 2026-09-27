@@ -32,7 +32,7 @@ export default function IconBtn({
     >
       {children ? (
         <>
-          <span className={outline ? "text-yellow-50" : undefined}>{text}</span>
+          <span className={outline ? "text-accent" : undefined}>{text}</span>
           {children}
         </>
       ) : (

@@ -66,7 +66,7 @@ export default function UpdatePassword() {
                 )}
               </span>
               {errors.oldPassword && (
-                <span className="-mt-1 text-[12px] text-yellow-100">
+                <span className="-mt-1 text-[12px] text-accent">
                   Please enter your Current Password.
                 </span>
               )}
@@ -93,7 +93,7 @@ export default function UpdatePassword() {
                 )}
               </span>
               {errors.newPassword && (
-                <span className="-mt-1 text-[12px] text-yellow-100">
+                <span className="-mt-1 text-[12px] text-accent">
                   Please enter your New Password.
                 </span>
               )}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import {
   AiOutlineArrowRight,
@@ -9,121 +9,98 @@ import {
   AiOutlineCheckCircle,
   AiOutlineGlobal,
   AiOutlineLineChart,
-  AiOutlinePlayCircle,
   AiOutlineRocket,
   AiOutlineSafetyCertificate,
-  AiOutlineThunderbolt,
   AiOutlineUsergroupAdd,
 } from "react-icons/ai"
-import { BsChevronDown, BsPlug } from "react-icons/bs"
+import { BsChevronDown } from "react-icons/bs"
 
 import { useTranslations } from "next-intl"
 
 import { Link } from "@/ui/lib/router"
 
+import type { ApiFailure } from "@/types/api"
 import Footer from "../components/common/Footer"
+import { HeroGraphic } from "../components/core/HomePage/Graphics"
+import { apiConnector } from "../services/apiconnector"
+import { categories, courseEndpoints } from "../services/apis"
+import { fetchReviewsCached } from "../services/sharedData"
+import { normalizeAvatarUrl } from "../utils/avatar"
+import { CountUp } from "../components/common/DashKit"
+import type { DataBody } from "../types"
 import IntegrationOrbit from "../components/core/HomePage/IntegrationOrbit"
 import Reveal from "../components/common/Reveal"
 import React from "react"
 
+/** Unsplash photography (free for commercial use), resized by their CDN. */
+const photo = (id: string, width = 1600) =>
+  `https://images.unsplash.com/photo-${id}?q=80&w=${width}&auto=format&fit=crop`
+
+/** Every answer is a rule the code enforces — see the API's constants. */
 const faqs = [
   {
-    q: "How fast can we migrate our existing data?",
-    a: "Our automated migration tools can import your existing student records, financial data, and curriculum schedules in under 48 hours. Our onboarding team is with you every step of the way.",
+    q: "How do I get a certificate?",
+    a: "Complete every lecture in a course and pass every course-level quiz. The certificate is issued automatically, and anyone can verify it on its public page using the certificate number.",
   },
   {
-    q: "Is it easy for parents and students to use?",
-    a: "Yes. The parent and student portals are designed as progressive web apps, meaning they work smoothly on any smartphone without complicated downloads.",
+    q: "How many times can I take a quiz?",
+    a: "Up to ten attempts per quiz. Once you pass — or use all ten — you can review every question with the correct answer and the instructor's explanation.",
   },
   {
-    q: "Do you offer custom integrations?",
-    a: "Absolutely. The platform can connect with reporting systems, productivity tools, communication workflows, and custom payment processors.",
+    q: "What if a course isn't right for me?",
+    a: "If you have completed less than half of a course thirty days after enrolling, you are eligible for a refund. Contact us and it will be returned to your original payment method.",
   },
   {
-    q: "What level of support is included?",
-    a: "Enterprise onboarding includes guided migration, staff training, operational support, and direct help during rollout.",
+    q: "Can I learn in Hindi?",
+    a: "Yes — the whole interface is available in English and Hindi. Switch any time from the language menu at the top of the page.",
+  },
+  {
+    q: "How do instructors get paid?",
+    a: "Instructors add their bank details and complete KYC once. Earnings from every sale are totalled into payouts, and the platform fee is shown up front.",
   },
 ]
 
-const metrics = [
-  { label: "Active Students", value: "2.4M+", icon: AiOutlineUsergroupAdd },
-  { label: "Uptime SLA", value: "99.99%", icon: AiOutlineLineChart },
-  { label: "Countries", value: "45+", icon: AiOutlineGlobal },
-  { label: "API Requests/Day", value: "150M", icon: AiOutlineThunderbolt },
-]
-
-const testimonials = [
-  {
-    text: "The transition was seamless. We migrated 4,000 student records over the weekend and teachers were fully trained by Monday. Incredible software.",
-    author: "Dr. Robert Fischer",
-    role: "Superintendent, Pioneer District",
-    image:
-      "https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=200&h=200&auto=format&fit=crop",
-  },
-  {
-    text: "It eliminated five different apps we were paying for. Now admissions, grading, scheduling, and billing are in one gorgeous interface.",
-    author: "Amanda Chen",
-    role: "Operations Director",
-    image:
-      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&h=200&auto=format&fit=crop",
-  },
-  {
-    text: "The parent portal changed how we interact with our community. Phone calls to the front desk dropped dramatically.",
-    author: "Marcus Johnson",
-    role: "Headmaster, Elite Prep",
-    image:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&h=200&auto=format&fit=crop",
-  },
-  {
-    text: "I used to spend three weeks generating timetables manually. The scheduling engine did it in under a minute.",
-    author: "Elena Rodriguez",
-    role: "Academic Coordinator",
-    image:
-      "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=200&h=200&auto=format&fit=crop",
-  },
-  {
-    text: "Secure, reliable, and it integrates cleanly with our existing Google Workspace setup. A dream for any IT admin in education.",
-    author: "Tech Team",
-    role: "Oxford Academies",
-    image:
-      "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=200&h=200&auto=format&fit=crop",
-  },
-]
-
+/** Teaching here, in the order it actually happens. */
 const onboarding = [
   {
     step: "01",
-    title: "Automated Import",
-    desc: "Upload your CSVs or connect your legacy database. The migration flow maps schemas and brings your records across cleanly.",
+    title: "Build your course",
+    desc: "Sections, video lectures, attachments and quizzes in one builder — with an AI outline and quiz drafts written from your own transcripts.",
     color: "text-[#7dd3fc]",
     bg: "bg-[#112635]",
-    icon: BsPlug,
-  },
-  {
-    step: "02",
-    title: "Staff Training",
-    desc: "Short guided sessions help administrators and teachers adopt the system quickly without operational disruption.",
-    color: "text-[#8b82ff]",
-    bg: "bg-[#211c3c]",
     icon: AiOutlineBook,
   },
   {
+    step: "02",
+    title: "Publish and teach",
+    desc: "Go live when you're ready, schedule live classes, and answer questions right under each lecture.",
+    color: "text-[#8b82ff]",
+    bg: "bg-[#211c3c]",
+    icon: AiOutlineRocket,
+  },
+  {
     step: "03",
-    title: "Go Live",
-    desc: "Flip the switch and welcome parents and students into a cleaner, more modern daily experience.",
+    title: "Watch it work",
+    desc: "See revenue, completion and the students who need a nudge — then get paid out to your bank account.",
     color: "text-[#d4a017]",
     bg: "bg-[#2b2411]",
-    icon: AiOutlineRocket,
+    icon: AiOutlineLineChart,
   },
 ]
 
-const logos = [
-  { name: "Stanford", icon: AiOutlineBook },
-  { name: "MIT Prep", icon: AiOutlineBook },
-  { name: "Harvard Int", icon: AiOutlineSafetyCertificate },
-  { name: "Yale Academics", icon: AiOutlineCalendar },
-  { name: "Princeton Day", icon: AiOutlineUsergroupAdd },
-]
+interface PublicStats {
+  courses: number
+  learners: number
+  instructors: number
+  certificates: number
+}
+
+interface PublicReview {
+  rating?: number | string
+  review?: string
+  course?: { courseName?: string }
+  user?: { firstName?: string; lastName?: string; image?: string }
+}
 
 // Bar grows from 0 to 94% with a pure CSS animation — no JS state required,
 // so there is no useEffect setState cascade and no React Compiler lint error.
@@ -149,8 +126,45 @@ function CountUpBar() {
 }
 
 function Home() {
-  const marquee = useMemo(() => [...logos, ...logos], [])
   const t = useTranslations("Home")
+  const [stats, setStats] = useState<PublicStats | null>(null)
+  const [categoryNames, setCategoryNames] = useState<string[]>([])
+  const [reviews, setReviews] = useState<PublicReview[]>([])
+  const marquee = useMemo(() => [...categoryNames, ...categoryNames], [categoryNames])
+  const courseCount = stats?.courses ?? null
+
+  // Everything on this page that is a number or a name comes from the
+  // database. Quiet fetches: a section with nothing real to show is left out.
+  useEffect(() => {
+    apiConnector<DataBody<PublicStats> | ApiFailure>("GET", courseEndpoints.PUBLIC_STATS_API)
+      .then((res) => {
+        if (res.data.success) setStats(res.data.data)
+      })
+      .catch(() => undefined)
+    apiConnector<DataBody<Array<{ name?: string | null }>> | ApiFailure>("GET", categories.CATEGORIES_API)
+      .then((res) => {
+        if (res.data.success) setCategoryNames(res.data.data.map((c) => c.name ?? "").filter(Boolean))
+      })
+      .catch(() => undefined)
+    fetchReviewsCached()
+      .then((rows) =>
+        setReviews((rows as PublicReview[]).filter((r) => typeof r.review === "string" && r.review.trim().length >= 20).slice(0, 6))
+      )
+      .catch(() => undefined)
+  }, [])
+
+  const metrics = stats
+    ? [
+        { label: stats.courses === 1 ? "Course live" : "Courses live", value: stats.courses, icon: AiOutlineBook },
+        { label: stats.learners === 1 ? "Learner" : "Learners", value: stats.learners, icon: AiOutlineUsergroupAdd },
+        { label: stats.instructors === 1 ? "Instructor" : "Instructors", value: stats.instructors, icon: AiOutlineGlobal },
+        {
+          label: stats.certificates === 1 ? "Certificate issued" : "Certificates issued",
+          value: stats.certificates,
+          icon: AiOutlineSafetyCertificate,
+        },
+      ]
+    : []
 
   return (
     // The page as a whole follows the site theme. It used to pin
@@ -160,117 +174,103 @@ function Home() {
     // hardcoded #020617 overlays and white text on top) keep the pin, marked
     // individually below.
     <div className="min-h-screen bg-richblack-900 selection:bg-[#c3ebfa] selection:text-ink">
-      {/* Locked dark: dark photograph + hardcoded overlay gradients. Flipping
-          the text here would leave white type on a light-mode palette over an
-          unchanged dark image. */}
-      <section
-        data-theme="dark"
-        // -mt-14 cancels the shell's navbar offset: the navbar is transparent
-        // over the hero until you scroll, so this one section is meant to run
-        // full-bleed behind it.
-        className="relative -mt-14 flex h-screen min-h-[800px] items-center justify-center overflow-hidden bg-richblack-900"
-      >
-        <div className="absolute inset-0 h-[120%] w-full">
-          <Image
-            src="/hero/dark-mode-monitor.jpg"
-            alt="Dark workstation setup"
-            fill
-            priority
-            sizes="100vw"
-            className="h-full w-full scale-[1.03] object-cover object-center opacity-80"
-          />
-          <div
-            className="absolute inset-0 opacity-20"
-            style={{
-              backgroundImage: "url('/hero/bghome.svg')",
-              backgroundPosition: "center",
-              backgroundSize: "cover",
-            }}
-          />
-          <div className="absolute inset-0 bg-[#020617]/62" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(195,235,250,0.16),_transparent_34%)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/42 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#020617]/88 via-[#020617]/30 to-[#020617]/76" />
-        </div>
+      {/* Hero. Locked dark: the photograph is dark whatever the theme, so the
+          type over it is pinned light. A flat scrim — not a gradient stack —
+          keeps it legible; the scorecard beside the headline is the product
+          itself, drawn and animated (HomePage/Graphics.tsx). */}
+      <section data-theme="dark" className="relative overflow-hidden border-b border-richblack-600 bg-richblack-900">
+        <Image
+          src={photo("1522202176988-66273c2fd55f", 2400)}
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center opacity-60"
+        />
+        <div className="absolute inset-0 bg-richblack-900/75" aria-hidden />
 
-        <div className="relative z-10 mx-auto mt-20 max-w-5xl px-6 text-center">
-          <h1 className="mb-8 text-6xl font-black leading-[1.05] tracking-tighter text-white md:text-8xl lg:text-[100px]">
-            {t("heroTitlePrefix")} <br className="hidden md:block" />
-            <span className="bg-gradient-to-r from-[#c3ebfa] via-white to-[#fae27c] bg-clip-text text-transparent">
-              {t("heroTitleHighlight")}
-            </span>
-          </h1>
-          <p className="mx-auto mb-12 max-w-3xl text-xl font-medium leading-relaxed text-richblack-100 md:text-2xl">
-            {t("heroSubtitle")}
-          </p>
-
-          <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">
-            <Link
-              to="/signup"
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-white px-10 py-5 text-lg font-bold text-ink shadow-[0_0_40px_rgba(255,255,255,0.3)] transition-all hover:scale-105 active:scale-95 sm:w-auto"
-            >
-              {t("createAccount")}
-              <AiOutlineArrowRight className="text-xl" />
-            </Link>
-            <Link
-              to="/login"
-              className="group flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-richblack-800/65 px-10 py-5 text-lg font-bold text-white backdrop-blur-md transition-all hover:bg-richblack-700/80 sm:w-auto"
-            >
-              <AiOutlinePlayCircle className="text-2xl transition-colors group-hover:text-[#c3ebfa]" />
-              {t("watchKeynote")}
-            </Link>
+        <div className="relative mx-auto grid min-h-[calc(100dvh-3.5rem)] w-full max-w-[1240px] grid-cols-1 items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:px-10">
+          <div className="page-enter">
+            <p className="stamp flex items-center gap-2 text-richblack-200">
+              <span className="live-dot h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+              {courseCount !== null
+                ? `${courseCount} course${courseCount === 1 ? "" : "s"} open for enrolment`
+                : "Courses open for enrolment"}
+            </p>
+            <h1 className="mt-6 text-[3.25rem] font-semibold leading-[0.95] tracking-[-0.05em] text-richblack-5 sm:text-7xl lg:text-[5.5rem]">
+              {t("heroLine1")}
+              <br />
+              <span className="text-accent">{t("heroLine2")}</span>
+            </h1>
+            <p className="mt-6 max-w-[46ch] text-lg leading-relaxed text-richblack-100">{t("heroSubtitle")}</p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link
+                to="/search"
+                className="stamp inline-flex items-center gap-2 bg-yellow-50 px-6 py-4 text-on-signal transition-[filter] hover:brightness-110"
+              >
+                {t("browseCourses")} <AiOutlineArrowRight aria-hidden />
+              </Link>
+              <Link
+                to="/signup"
+                className="stamp inline-flex items-center gap-2 border border-richblack-300 px-6 py-4 text-richblack-5 transition-colors hover:border-richblack-5"
+              >
+                {t("teach")}
+              </Link>
+            </div>
           </div>
-        </div>
-
-        <div className="absolute bottom-10 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 text-white/50">
-          <span className="text-sm font-medium uppercase tracking-widest">Discover</span>
-          <div className="h-12 w-px bg-gradient-to-b from-white/50 to-transparent" />
+          <div className="page-enter [animation-delay:150ms]">
+            <HeroGraphic />
+          </div>
         </div>
       </section>
 
+      {/* A marquee of one or two names just repeats itself; below three
+          subjects the section waits until the catalogue has grown. */}
+      {categoryNames.length >= 3 && (
       <section className="relative overflow-hidden border-b border-richblack-700 bg-richblack-900 py-16">
         <div className="mx-auto mb-8 max-w-7xl px-6 text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-richblack-400">
-            Powering over 2,500 institutions globally
+            Learn across {categoryNames.length} subject{categoryNames.length === 1 ? "" : "s"}
           </p>
         </div>
 
         <div className="homepage-logo-strip">
           <div className="homepage-logo-strip__track items-center opacity-60 transition-opacity duration-500 hover:opacity-100">
-            {marquee.map((item, idx) => {
-              const Icon = item.icon
-              return (
-                <div
-                  key={`${item.name}-${idx}`}
-                  className="flex items-center gap-2 px-8 text-white md:px-16"
-                >
-                  <Icon className="h-8 w-8" />
-                  <span className="text-2xl font-bold tracking-tighter">{item.name}</span>
-                </div>
-              )
-            })}
+            {marquee.map((name, idx) => (
+              <Link
+                key={`${name}-${idx}`}
+                to={`/catalog/${name.split(" ").join("-").toLowerCase()}`}
+                tabIndex={idx < categoryNames.length ? 0 : -1}
+                aria-hidden={idx >= categoryNames.length}
+                className="flex items-center gap-2 px-8 text-richblack-5 hover:text-accent md:px-16"
+              >
+                <AiOutlineBook className="h-8 w-8" />
+                <span className="text-2xl font-bold tracking-tighter">{name}</span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
+      )}
 
       <section id="platform" className="bg-richblack-900 px-6 py-32">
         <Reveal className="mx-auto max-w-7xl">
           <div className="mb-20">
             <h2 className="mb-6 text-5xl font-bold leading-tight tracking-tight text-richblack-5 md:text-7xl">
-              A unified platform. <br className="hidden md:block" />
-              <span className="text-richblack-400">Zero compromises.</span>
+              Everything a course needs. <br className="hidden md:block" />
+              <span className="text-richblack-400">Nothing it doesn&apos;t.</span>
             </h2>
             <p className="max-w-2xl text-2xl text-richblack-300">
-              We replaced isolated legacy tools with one beautifully integrated ecosystem.
+              Video lectures, quizzes, live classes, Q&amp;A, notes and certificates — in one place, for the people learning and the people teaching.
             </p>
           </div>
 
           <div className="grid auto-rows-[400px] grid-cols-1 gap-6 md:grid-cols-3 md:grid-rows-2">
             {/* Locked dark: photo tile with white type over a fixed gradient. */}
-            <div data-theme="dark" className="group relative isolate overflow-hidden rounded-[40px] bg-gray-900 md:col-span-2 md:row-span-2">
+            <div data-theme="dark" className="group relative isolate overflow-hidden rounded-[40px] bg-richblack-900 md:col-span-2 md:row-span-2">
               <Image
-                src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop"
-                alt="Dashboard Design"
+                src={photo("1522881193457-37ae97c905bf", 2000)}
+                alt="An instructor working through a lesson with a student"
                 fill
                 sizes="(max-width: 768px) 100vw, 66vw"
                 className="absolute inset-0 h-full w-full object-cover opacity-30 transition-all duration-700 ease-out group-hover:scale-105 group-hover:opacity-40"
@@ -278,13 +278,13 @@ function Home() {
               <div className="absolute inset-0 bg-gradient-to-t from-[#020617] via-[#020617]/88 to-[#020617]/25" />
               <div className="absolute inset-0 flex flex-col justify-end p-10 md:p-14">
                 <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-3xl bg-[#c3ebfa] shadow-2xl transition-transform duration-500 group-hover:-translate-y-2">
-                  <AiOutlineLineChart className="h-8 w-8 text-gray-900" />
+                  <AiOutlineLineChart className="h-8 w-8 text-ink" />
                 </div>
                 <h3 className="mb-4 max-w-3xl text-4xl font-bold tracking-tight text-white md:text-6xl">
-                  Executive Analytics
+                  Instructor analytics
                 </h3>
                 <p className="max-w-2xl text-xl leading-relaxed text-richblack-5/90 drop-shadow-[0_8px_24px_rgba(0,0,0,0.45)] md:text-2xl">
-                  Live attendance insights, finance snapshots, and early student-performance signals in one executive command center.
+                  Revenue, enrolments and minutes watched by day, the lecture where students stop, and the learners who need a nudge — for every course you teach.
                 </p>
               </div>
             </div>
@@ -294,18 +294,18 @@ function Home() {
               <AiOutlineSafetyCertificate className="relative z-10 h-14 w-14 text-[#8b82ff]" />
               <div className="relative z-10">
                 <h3 className="mb-4 text-3xl font-bold tracking-tight text-richblack-5">
-                  Enterprise Security
+                  Honest grading
                 </h3>
                 <p className="text-lg leading-relaxed text-richblack-100">
-                  Role-aware permissions, audit logs, and encrypted workflows that protect every campus touchpoint.
+                  Quizzes are graded on the server against a stored key, with capped attempts — so a pass means something.
                 </p>
               </div>
             </div>
 
             <div className="group relative flex flex-col justify-between overflow-hidden rounded-[40px] border border-yellow-50/20 bg-richblack-800 p-10">
               <Image
-                src="https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=2622&auto=format&fit=crop"
-                alt="Students"
+                src={photo("1541339907198-e08756dedf3f", 400)}
+                alt="Graduates throwing their caps"
                 width={160}
                 height={160}
                 className="absolute bottom-0 right-0 h-40 w-40 rounded-tl-[40px] object-cover transition-all duration-500 group-hover:-translate-x-2 group-hover:-translate-y-2 group-hover:scale-110"
@@ -314,10 +314,10 @@ function Home() {
               <AiOutlineUsergroupAdd className="mb-4 h-14 w-14 text-yellow-50" />
               <div className="relative z-10">
                 <h3 className="mb-4 text-3xl font-bold tracking-tight text-richblack-5">
-                  Parent Portals
+                  Certificates
                 </h3>
                 <p className="max-w-[220px] text-lg leading-relaxed text-richblack-100">
-                  Give families instant access to attendance, fees, notices, and school updates from any device.
+                  Earned automatically, and verifiable by anyone with the certificate number.
                 </p>
               </div>
             </div>
@@ -325,13 +325,15 @@ function Home() {
         </Reveal>
       </section>
 
-      {/* Locked dark: bg-gray-900 and a photograph, neither of which flips. */}
-      <section data-theme="dark" className="relative overflow-hidden bg-gray-900 py-24 text-white">
+      {/* Locked dark: bg-richblack-900 and a photograph, neither of which flips.
+          The figures are counted live (GET /course/stats), not written in. */}
+      {metrics.length > 0 && (
+      <section data-theme="dark" className="relative overflow-hidden bg-richblack-900 py-24 text-white">
         <div
           className="absolute inset-0 opacity-10"
           style={{
             backgroundImage:
-              "url('https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2940&auto=format&fit=crop')",
+              `url('${photo("1606761568499-6d2451b23c66", 2400)}')`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
@@ -342,13 +344,13 @@ function Home() {
               const Icon = metric.icon
               return (
                 <div key={metric.label} className="flex flex-col items-center">
-                  <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-800 shadow-xl">
+                  <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-2xl bg-richblack-800 shadow-xl">
                     <Icon className="h-6 w-6 text-[#c3ebfa]" />
                   </div>
                   <div className="mb-2 text-4xl font-black tracking-tight md:text-5xl">
-                    {metric.value}
+                    <CountUp value={metric.value.toLocaleString()} />
                   </div>
-                  <div className="text-lg font-medium text-gray-400">{metric.label}</div>
+                  <div className="text-lg font-medium text-richblack-300">{metric.label}</div>
                 </div>
               )
             })}
@@ -356,22 +358,24 @@ function Home() {
         </div>
       </section>
 
+      )}
+
       <section id="solutions" className="overflow-hidden bg-richblack-900 py-32">
         <Reveal className="mx-auto max-w-7xl space-y-40 px-6">
           <div className="flex flex-col items-center gap-16 lg:flex-row lg:gap-24">
             <div className="lg:w-5/12">
               <h2 className="mb-8 text-5xl font-bold leading-[1.1] tracking-tight text-richblack-5 md:text-7xl">
-                Flawless <br />
-                <span className="text-[#c3ebfa]">Timetables.</span>
+                Live classes, <br />
+                <span className="text-[#c3ebfa]">in the course.</span>
               </h2>
               <p className="mb-10 text-xl font-medium leading-relaxed text-richblack-300">
-                Our scheduling flow resolves complex room and teacher conflicts in milliseconds. Generate cleaner timetables for thousands of students with one click.
+                Instructors schedule live sessions right inside the course. Everyone enrolled is notified, and the recording is posted to the same page afterwards.
               </p>
               <ul className="space-y-6">
                 {[
-                  "Conflict-free generation",
-                  "Drag-and-drop overrides",
-                  "Instant notification updates",
+                  "Scheduled inside the course",
+                  "Enrolled students notified",
+                  "Recordings posted after",
                 ].map((text) => (
                   <li
                     key={text}
@@ -388,29 +392,29 @@ function Home() {
             <div className="w-full lg:w-7/12">
               <div className="relative overflow-hidden rounded-[40px] border border-richblack-700 bg-richblack-800 shadow-2xl shadow-black/30">
                 <Image
-                  src="https://images.unsplash.com/photo-1611348586804-61bf6c080437?q=80&w=2674&auto=format&fit=crop"
-                  alt="Calendar UI Representation"
+                  src={photo("1588196749597-9ff075ee6b5b", 1600)}
+                  alt="A live online class on a laptop screen"
                   width={1200}
                   height={900}
                   className="aspect-[4/3] h-auto w-full object-cover"
                   sizes="(max-width: 1024px) 100vw, 58vw"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-richblack-900/60 to-transparent" />
                 <div className="absolute bottom-8 left-8 right-8 rounded-3xl border border-richblack-600 bg-richblack-800/95 p-8 shadow-xl shadow-black/40 backdrop-blur-2xl">
                   <div className="mb-4 flex items-start justify-between">
                     <div>
-                      <h4 className="text-2xl font-bold text-richblack-5">Advanced Chemistry 401</h4>
-                      <p className="font-medium text-richblack-300">Dr. Peterson • Group A</p>
+                      <h4 className="text-2xl font-bold text-richblack-5">Live Q&amp;A: Async JavaScript</h4>
+                      <p className="font-medium text-richblack-300">Example session • 60 minutes</p>
                     </div>
                     <span className="rounded-full bg-[#112635] px-4 py-2 text-sm font-bold text-[#7dd3fc]">
-                      Science Lab B
+                      Live
                     </span>
                   </div>
                   <div className="mt-6 flex items-center gap-4 font-medium text-richblack-300">
                     <AiOutlineCalendar className="h-5 w-5 text-richblack-400" />
-                    <span>Mon, Wed, Fri</span>
+                    <span>Thursday</span>
                     <span>•</span>
-                    <span>10:00 AM - 11:30 AM</span>
+                    <span>7:00 PM</span>
                   </div>
                 </div>
               </div>
@@ -420,17 +424,17 @@ function Home() {
           <div className="flex flex-col items-center gap-16 lg:flex-row-reverse lg:gap-24">
             <div className="lg:w-5/12">
               <h2 className="mb-8 text-5xl font-bold leading-[1.1] tracking-tight text-richblack-5 md:text-7xl">
-                Gradebook, <br />
-                <span className="text-[#8b82ff]">unleashed.</span>
+                A scorecard, <br />
+                <span className="text-[#8b82ff]">not a guess.</span>
               </h2>
               <p className="mb-10 text-xl font-medium leading-relaxed text-richblack-300">
-                A fast spreadsheet-style interface that teachers actually want to use. It syncs with curriculum standards and parent portals in real time.
+                Every learner sees their grade in each course, their best score on every quiz, and where they stand in the class — updated as they learn.
               </p>
               <ul className="space-y-6">
                 {[
-                  "Keyboard-first navigation",
-                  "Custom grading scales",
-                  "Automated report card generation",
+                  "Grade and score per course",
+                  "Class position and leaderboard",
+                  "Printable report card",
                 ].map((text) => (
                   <li
                     key={text}
@@ -447,29 +451,24 @@ function Home() {
             <div className="w-full lg:w-7/12">
               <div className="relative overflow-hidden rounded-[40px] border border-richblack-700 bg-richblack-800 shadow-2xl shadow-black/30">
                 <Image
-                  src="https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=2940&auto=format&fit=crop"
-                  alt="Student Grading Representation"
+                  src={photo("1513258496099-48168024aec0", 1600)}
+                  alt="A learner studying with headphones and a laptop"
                   width={1200}
                   height={900}
                   className="aspect-[4/3] h-auto w-full object-cover"
                   sizes="(max-width: 1024px) 100vw, 58vw"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-richblack-900/60 to-transparent" />
                 <div className="absolute bottom-8 left-8 right-8 rounded-3xl border border-richblack-600 bg-richblack-800/95 p-8 shadow-xl shadow-black/40 backdrop-blur-2xl">
                   <div className="mb-6 flex items-center gap-6">
-                    <Image
-                      src="https://images.unsplash.com/photo-1544717305-2782549b5136?q=80&w=200&h=200&auto=format&fit=crop"
-                      alt="Student"
-                      width={64}
-                      height={64}
-                      className="h-16 w-16 rounded-full object-cover shadow-md"
-                      sizes="64px"
-                    />
-                    <div>
-                      <div className="text-2xl font-bold text-richblack-5">Sarah Jenkins</div>
-                      <div className="font-medium text-richblack-300">Student ID: #98421 • Grade 10</div>
+                    <div className="grid h-16 w-16 place-items-center rounded-full bg-richblack-700 text-2xl font-bold text-richblack-5">
+                      #3
                     </div>
-                    <div className="ml-auto text-4xl font-black text-caribbeangreen-100">A+</div>
+                    <div>
+                      <div className="text-2xl font-bold text-richblack-5">Your scorecard</div>
+                      <div className="font-medium text-richblack-300">Example • 4 of 6 lectures • 3rd of 42</div>
+                    </div>
+                    <div className="ml-auto text-4xl font-black text-caribbeangreen-100">B</div>
                   </div>
                   <CountUpBar />
                 </div>
@@ -482,35 +481,36 @@ function Home() {
       <section className="relative overflow-hidden border-t border-richblack-700 bg-richblack-800 py-32">
         <Reveal className="mx-auto max-w-7xl px-6 text-center">
           <h2 className="mb-6 text-5xl font-bold tracking-tight text-richblack-5 md:text-6xl">
-            Plug into your ecosystem.
+            Built on services you can trust.
           </h2>
           <p className="mx-auto mb-20 max-w-2xl text-xl font-medium leading-relaxed text-richblack-300">
-            The platform plays nicely with your existing stack. Two-way sync with the tools your teachers and admins already use.
+            Payments through Razorpay, lectures streamed from a global CDN, transcripts by OpenAI Whisper, and an AI tutor that answers from the lecture itself.
           </p>
 
           <IntegrationOrbit />
         </Reveal>
       </section>
 
+      {reviews.length > 0 && (
       <section id="showcase" className="border-y border-richblack-700 bg-richblack-900 py-32">
         <Reveal className="mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-20 max-w-4xl text-center">
             <h2 className="mb-8 text-5xl font-bold tracking-tight text-richblack-5 md:text-7xl">
-              Millions of students. <br />Zero downtime.
+              In learners&apos; <br />own words.
             </h2>
             <p className="text-2xl text-richblack-300">
-              Hear from the administrators and teachers powering the future.
+              Reviews left on courses, as written.
             </p>
           </div>
 
           <div className="columns-1 gap-8 space-y-8 md:columns-2 lg:columns-3">
-            {testimonials.map((t, i) => (
+            {reviews.map((review, i) => (
               <div
-                key={`${t.author}-${i}`}
+                key={i}
                 className="mb-8 break-inside-avoid rounded-[32px] border border-richblack-700 bg-richblack-800 p-10 shadow-lg shadow-black/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
               >
                 <div className="mb-8 flex gap-1">
-                  {[...Array(5)].map((_, j) => (
+                  {[...Array(Math.max(1, Math.min(5, Math.round(Number(review.rating) || 0))))].map((_, j) => (
                     <svg
                       key={j}
                       className="h-6 w-6 text-[#fae27c]"
@@ -522,20 +522,22 @@ function Home() {
                   ))}
                 </div>
                 <p className="mb-10 text-xl font-medium leading-relaxed text-richblack-100">
-                  &ldquo;{t.text}&rdquo;
+                  &ldquo;{review.review}&rdquo;
                 </p>
                 <div className="flex items-center gap-5">
                   <Image
-                    src={t.image}
-                    alt={t.author}
+                    src={normalizeAvatarUrl(review.user?.image, review.user?.firstName, review.user?.lastName)}
+                    alt=""
                     width={64}
                     height={64}
                     className="h-16 w-16 rounded-full object-cover shadow-md"
                     sizes="64px"
                   />
                   <div>
-                    <h4 className="text-lg font-bold text-richblack-5">{t.author}</h4>
-                    <p className="font-medium text-richblack-300">{t.role}</p>
+                    <h4 className="text-lg font-bold text-richblack-5">
+                      {review.user?.firstName} {review.user?.lastName?.charAt(0)}.
+                    </h4>
+                    <p className="font-medium text-richblack-300">{review.course?.courseName}</p>
                   </div>
                 </div>
               </div>
@@ -544,14 +546,16 @@ function Home() {
         </Reveal>
       </section>
 
+      )}
+
       <section className="relative bg-richblack-900 py-32">
         <Reveal className="mx-auto max-w-7xl px-6">
           <div className="mx-auto mb-24 max-w-3xl text-center">
             <h2 className="mb-6 text-5xl font-bold tracking-tight text-richblack-5 md:text-6xl">
-              Switching is effortless.
+              Teaching here takes three steps.
             </h2>
             <p className="text-xl font-medium text-richblack-300">
-              We&apos;ve migrated thousands of schools. Our white-glove team ensures zero data loss and zero downtime during the transition.
+              Sign up as an instructor and the whole toolkit is yours — no sales call, no setup fee.
             </p>
           </div>
 
@@ -570,7 +574,7 @@ function Home() {
                     <Icon className={`h-10 w-10 ${item.color}`} />
                   </div>
                   <div className="mb-3 text-sm font-black uppercase tracking-widest text-richblack-400">
-                    Phase {item.step}
+                    Step {item.step}
                   </div>
                   <h3 className="mb-4 text-2xl font-bold text-richblack-5">{item.title}</h3>
                   <p className="max-w-sm text-lg font-medium leading-relaxed text-richblack-300">
@@ -609,33 +613,33 @@ function Home() {
         </Reveal>
       </section>
 
-      {/* Locked dark: fixed bg-gray-900 closing panel. */}
-      <section data-theme="dark" className="relative flex flex-col items-center overflow-hidden bg-gray-900 px-6 pb-20 pt-40">
+      {/* Locked dark: fixed bg-richblack-900 closing panel. */}
+      <section data-theme="dark" className="relative flex flex-col items-center overflow-hidden bg-richblack-900 px-6 pb-20 pt-40">
         <div className="absolute left-1/2 top-0 h-[1px] w-full max-w-5xl -translate-x-1/2 bg-gradient-to-r from-transparent via-[#c3ebfa] to-transparent opacity-50" />
         <div className="pointer-events-none absolute left-1/2 top-[-10%] h-[400px] w-[800px] -translate-x-1/2 rounded-full bg-[#c3ebfa] opacity-20 blur-[200px]" />
 
         <div className="relative z-10 mx-auto mb-40 max-w-5xl text-center">
           <h2 className="mb-10 text-6xl font-black tracking-tighter text-white md:text-9xl">
-            Your school, <br />
+            Start with <br />
             <span className="bg-gradient-to-r from-richblack-50 to-richblack-300 bg-clip-text text-transparent">
-              upgraded.
+              one lecture.
             </span>
           </h2>
           <p className="mx-auto mb-14 max-w-3xl text-2xl leading-relaxed text-richblack-100 md:text-3xl">
-            Join the future of educational administration today. Setup takes minutes, impact lasts generations.
+            Browse the catalogue and enrol in minutes — or open a course of your own and start teaching.
           </p>
           <div className="flex flex-col items-center justify-center gap-6 sm:flex-row">
             <Link
               to="/signup"
-              className="w-full rounded-full bg-white px-12 py-6 text-xl font-black text-gray-900 shadow-[0_0_60px_rgba(255,255,255,0.15)] transition-all hover:scale-105 active:scale-95 sm:w-auto"
+              className="w-full rounded-full bg-white px-12 py-6 text-xl font-black text-ink shadow-[0_0_60px_rgba(255,255,255,0.15)] transition-all hover:scale-105 active:scale-95 sm:w-auto"
             >
-              Start Free Trial
+              Create an account
             </Link>
             <Link
-              to="/contact"
-              className="w-full rounded-full border border-gray-700 bg-gray-800 px-12 py-6 text-xl font-bold text-white transition-all hover:bg-gray-700 sm:w-auto"
+              to="/search"
+              className="w-full rounded-full border border-richblack-700 bg-richblack-800 px-12 py-6 text-xl font-bold text-white transition-all hover:bg-richblack-700 sm:w-auto"
             >
-              Contact Sales
+              Browse courses
             </Link>
           </div>
         </div>

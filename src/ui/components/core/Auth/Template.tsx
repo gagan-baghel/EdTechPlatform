@@ -11,18 +11,18 @@ import Spinner from "../../common/Spinner"
 
 const contentByType = {
   login: {
-    badge: "Secure campus access",
+    badge: "Welcome back",
     cardTitle: "Sign in",
-    cardDescription: "Access your workspace.",
+    cardDescription: "Pick up where you left off.",
     switchLabel: "Need an account?",
     switchCta: "Sign up",
     switchTo: "/signup",
     imageBadge: "Secure access.",
   },
   signup: {
-    badge: "Launch your school OS",
+    badge: "Learn or teach",
     cardTitle: "Create account",
-    cardDescription: "Start your workspace.",
+    cardDescription: "Start learning — or teaching — in minutes.",
     switchLabel: "Already have an account?",
     switchCta: "Log in",
     switchTo: "/login",

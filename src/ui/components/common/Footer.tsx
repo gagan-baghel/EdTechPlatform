@@ -1,27 +1,44 @@
 import React from "react"
 import { Link } from "@/ui/lib/router"
 import { FooterLink2 } from "../../data/footer-links"
+import { BrandMark } from "./Brand"
 
-// Images
-import Logo from "../../../../public/logo.png"
+/**
+ * Same columns as always, but every link now goes to a page that exists —
+ * the old lists (Blog, Forums, Careers, "Chart Sheet", Help Center, three
+ * policy pages) were all dead ends, and the policy pages are required before
+ * Razorpay will enable live payments.
+ */
+interface FooterLink {
+  label: string
+  to: string
+}
 
-// Icons
-import { FaFacebook, FaGoogle, FaTwitter, FaYoutube } from "react-icons/fa"
-import Image from "next/image"
-
-const BottomFooter = ["Privacy Policy", "Cookie Policy", "Terms"]
-const Resources = [
-  "Articles",
-  "Blog",
-  "Chart Sheet",
-  "Code challenges",
-  "Docs",
-  "Projects",
-  "Videos",
-  "Workspaces",
+const CompanyLinks: FooterLink[] = [
+  { label: "About", to: "/about" },
+  { label: "Contact", to: "/contact" },
+  { label: "Refer & earn", to: "/dashboard/affiliate" },
 ]
-const Plans = ["Paid memberships", "For students", "Business solutions"]
-const Community = ["Forums", "Chapters", "Events"]
+const BottomFooter: FooterLink[] = [
+  { label: "Privacy Policy", to: "/privacy" },
+  { label: "Terms", to: "/terms" },
+  { label: "Refund Policy", to: "/refund-policy" },
+]
+const Resources: FooterLink[] = [
+  { label: "Browse courses", to: "/search" },
+  { label: "My learning", to: "/dashboard/my-learning" },
+  { label: "Scorecard", to: "/dashboard/scorecard" },
+  { label: "Enrolled courses", to: "/dashboard/enrolled-courses" },
+]
+const Plans: FooterLink[] = [
+  { label: "Membership", to: "/subscribe" },
+  { label: "For students", to: "/signup" },
+  { label: "For organizations", to: "/dashboard/organizations" },
+]
+const Community: FooterLink[] = [
+  { label: "Teach on IntelleCraft", to: "/signup" },
+  { label: "Instructor dashboard", to: "/dashboard/instructor" },
+]
 
 const Footer: React.FC = () => {
   return (
@@ -31,27 +48,18 @@ const Footer: React.FC = () => {
           {/* Section 1 */}
           <div className="lg:w-[50%] flex flex-wrap flex-row justify-between lg:border-r lg:border-richblack-700 pl-3 lg:pr-5 gap-3">
             <div className="w-[30%] flex flex-col gap-3 lg:w-[30%] mb-7 lg:pl-0">
-              <Image src={Logo} alt="" className="object-contain" />
+              {/* The vector mark in the text colour — the PNG's opaque white
+                  square showed as a box on the dark footer. */}
+              <BrandMark className="h-12 w-12 text-richblack-5" />
               <h1 className="text-richblack-5 font-semibold text-[16px]">
                 Company
               </h1>
               <div className="flex flex-col gap-2">
-                {["About", "Careers", "Affiliates"].map((ele, i) => {
-                  return (
-                    <div
-                      key={i}
-                      className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                    >
-                      <Link to={ele.toLowerCase()}>{ele}</Link>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="flex gap-3 text-lg">
-                <FaFacebook />
-                <FaGoogle />
-                <FaTwitter />
-                <FaYoutube />
+                {CompanyLinks.map((ele) => (
+                  <div key={ele.to} className="text-[14px] hover:text-richblack-50 transition-all duration-200">
+                    <Link to={ele.to}>{ele.label}</Link>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -61,25 +69,18 @@ const Footer: React.FC = () => {
               </h1>
 
               <div className="flex flex-col gap-2 mt-2">
-                {Resources.map((ele, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                    >
-                      <Link to={ele.split(" ").join("-").toLowerCase()}>
-                        {ele}
-                      </Link>
-                    </div>
-                  )
-                })}
+                {Resources.map((ele) => (
+                  <div key={ele.label} className="text-[14px] hover:text-richblack-50 transition-all duration-200">
+                    <Link to={ele.to}>{ele.label}</Link>
+                  </div>
+                ))}
               </div>
 
               <h1 className="text-richblack-5 font-semibold text-[16px] mt-7">
                 Support
               </h1>
               <div className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200 mt-2">
-                <Link to={"/help-center"}>Help Center</Link>
+                <Link to="/contact">Help &amp; contact</Link>
               </div>
             </div>
 
@@ -89,36 +90,22 @@ const Footer: React.FC = () => {
               </h1>
 
               <div className="flex flex-col gap-2 mt-2">
-                {Plans.map((ele, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                    >
-                      <Link to={ele.split(" ").join("-").toLowerCase()}>
-                        {ele}
-                      </Link>
-                    </div>
-                  )
-                })}
+                {Plans.map((ele) => (
+                  <div key={ele.label} className="text-[14px] hover:text-richblack-50 transition-all duration-200">
+                    <Link to={ele.to}>{ele.label}</Link>
+                  </div>
+                ))}
               </div>
               <h1 className="text-richblack-5 font-semibold text-[16px] mt-7">
                 Community
               </h1>
 
               <div className="flex flex-col gap-2 mt-2">
-                {Community.map((ele, index) => {
-                  return (
-                    <div
-                      key={index}
-                      className="text-[14px] cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                    >
-                      <Link to={ele.split(" ").join("-").toLowerCase()}>
-                        {ele}
-                      </Link>
-                    </div>
-                  )
-                })}
+                {Community.map((ele) => (
+                  <div key={ele.label} className="text-[14px] hover:text-richblack-50 transition-all duration-200">
+                    <Link to={ele.to}>{ele.label}</Link>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -153,25 +140,19 @@ const Footer: React.FC = () => {
       <div className="flex flex-row items-center justify-between w-11/12 max-w-maxContent text-richblack-400 mx-auto  pb-14 text-sm">
         <div className="flex justify-between lg:items-start items-center flex-col lg:flex-row gap-3 w-full">
           <div className="flex flex-row">
-            {BottomFooter.map((ele, i) => {
-              return (
-                <div
-                  key={i}
-                  className={` ${
-                    BottomFooter.length - 1 === i
-                      ? ""
-                      : "border-r border-richblack-700 cursor-pointer hover:text-richblack-50 transition-all duration-200"
-                  } px-3 `}
-                >
-                  <Link to={ele.split(" ").join("-").toLocaleLowerCase()}>
-                    {ele}
-                  </Link>
-                </div>
-              )
-            })}
+            {BottomFooter.map((ele, i) => (
+              <div
+                key={ele.to}
+                className={`${
+                  BottomFooter.length - 1 === i ? "" : "border-r border-richblack-700"
+                } px-3 hover:text-richblack-50 transition-all duration-200`}
+              >
+                <Link to={ele.to}>{ele.label}</Link>
+              </div>
+            ))}
           </div>
 
-          <div className="text-center">Made with ❤️ IntelleCraft © 2023 </div>
+          <div className="text-center">© {new Date().getFullYear()} IntelleCraft</div>
         </div>
       </div>
     </div>

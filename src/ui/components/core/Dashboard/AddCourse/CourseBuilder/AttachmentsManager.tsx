@@ -70,7 +70,7 @@ export default function AttachmentsManager({ subSectionId, courseId, token, atta
               href={attachment.url}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 text-sm text-richblack-100 hover:text-yellow-50"
+              className="flex items-center gap-2 text-sm text-richblack-100 hover:text-accent"
             >
               <FiFile /> {attachment.name}
             </a>

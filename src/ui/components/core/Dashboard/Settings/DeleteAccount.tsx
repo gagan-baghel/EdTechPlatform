@@ -118,7 +118,7 @@ export default function DeleteAccount() {
               autoComplete="off"
               disabled={deleting}
               onChange={(e) => setTyped(e.target.value)}
-              className="mt-2 w-full rounded-md border border-richblack-600 bg-richblack-700 px-3 py-2 text-richblack-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-50"
+              className="mt-2 w-full rounded-md border border-richblack-600 bg-richblack-700 px-3 py-2 text-richblack-5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

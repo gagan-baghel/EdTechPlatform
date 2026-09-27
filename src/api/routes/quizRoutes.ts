@@ -11,6 +11,7 @@ import {
   getQuizForStudent,
   submitQuizAttempt,
   listMyAttempts,
+  getMyQuizReview,
 } from "../controllers/Quiz"
 import { auth, isInstructor, isStudent } from "../middlewares/auth"
 
@@ -23,4 +24,5 @@ router.get("/course/:courseId/student", auth, isStudent, authedHandler(listQuizz
 router.get("/:quizId", auth, isStudent, authedHandler(getQuizForStudent, "getQuizForStudent"))
 router.post("/:quizId/attempts", auth, isStudent, authedHandler(submitQuizAttempt, "submitQuizAttempt"))
 router.get("/:quizId/attempts/mine", auth, isStudent, authedHandler(listMyAttempts, "listMyAttempts"))
+router.get("/:quizId/review", auth, isStudent, authedHandler(getMyQuizReview, "getMyQuizReview"))
 export default router
