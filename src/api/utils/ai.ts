@@ -92,22 +92,27 @@ export async function transcribeAudioUrl(audioUrl: string): Promise<string> {
   return typeof text === "string" ? text : ""
 }
 
-export interface GenerateTextOptions {
-  /** Grounding/governance instructions: citation requirement, scope limits. */
-  system: string
-  /** The user's actual question or request. */
-  prompt: string
-  maxTokens?: number
+export interface ChatMessage {
+  role: "user" | "assistant"
+  content: string
 }
 
+export type GenerateTextOptions = {
+  /** Grounding/governance instructions: citation requirement, scope limits. */
+  system: string
+  maxTokens?: number
+} & (
+  | { /** The user's actual question or request. */ prompt: string }
+  | { /** A conversation, oldest first, ending on the user's turn. */ messages: ChatMessage[] }
+)
+
 /**
- * Anthropic Messages API for the tutor and instructor copilot.
+ * Anthropic Messages API for the tutor, the copilot and the support assistant.
  */
-export async function generateText({
-  system,
-  prompt,
-  maxTokens = 1024,
-}: GenerateTextOptions): Promise<string> {
+export async function generateText(options: GenerateTextOptions): Promise<string> {
+  const { system, maxTokens = 1024 } = options
+  const messages =
+    "messages" in options ? options.messages : [{ role: "user" as const, content: options.prompt }]
   const env = getEnv()
   if (!env.ANTHROPIC_API_KEY) {
     throw new AIConfigError("ANTHROPIC_API_KEY is not configured")
@@ -124,7 +129,7 @@ export async function generateText({
       model: env.ANTHROPIC_MODEL,
       max_tokens: maxTokens,
       system,
-      messages: [{ role: "user", content: prompt }],
+      messages,
     }),
   })
 

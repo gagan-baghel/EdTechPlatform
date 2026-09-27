@@ -51,7 +51,14 @@ const profileSchema = new Schema<SchemaOf<ProfileEntity<ObjectId>>>({
     timezone: {
         type: String,
         default: null,
-    }
+    },
+    // Classmates see a first name and last initial on the course leaderboard
+    // unless this is off. Position is still computed either way — it only
+    // decides whether the NAME is ever shown to someone else.
+    showOnLeaderboard: {
+        type: Boolean,
+        default: true,
+    },
 })
 
 export const Profile = defineModel("Profile", profileSchema)

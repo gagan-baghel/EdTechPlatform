@@ -8,11 +8,11 @@ import {
   getAllUserDetails,
   updateDisplayPicture,
   getEnrolledCourses,
-  instructorDashboard,
   completeOnboarding,
   exportMyData,
   updatePreferences,
-} from "../controllers/Profile"// ********************************************************************************************************
+} from "../controllers/Profile"
+import { instructorDashboard } from "../controllers/InstructorDashboard"// ********************************************************************************************************
 //                                      Profile routes
 // ********************************************************************************************************
 // Delet User Account

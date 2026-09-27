@@ -18,6 +18,7 @@ import SubSection from "../models/SubSection"
 import User from "../models/User"
 import { uploadImageToCloudinary } from "../utils/imageUploader"
 import CourseProgress from "../models/CourseProgress"
+import Certificate from "../models/Certificate"
 import { convertSecondsToDuration } from "../utils/secToDuration"
 import { emitEvent, EVENT_VERBS } from "../utils/emitEvent"
 import { recordAudit } from "../utils/recordAudit"
@@ -297,6 +298,25 @@ export const editCourse = async (req: AuthedRequest, res: Response) => {
  * query — fine at 20 courses, a growing full-collection read and an ever-
  * larger JSON payload on the homepage at 20,000.
  */
+/**
+ * The homepage's figures, counted rather than written into the page. Public
+ * and the same for every visitor, so the CDN may serve it for five minutes.
+ */
+export const getPublicStats = async (_req: Request, res: Response) => {
+  try {
+    const [courses, learners, instructors, certificates] = await Promise.all([
+      Course.countDocuments({ status: "Published", deletedAt: null }),
+      User.countDocuments({ accountType: "Student", active: true }),
+      User.countDocuments({ accountType: "Instructor", active: true }),
+      Certificate.estimatedDocumentCount(),
+    ])
+    res.set("Cache-Control", "public, s-maxage=300, stale-while-revalidate=600")
+    return res.status(200).json({ success: true, data: { courses, learners, instructors, certificates } })
+  } catch (error) {
+    return fail(res, error, "getPublicStats", "Could not load stats")
+  }
+}
+
 export const getAllCourses = async (req: Request, res: Response) => {
   try {
     const { page, limit } = parseOrThrow(paginationQuery({ defaultLimit: 24, maxLimit: 60 }), req.query)
@@ -696,11 +716,7 @@ export const searchCourses = async (req: Request, res: Response) => {
       totalPages: Math.ceil(total / limit),
     })
   } catch (error) {
-    console.error("searchCourses failed", error)
-    return res.status(500).json({
-      success: false,
-      message: "Search is temporarily unavailable. Please try again.",
-    })
+    return fail(res, error, "searchCourses", "Search is temporarily unavailable. Please try again.")
   }
 }
 
@@ -907,7 +923,6 @@ export const duplicateCourse = async (req: AuthedRequest, res: Response) => {
 
     return res.status(201).json({ success: true, data: newCourse })
   } catch (error) {
-    console.error("duplicateCourse failed", error)
-    return res.status(500).json({ success: false, message: "Could not duplicate course" })
+    return fail(res, error, "duplicateCourse", "Could not duplicate course")
   }
 }

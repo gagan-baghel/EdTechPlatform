@@ -19,7 +19,7 @@ import { checkAndIssueCertificate } from "./Certificate"
 // end-of-video credits/outros and a player that never quite reaches the
 // last fraction of a second shouldn't be the difference between done and
 // not done.
-const AUTO_COMPLETE_THRESHOLD = 0.9
+export const AUTO_COMPLETE_THRESHOLD = 0.9
 
 const ProgressSchema = z.object({
   courseId: objectId("A valid course id is required"),

@@ -4,7 +4,10 @@ import { z } from "zod"
 const questionSchema = z.object({
   questionText: z.string().min(1, "questionText is required"),
   options: z.array(z.string()).min(2, "Every question needs text and at least 2 options"),
-  correctOptionIndex: z.number().min(0, "correctOptionIndex must point at a real option")
+  correctOptionIndex: z.number().min(0, "correctOptionIndex must point at a real option"),
+  // The schema has always had this field, but the validator stripped it, so
+  // no explanation was ever stored for the result review to show.
+  explanation: z.string().trim().max(2000).optional(),
 }).refine(data => data.correctOptionIndex < data.options.length, {
   message: "correctOptionIndex must point at a real option",
   path: ["correctOptionIndex"]
@@ -50,7 +53,46 @@ const courseParamsSchema = z.object({ courseId: objectId("A valid course id is r
  * unlimited attempts make a quiz solvable by brute force in a handful of
  * requests — the "assessment" verifies nothing. The cap is per quiz, per user.
  */
-const MAX_ATTEMPTS_PER_QUIZ = 10
+export const MAX_ATTEMPTS_PER_QUIZ = 10
+
+/**
+ * The per-question result review — the answer key, laid against what the
+ * student picked.
+ *
+ * Only unlocked once the student has passed or used every attempt. Showing
+ * which answers were wrong on a failed attempt is a coordinate-wise search:
+ * with four options, the cap above would no longer protect anything. The score
+ * alone is what a still-trying student gets.
+ */
+interface GradableQuestion {
+  _id: Types.ObjectId
+  questionText: string
+  options: string[]
+  correctOptionIndex: number
+  explanation?: string | null
+}
+
+function buildReview(
+  questions: GradableQuestion[],
+  answers: ReadonlyArray<{ questionId: unknown; selectedOptionIndex: number }>
+) {
+  const picked = new Map(answers.map((a) => [String(a.questionId), a.selectedOptionIndex]))
+  return questions.map((q) => {
+    const selectedOptionIndex = picked.get(q._id.toString()) ?? null
+    return {
+      questionId: q._id,
+      questionText: q.questionText,
+      options: q.options,
+      selectedOptionIndex,
+      correctOptionIndex: q.correctOptionIndex,
+      correct: selectedOptionIndex === q.correctOptionIndex,
+      explanation: q.explanation ?? null,
+    }
+  })
+}
+
+const reviewUnlocked = (passedEver: boolean, attemptsUsed: number) =>
+  passedEver || attemptsUsed >= MAX_ATTEMPTS_PER_QUIZ
 
 /** Projection returned by the student quiz list — see the `.lean()` above. */
 interface QuizSummarySource {
@@ -291,6 +333,8 @@ export const submitQuizAttempt = async (req: AuthedRequest, res: Response) => {
     const scorePercent = Math.round((correctCount / quiz.questions.length) * 100)
     const passed = scorePercent >= quiz.passingScorePercent
 
+    const passedBefore = !passed && Boolean(await QuizAttempt.exists({ quiz: quizId, user: userId, passed: true }))
+
     const attempt = await QuizAttempt.create({
       quiz: quizId,
       user: userId,
@@ -314,6 +358,9 @@ export const submitQuizAttempt = async (req: AuthedRequest, res: Response) => {
         attemptId: attempt._id,
         attemptsUsed: attemptCount + 1,
         attemptsAllowed: MAX_ATTEMPTS_PER_QUIZ,
+        review: reviewUnlocked(passed || passedBefore, attemptCount + 1)
+          ? buildReview(quiz.questions, answers)
+          : null,
       },
     })
   } catch (error) {
@@ -331,6 +378,52 @@ export const listMyAttempts = async (req: AuthedRequest, res: Response) => {
     return res.status(200).json({ success: true, data: attempts })
   } catch (error) {
     return fail(res, error, "listMyAttempts", "Could not load attempt history")
+  }
+}
+
+/**
+ * Re-open the result review for the student's latest attempt, under the same
+ * unlock rule as the submission response.
+ */
+export const getMyQuizReview = async (req: AuthedRequest, res: Response) => {
+  try {
+    const { quizId } = parseOrThrow(quizParamsSchema, req.params)
+    const userId = req.user.id
+
+    const quiz = await Quiz.findOne({ _id: quizId, published: true }).lean()
+    if (!quiz) {
+      return res.status(404).json({ success: false, message: "Quiz not found" })
+    }
+
+    const [latest, attemptsUsed, passedEver] = await Promise.all([
+      QuizAttempt.findOne({ quiz: quizId, user: userId }).sort({ createdAt: -1 }).lean(),
+      QuizAttempt.countDocuments({ quiz: quizId, user: userId }),
+      QuizAttempt.exists({ quiz: quizId, user: userId, passed: true }),
+    ])
+    if (!latest) {
+      return res.status(404).json({ success: false, message: "You have not attempted this quiz yet" })
+    }
+    if (!reviewUnlocked(Boolean(passedEver), attemptsUsed)) {
+      return res.status(403).json({
+        success: false,
+        message: "The answer review unlocks once you pass or use all your attempts.",
+      })
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        title: quiz.title,
+        scorePercent: latest.scorePercent,
+        passed: latest.passed,
+        passingScorePercent: quiz.passingScorePercent,
+        attemptsUsed,
+        attemptsAllowed: MAX_ATTEMPTS_PER_QUIZ,
+        review: buildReview(quiz.questions, latest.answers),
+      },
+    })
+  } catch (error) {
+    return fail(res, error, "getMyQuizReview", "Could not load your quiz review")
   }
 }
 
