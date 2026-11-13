@@ -16,6 +16,9 @@
     "verify:restore": "node --env-file-if-exists=.env.local --env-file-if-exists=.env ./node_modules/.bin/tsx scripts/verify-restore.ts",
     "test:integration": "vitest run --config vitest.integration.mts"
   },
+  "engines": {
+    "node": "24.x"
+  },
   "dependencies": {
     "@ramonak/react-progress-bar": "^5.2.0",
     "@reduxjs/toolkit": "^2.0.1",
