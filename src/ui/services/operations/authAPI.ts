@@ -176,17 +176,12 @@ export function logout(navigate: NavigateFunction) {
   return async (dispatch: AppDispatch, getState: () => RootState) => {
     const { token } = getState().auth
     if (token) {
-      try {
-        // Best-effort: revokes the session server-side so the JWT can't be
-        // replayed after logout. If this fails (network blip), still clear
-        // local state below — the user's own intent to log out shouldn't
-        // be blocked by it.
-        await apiConnector("POST", endpoints.LOGOUT_API, null, {
-          Authorization: `Bearer ${token}`,
-        })
-      } catch {
-        // Swallowed deliberately — see comment above.
-      }
+      // Best-effort server revoke, fired without awaiting: on a cold start it
+      // took ~6s, during which the dialog looked dead and users clicked
+      // repeatedly. Local state is cleared immediately below regardless.
+      apiConnector("POST", endpoints.LOGOUT_API, null, {
+        Authorization: `Bearer ${token}`,
+      }).catch(() => {})
     }
     dispatch(setToken(null))
     dispatch(setUser(null))
